@@ -11,6 +11,12 @@ export const BusinessReviewsManager: React.FC = () => {
   const [replyingReviewId, setReplyingReviewId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
 
+  const positiveReviews = salonReviews.filter(r => r.rating >= 4);
+  const positivePercent = salonReviews.length > 0
+    ? Math.round((positiveReviews.length / salonReviews.length) * 100)
+    : 100;
+  const totalReviewsCount = salonReviews.length > 0 ? salonReviews.length : (salon.reviewCount || 0);
+
   const handleSendReply = (reviewId: string) => {
     if (!replyText.trim()) return;
     replyToReview(reviewId, replyText.trim());
@@ -47,9 +53,11 @@ export const BusinessReviewsManager: React.FC = () => {
           </div>
           <div className="text-left text-xs border-l border-slate-200 dark:border-slate-800 pl-3">
             <span className={`font-bold block ${isLight ? 'text-slate-900' : 'text-white'}`}>
-              {salon.reviewCount} Total Reviews
+              {totalReviewsCount} Total Reviews
             </span>
-            <span className="text-[10px] text-emerald-500 font-semibold">98% Positive Feedback</span>
+            <span className="text-[10px] text-emerald-500 font-semibold">
+              {positivePercent}% Positive Feedback
+            </span>
           </div>
         </div>
       </div>
@@ -194,8 +202,11 @@ export const BusinessReviewsManager: React.FC = () => {
                         </button>
                         <button
                           onClick={() => handleSendReply(rev.id)}
-                          className="px-4 py-1.5 rounded-xl text-white font-bold text-xs shadow-xs"
-                          style={{ backgroundColor: currentThemeConfig.primaryHex }}
+                          className="px-4 py-1.5 rounded-xl font-bold text-xs shadow-xs transition-all"
+                          style={{
+                            backgroundColor: currentThemeConfig.primaryHex,
+                            color: currentThemeConfig.contrastText || '#ffffff',
+                          }}
                         >
                           Post Reply
                         </button>

@@ -15,14 +15,19 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ appointment, onClose }
   const [hoverRating, setHoverRating] = useState<number>(0);
   const [comment, setComment] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!appointment) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!comment.trim()) return;
+    if (!comment.trim() || isSubmitting) return;
 
-    addReview({
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    const result = await addReview({
       appointmentId: appointment.id,
       salonId: appointment.salonId,
       customerId: customerUser.id,
@@ -33,6 +38,12 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ appointment, onClose }
       serviceName: appointment.serviceName,
       staffName: appointment.staffName,
     });
+
+    if (result && !result.success) {
+      setErrorMessage(result.error || 'Failed to submit review.');
+      setIsSubmitting(false);
+      return;
+    }
 
     setSubmitted(true);
     setTimeout(() => {
@@ -91,6 +102,12 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ appointment, onClose }
               </p>
             </div>
 
+            {errorMessage && (
+              <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs text-center font-medium">
+                {errorMessage}
+              </div>
+            )}
+
             <div className="flex items-center justify-center gap-2 py-2">
               {[1, 2, 3, 4, 5].map(star => {
                 const isFilled = (hoverRating || rating) >= star;
@@ -148,14 +165,16 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ appointment, onClose }
 
             <button
               type="submit"
-              className="w-full py-2.5 rounded-xl text-white font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-1.5"
+              disabled={isSubmitting}
+              className="w-full py-2.5 rounded-xl font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-60"
               style={{
                 backgroundColor: currentThemeConfig.primaryHex,
+                color: currentThemeConfig.contrastText || '#ffffff',
                 boxShadow: `0 4px 14px 0 ${currentThemeConfig.glowHex}`,
               }}
             >
               <Sparkles className="w-4 h-4" />
-              <span>Post Review & Earn 20 Pts</span>
+              <span>{isSubmitting ? 'Posting...' : 'Post Review & Earn 20 Pts'}</span>
             </button>
           </form>
         )}
