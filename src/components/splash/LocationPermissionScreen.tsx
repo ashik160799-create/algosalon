@@ -181,7 +181,9 @@ export const LocationPermissionScreen: React.FC<LocationPermissionScreenProps> =
             isLight ? 'text-zinc-950' : 'text-white'
           }`}
         >
-          Would you like to explore places nearby?
+          {targetRole === 'business'
+            ? 'Set up salon location & timezone'
+            : 'Would you like to explore places nearby?'}
         </h2>
 
         <p
@@ -189,7 +191,9 @@ export const LocationPermissionScreen: React.FC<LocationPermissionScreenProps> =
             isLight ? 'text-zinc-600' : 'text-zinc-400'
           }`}
         >
-          Share your location to sort nearby salons and available specialists. You can continue without sharing it.
+          {targetRole === 'business'
+            ? 'Share your location to automatically configure your salon timezone, city, and client discovery.'
+            : 'Share your location to sort nearby salons and available specialists. You can continue without sharing it.'}
         </p>
 
         {locationSuccess && (

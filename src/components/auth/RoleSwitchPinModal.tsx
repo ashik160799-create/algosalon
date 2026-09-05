@@ -86,7 +86,7 @@ export const RoleSwitchPinModal: React.FC<RoleSwitchPinModalProps> = ({
         setLockoutTimer(30);
         setError('Too many failed attempts. For security, please wait 30 seconds or tap Forgot App Code to reset via email.');
       } else {
-        setError('Incorrect App Code. Try 1234 or tap Forgot App Code below.');
+        setError('Incorrect App Code. Please check your 4-digit code or tap Forgot App Code below.');
       }
       setIsShaking(true);
       setTimeout(() => {

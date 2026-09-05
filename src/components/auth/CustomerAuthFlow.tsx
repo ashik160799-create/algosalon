@@ -28,6 +28,7 @@ import {
   verifySupabaseOtp,
   syncAccountIdentityToSupabase,
 } from '../../services/supabaseService';
+import { isValidEmail } from '../../utils/authErrorHandling';
 import { GoogleOauthSetupModal } from './GoogleOauthSetupModal';
 
 type CustomerScreenStep =
@@ -112,7 +113,10 @@ export const CustomerAuthFlow: React.FC<CustomerAuthFlowProps> = ({
   const handleEmailContinue = async (e: React.FormEvent) => {
     e.preventDefault();
     const normalizedEmail = normalizeEmail(email);
-    if (!normalizedEmail) return;
+    if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
+      setEntryError('Please enter a valid email address.');
+      return;
+    }
 
     const status = checkAccountStatus(normalizedEmail);
 
@@ -214,7 +218,7 @@ export const CustomerAuthFlow: React.FC<CustomerAuthFlowProps> = ({
       });
       onComplete();
     } else {
-      setExistingCodeError('Incorrect 4-digit App Code. Try 1234 or reset code.');
+      setExistingCodeError('Incorrect 4-digit App Code. Please check or reset code.');
     }
   };
 
