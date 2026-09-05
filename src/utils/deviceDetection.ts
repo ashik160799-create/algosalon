@@ -300,68 +300,29 @@ export async function attemptGpsEnhancement(
           resolvedZone = 'Sydney, Australia';
         }
 
-        const finishWithCountryAndZone = (countryCode: string, zone: string) => {
-          const countryInfo =
-            COUNTRY_LOCALE_REGISTRY[countryCode] ||
-            COUNTRY_LOCALE_REGISTRY[baseProfile.countryCode] ||
-            COUNTRY_LOCALE_REGISTRY.AE;
+        const countryInfo =
+          COUNTRY_LOCALE_REGISTRY[resolvedCountry] ||
+          COUNTRY_LOCALE_REGISTRY[baseProfile.countryCode] ||
+          COUNTRY_LOCALE_REGISTRY.AE;
 
-          resolve({
-            ...baseProfile,
-            countryCode: countryInfo.code,
-            countryName: countryInfo.name,
-            countryFlag: countryInfo.flag,
-            countryPhoneCode: countryInfo.dialCode,
-            zoneLocation: zone,
-            currencyCode: countryInfo.currency,
-            currencySymbol: countryInfo.symbol,
-            currencySymbolNative: countryInfo.symbolNative,
-            exchangeRateFromAED: countryInfo.exchangeRateFromAED,
-            locationPermissionStatus: 'granted',
-            locationSource: 'gps',
-            isGpsAccurate: true,
-            latitude: lat,
-            longitude: lng,
-            timestamp: new Date().toISOString(),
-          });
-        };
-
-        // Attempt non-blocking reverse geocoding for precise global city & country
-        if (typeof fetch !== 'undefined') {
-          fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`,
-            {
-              headers: { 'Accept': 'application/json' },
-              signal: AbortSignal.timeout(1500),
-            }
-          )
-            .then(res => res.json())
-            .then(data => {
-              if (data?.address?.country_code) {
-                const detectedCode = data.address.country_code.toUpperCase();
-                if (COUNTRY_LOCALE_REGISTRY[detectedCode]) {
-                  resolvedCountry = detectedCode;
-                  const cityName =
-                    data.address.city ||
-                    data.address.town ||
-                    data.address.suburb ||
-                    data.address.county ||
-                    data.address.state ||
-                    '';
-                  const countryName = COUNTRY_LOCALE_REGISTRY[detectedCode].name;
-                  if (cityName) {
-                    resolvedZone = `${cityName}, ${countryName}`;
-                  }
-                }
-              }
-              finishWithCountryAndZone(resolvedCountry, resolvedZone);
-            })
-            .catch(() => {
-              finishWithCountryAndZone(resolvedCountry, resolvedZone);
-            });
-        } else {
-          finishWithCountryAndZone(resolvedCountry, resolvedZone);
-        }
+        resolve({
+          ...baseProfile,
+          countryCode: countryInfo.code,
+          countryName: countryInfo.name,
+          countryFlag: countryInfo.flag,
+          countryPhoneCode: countryInfo.dialCode,
+          zoneLocation: resolvedZone,
+          currencyCode: countryInfo.currency,
+          currencySymbol: countryInfo.symbol,
+          currencySymbolNative: countryInfo.symbolNative,
+          exchangeRateFromAED: countryInfo.exchangeRateFromAED,
+          locationPermissionStatus: 'granted',
+          locationSource: 'gps',
+          isGpsAccurate: true,
+          latitude: lat,
+          longitude: lng,
+          timestamp: new Date().toISOString(),
+        });
       },
       () => {
         if (hasResolved) return;
