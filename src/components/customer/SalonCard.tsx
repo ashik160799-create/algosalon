@@ -318,13 +318,14 @@ export const SalonCard: React.FC<SalonCardProps> = ({
             type="button"
             id={`book-btn-${salon.id}`}
             onClick={handleQuickBook}
-            className="py-2 px-3.5 rounded-xl text-white text-xs font-black shadow-md transition-all flex items-center justify-center gap-1.5 flex-1 hover:opacity-95 active:scale-95"
+            className="py-2 px-3.5 rounded-xl text-xs font-black shadow-md transition-all flex items-center justify-center gap-1.5 flex-1 hover:opacity-95 active:scale-95"
             style={{
               backgroundColor: currentThemeConfig.primaryHex,
+              color: currentThemeConfig.contrastText || '#ffffff',
               boxShadow: `0 4px 14px -2px ${currentThemeConfig.glowHex}`,
             }}
           >
-            <Calendar className="w-3.5 h-3.5 text-white" />
+            <Calendar className="w-3.5 h-3.5" style={{ color: currentThemeConfig.contrastText || '#ffffff' }} />
             <span>Book</span>
           </button>
         </div>
