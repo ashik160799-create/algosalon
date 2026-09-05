@@ -378,9 +378,10 @@ export const CustomerHome: React.FC = () => {
               type="button"
               id="last-visit-rebook-btn"
               onClick={() => handleRebookLastVisit(lastVisit)}
-              className="w-full sm:w-auto px-5 py-2.5 rounded-full font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all duration-200 hover:scale-105 active:scale-95 text-white shrink-0 shadow-md"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-full font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all duration-200 hover:scale-105 active:scale-95 shrink-0 shadow-md"
               style={{
                 backgroundColor: currentThemeConfig.primaryHex,
+                color: currentThemeConfig.contrastText || '#ffffff',
                 boxShadow: `0 4px 14px -2px ${currentThemeConfig.glowHex}`,
               }}
             >
@@ -405,7 +406,7 @@ export const CustomerHome: React.FC = () => {
                 onClick={() => setSelectedCategory(cat.id)}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 border ${
                   isSelected
-                    ? 'text-white border-transparent shadow-sm'
+                    ? 'border-transparent shadow-sm'
                     : isLight
                     ? 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
                     : 'bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-800 hover:text-white'
@@ -414,6 +415,7 @@ export const CustomerHome: React.FC = () => {
                   isSelected
                     ? {
                         backgroundColor: currentThemeConfig.primaryHex,
+                        color: currentThemeConfig.contrastText || '#ffffff',
                         boxShadow: `0 4px 14px -2px ${currentThemeConfig.glowHex}`,
                       }
                     : undefined
@@ -432,8 +434,8 @@ export const CustomerHome: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-white"
-                style={{ backgroundColor: currentThemeConfig.primaryHex }}
+                className="w-7 h-7 rounded-lg flex items-center justify-center"
+                style={{ backgroundColor: currentThemeConfig.primaryHex, color: currentThemeConfig.contrastText || '#ffffff' }}
               >
                 <Flame className="w-4 h-4" />
               </div>
@@ -481,8 +483,8 @@ export const CustomerHome: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-white"
-                style={{ backgroundColor: currentThemeConfig.primaryHex }}
+                className="w-7 h-7 rounded-lg flex items-center justify-center"
+                style={{ backgroundColor: currentThemeConfig.primaryHex, color: currentThemeConfig.contrastText || '#ffffff' }}
               >
                 <MapPin className="w-4 h-4" />
               </div>
@@ -511,12 +513,12 @@ export const CustomerHome: React.FC = () => {
                 onClick={() => setNearbyRadiusKm(radius)}
                 className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all ${
                   nearbyRadiusKm === radius
-                    ? 'text-white shadow-sm'
+                    ? 'shadow-sm'
                     : isLight
                     ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                 }`}
-                style={nearbyRadiusKm === radius ? { backgroundColor: currentThemeConfig.primaryHex } : undefined}
+                style={nearbyRadiusKm === radius ? { backgroundColor: currentThemeConfig.primaryHex, color: currentThemeConfig.contrastText || '#ffffff' } : undefined}
               >
                 {radius} km
               </button>
@@ -534,7 +536,7 @@ export const CustomerHome: React.FC = () => {
             <button
               type="button"
               onClick={() => setNearbyRadiusKm(25)}
-              className="mt-2 text-xs font-bold underline"
+              className="mt-2 text-xs font-bold hover:underline"
               style={{ color: currentThemeConfig.primaryHex }}
             >
               Expand radius to 25 km
@@ -654,6 +656,7 @@ export const CustomerHome: React.FC = () => {
                         className="px-3.5 py-1.5 rounded-full font-bold text-xs transition-all duration-200 hover:scale-105 active:scale-95 text-white shadow-sm"
                         style={{
                           backgroundColor: currentThemeConfig.primaryHex,
+                          color: currentThemeConfig.contrastText || '#ffffff',
                           boxShadow: `0 2px 10px -1px ${currentThemeConfig.glowHex}`,
                         }}
                       >
@@ -673,8 +676,8 @@ export const CustomerHome: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-white"
-                style={{ backgroundColor: currentThemeConfig.primaryHex }}
+                className="w-7 h-7 rounded-lg flex items-center justify-center"
+                style={{ backgroundColor: currentThemeConfig.primaryHex, color: currentThemeConfig.contrastText || '#ffffff' }}
               >
                 <Scissors className="w-4 h-4" />
               </div>
@@ -771,8 +774,8 @@ export const CustomerHome: React.FC = () => {
                   </div>
 
                   <span
-                    className="p-1.5 rounded-full text-white group-hover:scale-110 transition-transform"
-                    style={{ backgroundColor: currentThemeConfig.primaryHex }}
+                    className="p-1.5 rounded-full group-hover:scale-110 transition-transform"
+                    style={{ backgroundColor: currentThemeConfig.primaryHex, color: currentThemeConfig.contrastText || '#ffffff' }}
                   >
                     <ChevronRight className="w-3.5 h-3.5" />
                   </span>

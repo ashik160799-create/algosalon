@@ -602,7 +602,7 @@ export async function updateSalonRatingInDb(
       .from('salons')
       .update({
         rating: Number(rating.toFixed(1)),
-        reviews_count: reviewCount,
+        review_count: reviewCount,
         updated_at: new Date().toISOString(),
       })
       .eq('id', salonId);

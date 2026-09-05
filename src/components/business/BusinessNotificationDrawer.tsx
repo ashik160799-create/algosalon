@@ -132,9 +132,10 @@ export const BusinessNotificationDrawer: React.FC<BusinessNotificationDrawerProp
         >
           <div className="flex items-center gap-3">
             <div
-              className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-xs"
+              className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-xs"
               style={{
                 backgroundColor: currentThemeConfig.primaryHex,
+                color: currentThemeConfig.contrastText || '#ffffff',
                 boxShadow: `0 4px 12px ${currentThemeConfig.glowHex}`,
               }}
             >
@@ -147,8 +148,11 @@ export const BusinessNotificationDrawer: React.FC<BusinessNotificationDrawerProp
                 </h2>
                 {unreadCount > 0 && (
                   <span
-                    className="px-2 py-0.5 rounded-full text-[10px] font-black text-white"
-                    style={{ backgroundColor: currentThemeConfig.primaryHex }}
+                    className="px-2 py-0.5 rounded-full text-[10px] font-black"
+                    style={{
+                      backgroundColor: currentThemeConfig.primaryHex,
+                      color: currentThemeConfig.contrastText || '#ffffff',
+                    }}
                   >
                     {unreadCount} New
                   </span>
@@ -431,9 +435,10 @@ export const BusinessNotificationDrawer: React.FC<BusinessNotificationDrawerProp
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-extrabold text-white shadow-sm transition-all active:scale-95 cursor-pointer"
+            className="px-4 py-2 rounded-xl text-xs font-extrabold shadow-sm transition-all active:scale-95 cursor-pointer"
             style={{
               backgroundColor: currentThemeConfig.primaryHex,
+              color: currentThemeConfig.contrastText || '#ffffff',
             }}
           >
             Close Panel

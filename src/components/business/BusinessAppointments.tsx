@@ -646,27 +646,31 @@ export const BusinessAppointments: React.FC = () => {
                 }}
                 className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl font-black uppercase text-[10px] sm:text-[11px] tracking-tight shrink-0 transition-all flex items-center gap-1.5 cursor-pointer border ${
                   isSelected
-                    ? 'text-white border-transparent shadow-md'
+                    ? 'border-transparent shadow-md'
                     : isLight
                     ? 'bg-slate-100/90 hover:bg-slate-200 text-slate-700 hover:text-slate-950 border-slate-200/80'
                     : 'bg-slate-800/80 hover:bg-slate-750 text-slate-300 hover:text-white border-slate-700/80'
                 }`}
                 style={{
                   backgroundColor: isSelected ? currentThemeConfig.primaryHex : undefined,
+                  color: isSelected ? currentThemeConfig.contrastText || '#ffffff' : undefined,
                   boxShadow: isSelected ? `0 4px 12px -2px ${currentThemeConfig.glowHex}` : undefined,
                 }}
               >
-                <IconComp className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-slate-400'}`} />
+                <IconComp className="w-3.5 h-3.5" style={{ color: isSelected ? currentThemeConfig.contrastText || '#ffffff' : undefined }} />
                 <span>{st.label}</span>
                 {st.count > 0 && (
                   <span
                     className={`text-[9px] sm:text-[10px] px-1.5 py-0.2 rounded-full font-bold ml-0.5 ${
                       isSelected
-                        ? 'bg-black/25 text-white'
+                        ? 'bg-black/20'
                         : isLight
                         ? 'bg-slate-200 text-slate-700'
                         : 'bg-slate-700 text-slate-300'
                     }`}
+                    style={{
+                      color: isSelected ? currentThemeConfig.contrastText || '#ffffff' : undefined,
+                    }}
                   >
                     {st.count}
                   </span>
@@ -691,13 +695,14 @@ export const BusinessAppointments: React.FC = () => {
                 onClick={() => setSortBy('chronological')}
                 className={`p-1.5 sm:p-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center cursor-pointer ${
                   sortBy === 'chronological'
-                    ? 'text-white font-black shadow-xs'
+                    ? 'font-black shadow-xs'
                     : isLight
                     ? 'text-slate-800 hover:text-slate-950 hover:bg-white/80'
                     : 'text-slate-200 hover:text-white hover:bg-slate-700/80'
                 }`}
                 style={{
                   backgroundColor: sortBy === 'chronological' ? currentThemeConfig.primaryHex : undefined,
+                  color: sortBy === 'chronological' ? currentThemeConfig.contrastText || '#ffffff' : undefined,
                 }}
                 title="Sort by Appointment Date & Time Queue (Date Queue)"
                 aria-label="Date Queue"
@@ -710,13 +715,14 @@ export const BusinessAppointments: React.FC = () => {
                 onClick={() => setSortBy('newest')}
                 className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
                   sortBy === 'newest'
-                    ? 'text-white font-black shadow-xs'
+                    ? 'font-black shadow-xs'
                     : isLight
                     ? 'text-slate-800 hover:text-slate-950 hover:bg-white/80'
                     : 'text-slate-200 hover:text-white hover:bg-slate-700/80'
                 }`}
                 style={{
                   backgroundColor: sortBy === 'newest' ? currentThemeConfig.primaryHex : undefined,
+                  color: sortBy === 'newest' ? currentThemeConfig.contrastText || '#ffffff' : undefined,
                 }}
                 title="Sort by Recently Created"
               >
@@ -748,9 +754,10 @@ export const BusinessAppointments: React.FC = () => {
             id="add-walkin-btn"
             type="button"
             onClick={() => setWalkinModalOpen(true)}
-            className="px-3 sm:px-3.5 py-1.5 rounded-xl sm:rounded-2xl font-black text-[11px] sm:text-xs text-white shadow-xs transition-all flex items-center gap-1.5 hover:opacity-95 active:scale-95 cursor-pointer shrink-0 whitespace-nowrap ml-auto"
+            className="px-3 sm:px-3.5 py-1.5 rounded-xl sm:rounded-2xl font-black text-[11px] sm:text-xs shadow-xs transition-all flex items-center gap-1.5 hover:opacity-95 active:scale-95 cursor-pointer shrink-0 whitespace-nowrap ml-auto"
             style={{
               backgroundColor: currentThemeConfig.primaryHex,
+              color: currentThemeConfig.contrastText || '#ffffff',
               boxShadow: `0 2px 10px ${currentThemeConfig.glowHex}`,
             }}
             title="Register New Walk-in Client"
@@ -976,8 +983,11 @@ export const BusinessAppointments: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleResetAllBookingsFilters}
-                  className="px-3.5 py-1.5 rounded-xl text-xs font-black text-white shadow-xs cursor-pointer"
-                  style={{ backgroundColor: currentThemeConfig.primaryHex }}
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-black shadow-xs cursor-pointer"
+                  style={{
+                    backgroundColor: currentThemeConfig.primaryHex,
+                    color: currentThemeConfig.contrastText || '#ffffff',
+                  }}
                 >
                   Reset Filters
                 </button>
@@ -1359,9 +1369,10 @@ export const BusinessAppointments: React.FC = () => {
                             type="button"
                             id={`start-service-btn-${apt.id}`}
                             onClick={() => handleStatusChange(apt.id, 'in_progress')}
-                            className="px-3.5 py-1.5 rounded-xl text-xs font-black text-white flex items-center gap-1.5 shadow-md hover:opacity-95 cursor-pointer transition-all"
+                            className="px-3.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-md hover:opacity-95 cursor-pointer transition-all"
                             style={{
                               backgroundColor: currentThemeConfig.primaryHex,
+                              color: currentThemeConfig.contrastText || '#ffffff',
                               boxShadow: `0 4px 12px ${currentThemeConfig.glowHex}`,
                             }}
                           >
@@ -1530,13 +1541,14 @@ export const BusinessAppointments: React.FC = () => {
                         onClick={() => setWalkinTimeSlot(slot)}
                         className={`py-2 px-1 rounded-xl text-[11px] font-bold text-center border cursor-pointer transition-all ${
                           walkinTimeSlot === slot
-                            ? 'text-white border-transparent shadow-xs'
+                            ? 'border-transparent shadow-xs'
                             : isLight
                             ? 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
                             : 'bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800'
                         }`}
                         style={{
                           backgroundColor: walkinTimeSlot === slot ? currentThemeConfig.primaryHex : undefined,
+                          color: walkinTimeSlot === slot ? currentThemeConfig.contrastText || '#ffffff' : undefined,
                         }}
                       >
                         {slot}
@@ -1571,8 +1583,11 @@ export const BusinessAppointments: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-2xl font-black text-white shadow-md cursor-pointer hover:opacity-95"
-                  style={{ backgroundColor: currentThemeConfig.primaryHex }}
+                  className="px-5 py-2.5 rounded-2xl font-black shadow-md cursor-pointer hover:opacity-95"
+                  style={{
+                    backgroundColor: currentThemeConfig.primaryHex,
+                    color: currentThemeConfig.contrastText || '#ffffff',
+                  }}
                 >
                   Confirm & Add to Queue
                 </button>

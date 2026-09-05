@@ -394,27 +394,31 @@ export const BusinessServicesManager: React.FC = () => {
                   onClick={() => setSelectedGender(item.id)}
                   className={`px-3.5 py-2 rounded-2xl text-xs font-black transition-all flex items-center gap-1.5 shrink-0 cursor-pointer border ${
                     isSelected
-                      ? 'text-white border-transparent shadow-md'
+                      ? 'border-transparent shadow-md'
                       : isLight
                       ? 'bg-slate-100 hover:bg-slate-200/90 text-slate-700 hover:text-slate-900 border-slate-200'
                       : 'bg-slate-800/90 hover:bg-slate-750 text-slate-200 hover:text-white border-slate-700'
                   }`}
                   style={{
                     backgroundColor: isSelected ? currentThemeConfig.primaryHex : undefined,
+                    color: isSelected ? currentThemeConfig.contrastText || '#ffffff' : undefined,
                     boxShadow: isSelected ? `0 4px 12px -2px ${currentThemeConfig.glowHex}` : undefined,
                   }}
                 >
-                  <IconComp className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-slate-400'}`} />
+                  <IconComp className="w-3.5 h-3.5" style={{ color: isSelected ? currentThemeConfig.contrastText || '#ffffff' : undefined }} />
                   <span>{item.label}</span>
                   {item.count > 0 && (
                     <span
                       className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ml-0.5 ${
                         isSelected
-                          ? 'bg-black/25 text-white'
+                          ? 'bg-black/20'
                           : isLight
                           ? 'bg-slate-200 text-slate-700'
                           : 'bg-slate-700 text-slate-300'
                       }`}
+                      style={{
+                        color: isSelected ? currentThemeConfig.contrastText || '#ffffff' : undefined,
+                      }}
                     >
                       {item.count}
                     </span>
@@ -433,13 +437,14 @@ export const BusinessServicesManager: React.FC = () => {
             onClick={() => setSelectedCategory('All')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer border ${
               selectedCategory === 'All'
-                ? 'text-white border-transparent shadow-xs'
+                ? 'border-transparent shadow-xs'
                 : isLight
                 ? 'bg-slate-100 text-slate-600 hover:bg-slate-200 border-slate-200/80'
                 : 'bg-slate-800 text-slate-300 hover:bg-slate-750 border-slate-700/80'
             }`}
             style={{
               backgroundColor: selectedCategory === 'All' ? currentThemeConfig.primaryHex : undefined,
+              color: selectedCategory === 'All' ? currentThemeConfig.contrastText || '#ffffff' : undefined,
             }}
           >
             All Treatments{salonServices.length > 0 ? ` (${salonServices.length})` : ''}
@@ -455,13 +460,14 @@ export const BusinessServicesManager: React.FC = () => {
                 onClick={() => setSelectedCategory(cat)}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer border ${
                   isCatSelected
-                    ? 'text-white border-transparent shadow-xs'
+                    ? 'border-transparent shadow-xs'
                     : isLight
                     ? 'bg-slate-100 text-slate-600 hover:bg-slate-200 border-slate-200/80'
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-750 border-slate-700/80'
                 }`}
                 style={{
                   backgroundColor: isCatSelected ? currentThemeConfig.primaryHex : undefined,
+                  color: isCatSelected ? currentThemeConfig.contrastText || '#ffffff' : undefined,
                 }}
               >
                 {cat}{countInCat > 0 ? ` (${countInCat})` : ''}
@@ -497,9 +503,10 @@ export const BusinessServicesManager: React.FC = () => {
           id="add-service-btn"
           type="button"
           onClick={handleOpenCreate}
-          className="px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm text-white shadow-md transition-all flex items-center justify-center gap-2 hover:opacity-95 active:scale-95 cursor-pointer shrink-0"
+          className="px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 hover:opacity-95 active:scale-95 cursor-pointer shrink-0"
           style={{
             backgroundColor: currentThemeConfig.primaryHex,
+            color: currentThemeConfig.contrastText || '#ffffff',
             boxShadow: `0 4px 14px ${currentThemeConfig.glowHex}`,
           }}
         >
@@ -529,8 +536,11 @@ export const BusinessServicesManager: React.FC = () => {
               setSelectedCategory('All');
               setSelectedGender('All');
             }}
-            className="mt-4 px-4 py-2 rounded-xl text-xs font-black text-white shadow-xs"
-            style={{ backgroundColor: currentThemeConfig.primaryHex }}
+            className="mt-4 px-4 py-2 rounded-xl text-xs font-black shadow-xs"
+            style={{
+              backgroundColor: currentThemeConfig.primaryHex,
+              color: currentThemeConfig.contrastText || '#ffffff',
+            }}
           >
             Clear Filters
           </button>
@@ -676,13 +686,14 @@ export const BusinessServicesManager: React.FC = () => {
                         onClick={() => setGenderTarget(g)}
                         className={`py-1.5 rounded-xl font-bold transition-all text-center ${
                           genderTarget === g
-                            ? 'text-white shadow-xs'
+                            ? 'shadow-xs'
                             : isLight
                             ? 'text-slate-600 hover:text-slate-900'
                             : 'text-slate-400 hover:text-slate-200'
                         }`}
                         style={{
                           backgroundColor: genderTarget === g ? currentThemeConfig.primaryHex : undefined,
+                          color: genderTarget === g ? currentThemeConfig.contrastText || '#ffffff' : undefined,
                         }}
                       >
                         {g}
@@ -961,9 +972,10 @@ export const BusinessServicesManager: React.FC = () => {
 
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-2xl text-xs font-black text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
+                  className="px-6 py-2.5 rounded-2xl text-xs font-black shadow-lg transition-transform hover:scale-105 active:scale-95"
                   style={{
                     backgroundColor: currentThemeConfig.primaryHex,
+                    color: currentThemeConfig.contrastText || '#ffffff',
                     boxShadow: `0 4px 14px ${currentThemeConfig.glowHex}`,
                   }}
                 >

@@ -273,3 +273,29 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Universal high-contrast protection for Electric Yellow theme */
+[data-theme="white_yellow"] button[style*="rgb(234, 179, 8)"],
+[data-theme="white_yellow"] button[style*="#eab308"],
+[data-theme="white_yellow"] div[style*="rgb(234, 179, 8)"],
+[data-theme="white_yellow"] div[style*="#eab308"],
+[data-theme="white_yellow"] span[style*="rgb(234, 179, 8)"],
+[data-theme="white_yellow"] span[style*="#eab308"],
+[data-theme="white_yellow"] a[style*="rgb(234, 179, 8)"],
+[data-theme="white_yellow"] a[style*="#eab308"],
+[data-theme="white_yellow"] .btn-primary,
+[data-theme="white_yellow"] .bg-theme-primary,
+[data-theme="white_yellow"] .text-theme-contrast {
+  color: #09090b !important;
+}
+
+[data-theme="white_yellow"] button[style*="rgb(234, 179, 8)"] svg,
+[data-theme="white_yellow"] button[style*="#eab308"] svg,
+[data-theme="white_yellow"] div[style*="rgb(234, 179, 8)"] svg,
+[data-theme="white_yellow"] div[style*="#eab308"] svg,
+[data-theme="white_yellow"] span[style*="rgb(234, 179, 8)"] svg,
+[data-theme="white_yellow"] span[style*="#eab308"] svg {
+  color: #09090b !important;
+  stroke: #09090b !important;
+}
+

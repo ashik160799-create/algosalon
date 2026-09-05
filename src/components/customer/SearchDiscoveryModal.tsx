@@ -262,7 +262,7 @@ export const SearchDiscoveryModal: React.FC<SearchDiscoveryModalProps> = ({
                   onClick={() => setSearchQuery(isSelected ? '' : term)}
                   className={`px-2.5 py-1 rounded-lg border text-xs transition-colors shrink-0 ${
                     isSelected
-                      ? 'text-white'
+                      ? 'shadow-xs'
                       : isLight
                       ? 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
                       : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
@@ -271,6 +271,7 @@ export const SearchDiscoveryModal: React.FC<SearchDiscoveryModalProps> = ({
                     isSelected
                       ? {
                           backgroundColor: currentThemeConfig.primaryHex,
+                          color: currentThemeConfig.contrastText || '#ffffff',
                           borderColor: currentThemeConfig.primaryHex,
                         }
                       : undefined
@@ -294,13 +295,14 @@ export const SearchDiscoveryModal: React.FC<SearchDiscoveryModalProps> = ({
               onClick={() => setActiveTab('salons')}
               className={`px-3 py-1 rounded-full text-xs font-extrabold flex items-center gap-1.5 transition-all ${
                 activeTab === 'salons'
-                  ? 'text-white shadow-sm'
+                  ? 'shadow-sm'
                   : isLight
                   ? 'text-slate-600 hover:text-slate-900'
                   : 'text-slate-400 hover:text-white'
               }`}
               style={{
                 backgroundColor: activeTab === 'salons' ? currentThemeConfig.primaryHex : undefined,
+                color: activeTab === 'salons' ? currentThemeConfig.contrastText || '#ffffff' : undefined,
               }}
             >
               <Store className="w-3.5 h-3.5" />
@@ -312,13 +314,14 @@ export const SearchDiscoveryModal: React.FC<SearchDiscoveryModalProps> = ({
               onClick={() => setActiveTab('services')}
               className={`px-3 py-1 rounded-full text-xs font-extrabold flex items-center gap-1.5 transition-all ${
                 activeTab === 'services'
-                  ? 'text-white shadow-sm'
+                  ? 'shadow-sm'
                   : isLight
                   ? 'text-slate-600 hover:text-slate-900'
                   : 'text-slate-400 hover:text-white'
               }`}
               style={{
                 backgroundColor: activeTab === 'services' ? currentThemeConfig.primaryHex : undefined,
+                color: activeTab === 'services' ? currentThemeConfig.contrastText || '#ffffff' : undefined,
               }}
             >
               <Scissors className="w-3.5 h-3.5" />
@@ -333,7 +336,7 @@ export const SearchDiscoveryModal: React.FC<SearchDiscoveryModalProps> = ({
               onClick={() => setIsFilterSheetOpen(!isFilterSheetOpen)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold shrink-0 border transition-all ${
                 isFilterSheetOpen || advancedFiltersCount > 0
-                  ? 'text-white shadow-sm'
+                  ? 'shadow-sm'
                   : isLight
                   ? 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
                   : 'bg-slate-950 text-slate-300 border-slate-700 hover:bg-slate-800'
@@ -342,6 +345,7 @@ export const SearchDiscoveryModal: React.FC<SearchDiscoveryModalProps> = ({
                 isFilterSheetOpen || advancedFiltersCount > 0
                   ? {
                       backgroundColor: currentThemeConfig.primaryHex,
+                      color: currentThemeConfig.contrastText || '#ffffff',
                       borderColor: currentThemeConfig.primaryHex,
                       boxShadow: `0 2px 8px ${currentThemeConfig.glowHex}`,
                     }
@@ -367,7 +371,7 @@ export const SearchDiscoveryModal: React.FC<SearchDiscoveryModalProps> = ({
               }}
               className={`px-3.5 py-1.5 rounded-full text-xs font-bold shrink-0 border transition-all ${
                 genderFilter === 'All' && selectedCategory === 'All'
-                  ? 'text-white shadow-sm'
+                  ? 'shadow-sm'
                   : isLight
                   ? 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                   : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
@@ -376,6 +380,7 @@ export const SearchDiscoveryModal: React.FC<SearchDiscoveryModalProps> = ({
                 genderFilter === 'All' && selectedCategory === 'All'
                   ? {
                       backgroundColor: currentThemeConfig.primaryHex,
+                      color: currentThemeConfig.contrastText || '#ffffff',
                       borderColor: currentThemeConfig.primaryHex,
                       boxShadow: `0 2px 8px ${currentThemeConfig.glowHex}`,
                     }
@@ -394,7 +399,7 @@ export const SearchDiscoveryModal: React.FC<SearchDiscoveryModalProps> = ({
                   onClick={() => setGenderFilter(isSelected ? 'All' : gender)}
                   className={`px-3.5 py-1.5 rounded-full text-xs font-bold shrink-0 border transition-all ${
                     isSelected
-                      ? 'text-white shadow-sm'
+                      ? 'shadow-sm'
                       : isLight
                       ? 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                       : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
@@ -403,6 +408,7 @@ export const SearchDiscoveryModal: React.FC<SearchDiscoveryModalProps> = ({
                     isSelected
                       ? {
                           backgroundColor: currentThemeConfig.primaryHex,
+                          color: currentThemeConfig.contrastText || '#ffffff',
                           borderColor: currentThemeConfig.primaryHex,
                           boxShadow: `0 2px 8px ${currentThemeConfig.glowHex}`,
                         }
@@ -425,7 +431,7 @@ export const SearchDiscoveryModal: React.FC<SearchDiscoveryModalProps> = ({
                   onClick={() => setSelectedCategory(isSelected ? 'All' : cat)}
                   className={`px-3.5 py-1.5 rounded-full text-xs font-bold shrink-0 border whitespace-nowrap transition-all ${
                     isSelected
-                      ? 'text-white shadow-sm'
+                      ? 'shadow-sm'
                       : isLight
                       ? 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                       : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
@@ -434,6 +440,7 @@ export const SearchDiscoveryModal: React.FC<SearchDiscoveryModalProps> = ({
                     isSelected
                       ? {
                           backgroundColor: currentThemeConfig.primaryHex,
+                          color: currentThemeConfig.contrastText || '#ffffff',
                           borderColor: currentThemeConfig.primaryHex,
                           boxShadow: `0 2px 8px ${currentThemeConfig.glowHex}`,
                         }
@@ -525,6 +532,7 @@ export const SearchDiscoveryModal: React.FC<SearchDiscoveryModalProps> = ({
                           isSelected
                             ? {
                                 backgroundColor: currentThemeConfig.primaryHex,
+                                color: currentThemeConfig.contrastText || '#ffffff',
                               }
                             : undefined
                         }
@@ -552,7 +560,7 @@ export const SearchDiscoveryModal: React.FC<SearchDiscoveryModalProps> = ({
                         onClick={() => setSelectedPrice(p)}
                         className={`py-1 rounded-lg text-[11px] font-bold transition-all border ${
                           isSelected
-                            ? 'text-white border-transparent'
+                            ? 'border-transparent shadow-xs'
                             : isLight
                             ? 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
                             : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
@@ -561,6 +569,7 @@ export const SearchDiscoveryModal: React.FC<SearchDiscoveryModalProps> = ({
                           isSelected
                             ? {
                                 backgroundColor: currentThemeConfig.primaryHex,
+                                color: currentThemeConfig.contrastText || '#ffffff',
                               }
                             : undefined
                         }
@@ -626,9 +635,10 @@ export const SearchDiscoveryModal: React.FC<SearchDiscoveryModalProps> = ({
               <button
                 type="button"
                 onClick={() => setIsFilterSheetOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white transition-transform hover:scale-105 active:scale-95 shadow-sm flex items-center gap-1.5"
+                className="px-4 py-2 rounded-xl text-xs font-bold transition-transform hover:scale-105 active:scale-95 shadow-sm flex items-center gap-1.5"
                 style={{
                   backgroundColor: currentThemeConfig.primaryHex,
+                  color: currentThemeConfig.contrastText || '#ffffff',
                 }}
               >
                 <Check className="w-3.5 h-3.5" />
@@ -672,9 +682,10 @@ export const SearchDiscoveryModal: React.FC<SearchDiscoveryModalProps> = ({
                 <button
                   type="button"
                   onClick={resetAllFilters}
-                  className="mt-4 px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md transition-transform hover:scale-105"
+                  className="mt-4 px-4 py-2 rounded-xl text-xs font-bold shadow-md transition-transform hover:scale-105"
                   style={{
                     backgroundColor: currentThemeConfig.primaryHex,
+                    color: currentThemeConfig.contrastText || '#ffffff',
                     boxShadow: `0 4px 12px ${currentThemeConfig.glowHex}`,
                   }}
                 >
@@ -701,9 +712,10 @@ export const SearchDiscoveryModal: React.FC<SearchDiscoveryModalProps> = ({
                 <button
                   type="button"
                   onClick={resetAllFilters}
-                  className="mt-4 px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md transition-transform hover:scale-105"
+                  className="mt-4 px-4 py-2 rounded-xl text-xs font-bold shadow-md transition-transform hover:scale-105"
                   style={{
                     backgroundColor: currentThemeConfig.primaryHex,
+                    color: currentThemeConfig.contrastText || '#ffffff',
                     boxShadow: `0 4px 12px ${currentThemeConfig.glowHex}`,
                   }}
                 >

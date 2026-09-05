@@ -281,13 +281,14 @@ export const BusinessReports: React.FC = () => {
           onClick={() => setActiveSubTab('financial')}
           className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
             activeSubTab === 'financial'
-              ? 'text-white shadow-md'
+              ? 'shadow-md'
               : isLight
               ? 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
           }`}
           style={{
             backgroundColor: activeSubTab === 'financial' ? currentThemeConfig.primaryHex : undefined,
+            color: activeSubTab === 'financial' ? currentThemeConfig.contrastText || '#ffffff' : undefined,
           }}
         >
           <BarChart3 className="w-4 h-4" />
@@ -299,13 +300,14 @@ export const BusinessReports: React.FC = () => {
           onClick={() => setActiveSubTab('inventory')}
           className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
             activeSubTab === 'inventory'
-              ? 'text-white shadow-md'
+              ? 'shadow-md'
               : isLight
               ? 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
           }`}
           style={{
             backgroundColor: activeSubTab === 'inventory' ? currentThemeConfig.primaryHex : undefined,
+            color: activeSubTab === 'inventory' ? currentThemeConfig.contrastText || '#ffffff' : undefined,
           }}
         >
           <Box className="w-4 h-4" />
@@ -320,13 +322,14 @@ export const BusinessReports: React.FC = () => {
           onClick={() => setActiveSubTab('payroll')}
           className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
             activeSubTab === 'payroll'
-              ? 'text-white shadow-md'
+              ? 'shadow-md'
               : isLight
               ? 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
           }`}
           style={{
             backgroundColor: activeSubTab === 'payroll' ? currentThemeConfig.primaryHex : undefined,
+            color: activeSubTab === 'payroll' ? currentThemeConfig.contrastText || '#ffffff' : undefined,
           }}
         >
           <CreditCard className="w-4 h-4" />
@@ -355,13 +358,14 @@ export const BusinessReports: React.FC = () => {
                   onClick={() => setTimeframe(tf)}
                   className={`px-3 py-1.5 rounded-xl capitalize transition-all cursor-pointer ${
                     timeframe === tf
-                      ? 'text-white shadow-xs font-extrabold'
+                      ? 'shadow-xs font-extrabold'
                       : isLight
                       ? 'text-slate-600 hover:text-slate-900'
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                   style={{
                     backgroundColor: timeframe === tf ? currentThemeConfig.primaryHex : undefined,
+                    color: timeframe === tf ? currentThemeConfig.contrastText || '#ffffff' : undefined,
                   }}
                 >
                   {tf === 'all' ? 'All Time' : tf}
@@ -663,13 +667,14 @@ export const BusinessReports: React.FC = () => {
                     onClick={() => setSelectedInventoryCategory(cat)}
                     className={`px-2.5 py-1 rounded-xl capitalize transition-all text-[11px] cursor-pointer ${
                       selectedInventoryCategory === cat
-                        ? 'text-white shadow-xs font-black'
+                        ? 'shadow-xs font-black'
                         : isLight
                         ? 'text-slate-600 hover:text-slate-900'
                         : 'text-slate-400 hover:text-slate-200'
                     }`}
                     style={{
                       backgroundColor: selectedInventoryCategory === cat ? currentThemeConfig.primaryHex : undefined,
+                      color: selectedInventoryCategory === cat ? currentThemeConfig.contrastText || '#ffffff' : undefined,
                     }}
                   >
                     {cat === 'all' ? 'All' : cat}
@@ -680,8 +685,11 @@ export const BusinessReports: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowAddProductModal(true)}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-white text-xs font-bold shadow-md cursor-pointer active:scale-95 transition-all"
-                style={{ backgroundColor: currentThemeConfig.primaryHex }}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold shadow-md cursor-pointer active:scale-95 transition-all"
+                style={{
+                  backgroundColor: currentThemeConfig.primaryHex,
+                  color: currentThemeConfig.contrastText || '#ffffff',
+                }}
               >
                 <Plus className="w-4 h-4" />
                 <span>Add Product</span>
@@ -848,8 +856,11 @@ export const BusinessReports: React.FC = () => {
                     </button>
                     <button
                       type="submit"
-                      className="px-5 py-2 rounded-xl text-white font-bold text-xs shadow transition-all active:scale-95"
-                      style={{ backgroundColor: currentThemeConfig.primaryHex }}
+                      className="px-5 py-2 rounded-xl font-bold text-xs shadow transition-all active:scale-95"
+                      style={{
+                        backgroundColor: currentThemeConfig.primaryHex,
+                        color: currentThemeConfig.contrastText || '#ffffff',
+                      }}
                     >
                       Save Product
                     </button>

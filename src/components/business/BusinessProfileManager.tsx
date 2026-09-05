@@ -1082,8 +1082,11 @@ export const BusinessProfileManager: React.FC = () => {
             <div className="flex items-center justify-between gap-3 pb-4 mb-4 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black text-white"
-                  style={{ backgroundColor: currentThemeConfig.primaryHex }}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black"
+                  style={{
+                    backgroundColor: currentThemeConfig.primaryHex,
+                    color: currentThemeConfig.contrastText || '#ffffff',
+                  }}
                 >
                   <Store className="w-4 h-4" />
                 </div>
@@ -3641,11 +3644,12 @@ export const BusinessProfileManager: React.FC = () => {
           type="button"
           onClick={() => handleSave()}
           aria-label="Save Settings Changes"
-          className={`px-5 py-3.5 sm:px-6 sm:py-4 rounded-2xl sm:rounded-3xl font-black text-xs sm:text-sm text-white shadow-2xl transition-all duration-300 flex items-center justify-center gap-2.5 hover:scale-105 active:scale-95 cursor-pointer border border-white/20 backdrop-blur-md relative ${
-            savedSuccess ? 'bg-emerald-600 border-emerald-400 ring-4 ring-emerald-500/30' : ''
+          className={`px-5 py-3.5 sm:px-6 sm:py-4 rounded-2xl sm:rounded-3xl font-black text-xs sm:text-sm shadow-2xl transition-all duration-300 flex items-center justify-center gap-2.5 hover:scale-105 active:scale-95 cursor-pointer border border-white/20 backdrop-blur-md relative ${
+            savedSuccess ? 'bg-emerald-600 border-emerald-400 ring-4 ring-emerald-500/30 text-white' : ''
           }`}
           style={{
             backgroundColor: savedSuccess ? '#10b981' : currentThemeConfig.primaryHex,
+            color: savedSuccess ? '#ffffff' : (currentThemeConfig.contrastText || '#ffffff'),
             boxShadow: savedSuccess
               ? '0 12px 35px rgba(16, 185, 129, 0.45)'
               : `0 12px 35px ${currentThemeConfig.glowHex}`,
@@ -3656,7 +3660,10 @@ export const BusinessProfileManager: React.FC = () => {
             {savedSuccess ? (
               <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-white animate-in zoom-in-75 duration-200" />
             ) : (
-              <Save className="w-5 h-5 sm:w-6 sm:h-6 text-white transition-transform duration-200 group-hover:rotate-6" />
+              <Save
+                className="w-5 h-5 sm:w-6 sm:h-6 transition-transform duration-200 group-hover:rotate-6"
+                style={{ color: savedSuccess ? '#ffffff' : (currentThemeConfig.contrastText || '#ffffff') }}
+              />
             )}
             {!savedSuccess && (
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full border-2 border-slate-900 animate-ping" />

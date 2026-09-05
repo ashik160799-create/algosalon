@@ -213,9 +213,10 @@ export const LocationPermissionScreen: React.FC<LocationPermissionScreenProps> =
             type="button"
             disabled={isLocating}
             onClick={handleAllowClick}
-            className="w-full py-4 px-6 rounded-full text-white font-extrabold text-sm sm:text-base tracking-tight transition-all duration-200 shadow-xl flex items-center justify-center gap-2 group active:scale-[0.98] disabled:opacity-80 cursor-pointer"
+            className="w-full py-4 px-6 rounded-full font-extrabold text-sm sm:text-base tracking-tight transition-all duration-200 shadow-xl flex items-center justify-center gap-2 group active:scale-[0.98] disabled:opacity-80 cursor-pointer"
             style={{
               backgroundColor: currentThemeConfig.primaryHex,
+              color: currentThemeConfig.contrastText || '#ffffff',
               boxShadow: `0 12px 28px -6px ${currentThemeConfig.glowHex}`,
             }}
           >

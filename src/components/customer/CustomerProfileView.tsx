@@ -400,8 +400,8 @@ export const CustomerProfileView: React.FC = () => {
               type="button"
               id="customer-profile-upload-avatar-btn"
               onClick={() => openFieldEditor('avatar')}
-              className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full text-white flex items-center justify-center shadow-md hover:scale-110 active:scale-95 transition-all cursor-pointer"
-              style={{ backgroundColor: currentThemeConfig.primaryHex }}
+              className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full flex items-center justify-center shadow-md hover:scale-110 active:scale-95 transition-all cursor-pointer"
+              style={{ backgroundColor: currentThemeConfig.primaryHex, color: currentThemeConfig.contrastText || '#ffffff' }}
               title="Upload / Change Profile Photo"
             >
               {isUploadingAvatar ? (
@@ -433,8 +433,8 @@ export const CustomerProfileView: React.FC = () => {
                 {customerUser.name || 'Valued Client'}
               </h2>
               <span
-                className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase text-white shrink-0 shadow-xs"
-                style={{ backgroundColor: currentThemeConfig.primaryHex }}
+                className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase shrink-0 shadow-xs"
+                style={{ backgroundColor: currentThemeConfig.primaryHex, color: currentThemeConfig.contrastText || '#ffffff' }}
               >
                 VIP Member
               </span>
@@ -1005,8 +1005,8 @@ export const CustomerProfileView: React.FC = () => {
       >
         <div className="flex items-center gap-3.5 min-w-0">
           <div
-            className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-sm"
-            style={{ backgroundColor: currentThemeConfig.primaryHex }}
+            className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-sm"
+            style={{ backgroundColor: currentThemeConfig.primaryHex, color: currentThemeConfig.contrastText || '#ffffff' }}
           >
             <HelpCircle className="w-5 h-5" />
           </div>
@@ -1090,9 +1090,10 @@ export const CustomerProfileView: React.FC = () => {
             id="customer-profile-switch-hub-btn"
             type="button"
             onClick={() => switchRole('business')}
-            className="px-4 py-2.5 rounded-xl text-white font-bold text-xs shadow-md shrink-0 transition-transform active:scale-95 cursor-pointer"
+            className="px-4 py-2.5 rounded-xl font-bold text-xs shadow-md shrink-0 transition-transform active:scale-95 cursor-pointer"
             style={{
               backgroundColor: currentThemeConfig.primaryHex,
+              color: currentThemeConfig.contrastText || '#ffffff',
             }}
           >
             Open Business Hub →
@@ -1285,7 +1286,7 @@ export const CustomerProfileView: React.FC = () => {
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isUploadingAvatar}
                       className="px-3.5 py-2 rounded-xl text-white font-bold text-xs shadow-md transition-transform active:scale-95 cursor-pointer flex items-center gap-1.5"
-                      style={{ backgroundColor: currentThemeConfig.primaryHex }}
+                      style={{ backgroundColor: currentThemeConfig.primaryHex, color: currentThemeConfig.contrastText || '#ffffff' }}
                     >
                       <Upload className="w-3.5 h-3.5" />
                       <span>{isUploadingAvatar ? 'Uploading...' : 'Upload New Photo'}</span>
@@ -1575,8 +1576,8 @@ export const CustomerProfileView: React.FC = () => {
                 type="button"
                 id="save-field-modal-btn"
                 onClick={() => handleSaveField(activeEditModal)}
-                className="px-5 py-2.5 rounded-xl font-black text-xs text-white shadow-md transition-transform active:scale-95 cursor-pointer"
-                style={{ backgroundColor: currentThemeConfig.primaryHex }}
+                className="px-5 py-2.5 rounded-xl font-black text-xs shadow-md transition-transform active:scale-95 cursor-pointer"
+                style={{ backgroundColor: currentThemeConfig.primaryHex, color: currentThemeConfig.contrastText || '#ffffff' }}
               >
                 Save Changes
               </button>
@@ -1596,8 +1597,8 @@ export const CustomerProfileView: React.FC = () => {
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2.5">
                 <div
-                  className="w-9 h-9 rounded-xl flex items-center justify-center text-white"
-                  style={{ backgroundColor: currentThemeConfig.primaryHex }}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center"
+                  style={{ backgroundColor: currentThemeConfig.primaryHex, color: currentThemeConfig.contrastText || '#ffffff' }}
                 >
                   <HelpCircle className="w-5 h-5" />
                 </div>
@@ -1648,8 +1649,8 @@ export const CustomerProfileView: React.FC = () => {
             <button
               type="button"
               onClick={() => setSupportModalOpen(false)}
-              className="w-full py-3 rounded-2xl text-white font-bold text-xs shadow-md cursor-pointer"
-              style={{ backgroundColor: currentThemeConfig.primaryHex }}
+              className="w-full py-3 rounded-2xl font-bold text-xs shadow-md cursor-pointer"
+              style={{ backgroundColor: currentThemeConfig.primaryHex, color: currentThemeConfig.contrastText || '#ffffff' }}
             >
               Close
             </button>

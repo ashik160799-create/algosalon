@@ -177,13 +177,14 @@ export const OtpVerificationScreen: React.FC<OtpVerificationScreenProps> = ({
         id="otp-verify-submit-btn"
         disabled={isVerifying || otp.length !== codeLength}
         onClick={() => handleVerify()}
-        className={`mt-4 w-full py-3.5 px-6 rounded-2xl text-white font-extrabold text-sm transition-all duration-200 shadow-lg flex items-center justify-center gap-2 active:scale-[0.99] ${
+        className={`mt-4 w-full py-3.5 px-6 rounded-2xl font-extrabold text-sm transition-all duration-200 shadow-lg flex items-center justify-center gap-2 active:scale-[0.99] ${
           otp.length === codeLength
             ? 'opacity-100 cursor-pointer'
             : 'opacity-50 cursor-not-allowed'
         }`}
         style={{
           backgroundColor: currentThemeConfig.primaryHex,
+          color: currentThemeConfig.contrastText || '#ffffff',
           boxShadow: `0 8px 20px -4px ${currentThemeConfig.glowHex}`,
         }}
       >

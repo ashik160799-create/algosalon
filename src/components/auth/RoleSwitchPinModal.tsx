@@ -139,9 +139,10 @@ export const RoleSwitchPinModal: React.FC<RoleSwitchPinModalProps> = ({
         {/* Header Icon & Title */}
         <div className="flex flex-col items-center text-center space-y-2 pt-1">
           <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg relative"
+            className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg relative"
             style={{
               backgroundColor: currentThemeConfig.primaryHex,
+              color: currentThemeConfig.contrastText || '#ffffff',
               boxShadow: `0 8px 25px -5px ${currentThemeConfig.glowHex}`,
             }}
           >

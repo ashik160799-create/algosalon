@@ -869,7 +869,7 @@ begin
   update public.salons
   set
     rating = v_avg_rating,
-    reviews_count = v_review_count,
+    review_count = v_review_count,
     updated_at = now()
   where id = v_salon_id;
 

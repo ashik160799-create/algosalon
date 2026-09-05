@@ -134,13 +134,14 @@ export const CustomerSavedView: React.FC = () => {
                     onClick={() => setSelectedCategory(cat)}
                     className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
                       isSelected
-                        ? 'text-white shadow-sm'
+                        ? 'shadow-sm'
                         : isLight
                         ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
                         : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white'
                     }`}
                     style={{
                       backgroundColor: isSelected ? currentThemeConfig.primaryHex : undefined,
+                      color: isSelected ? currentThemeConfig.contrastText || '#ffffff' : undefined,
                       borderColor: isSelected ? currentThemeConfig.primaryHex : undefined,
                     }}
                   >
@@ -178,9 +179,10 @@ export const CustomerSavedView: React.FC = () => {
             type="button"
             id="saved-explore-btn"
             onClick={() => setActiveCustomerTab('discover')}
-            className="px-5 py-2.5 rounded-xl text-white text-xs font-extrabold shadow-md flex items-center gap-1.5 mx-auto transition-transform active:scale-95"
+            className="px-5 py-2.5 rounded-xl text-xs font-extrabold shadow-md flex items-center gap-1.5 mx-auto transition-transform active:scale-95"
             style={{
               backgroundColor: currentThemeConfig.primaryHex,
+              color: currentThemeConfig.contrastText || '#ffffff',
               boxShadow: `0 4px 14px -2px ${currentThemeConfig.glowHex}`,
             }}
           >

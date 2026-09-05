@@ -246,6 +246,7 @@ export const SplashScreen: React.FC = () => {
   const isLight = colorThemeMode === 'light';
   const primaryColor = currentThemeConfig?.primaryHex || '#0EA36F';
   const glowColor = currentThemeConfig?.glowHex || 'rgba(14,163,111,0.35)';
+  const contrastColor = currentThemeConfig?.contrastText || '#ffffff';
 
   // Automatically probe and prepare device telemetry on mount without blocking the user
   useEffect(() => {
@@ -712,9 +713,10 @@ export const SplashScreen: React.FC = () => {
                         ALGO
                       </span>
                       <span
-                        className="px-3.5 sm:px-4 py-1 sm:py-1.5 rounded-xl text-white font-black text-2xl sm:text-4xl tracking-tight shadow-xl font-['Outfit',sans-serif] uppercase"
+                        className="px-3.5 sm:px-4 py-1 sm:py-1.5 rounded-xl font-black text-2xl sm:text-4xl tracking-tight shadow-xl font-['Outfit',sans-serif] uppercase"
                         style={{
                           backgroundColor: primaryColor,
+                          color: contrastColor,
                           boxShadow: `0 8px 24px -4px ${glowColor}`,
                         }}
                       >
@@ -1180,9 +1182,10 @@ export const SplashScreen: React.FC = () => {
                       ALGO
                     </span>
                     <span
-                      className="px-2.5 py-0.5 rounded-lg text-white font-black text-xl sm:text-2xl tracking-tight shadow-md font-['Outfit',sans-serif] uppercase"
+                      className="px-2.5 py-0.5 rounded-lg font-black text-xl sm:text-2xl tracking-tight shadow-md font-['Outfit',sans-serif] uppercase"
                       style={{
                         backgroundColor: primaryColor,
+                        color: contrastColor,
                         boxShadow: `0 4px 14px -2px ${glowColor}`,
                       }}
                     >
@@ -1421,9 +1424,10 @@ export const SplashScreen: React.FC = () => {
                   id="splash-primary-cta-btn"
                   type="button"
                   onClick={handlePrimaryAction}
-                  className="w-full py-3.5 sm:py-4 px-6 rounded-2xl text-white font-extrabold text-base sm:text-lg tracking-tight transition-all duration-200 shadow-xl flex items-center justify-center gap-2.5 group active:scale-[0.99] cursor-pointer"
+                  className="w-full py-3.5 sm:py-4 px-6 rounded-2xl font-extrabold text-base sm:text-lg tracking-tight transition-all duration-200 shadow-xl flex items-center justify-center gap-2.5 group active:scale-[0.99] cursor-pointer"
                   style={{
                     backgroundColor: primaryColor,
+                    color: contrastColor,
                     boxShadow: `0 12px 24px -4px ${glowColor}`,
                   }}
                 >

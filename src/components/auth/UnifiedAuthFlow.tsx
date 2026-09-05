@@ -128,6 +128,7 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
   const isLight = colorThemeMode === 'light';
   const primaryColor = currentThemeConfig?.primaryHex || '#0EA36F';
   const glowColor = currentThemeConfig?.glowHex || 'rgba(14,163,111,0.35)';
+  const contrastColor = currentThemeConfig?.contrastText || '#ffffff';
 
   const savedSession = getStoredAuthSession();
 
@@ -842,9 +843,10 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
                     ALGO
                   </span>
                   <span
-                    className="px-2.5 py-0.5 rounded-lg text-white font-black text-xl sm:text-2xl tracking-tight shadow-md font-['Outfit',sans-serif] uppercase"
+                    className="px-2.5 py-0.5 rounded-lg font-black text-xl sm:text-2xl tracking-tight shadow-md font-['Outfit',sans-serif] uppercase"
                     style={{
                       backgroundColor: primaryColor,
+                      color: contrastColor,
                       boxShadow: `0 4px 14px -2px ${glowColor}`,
                     }}
                   >
@@ -982,9 +984,10 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
               <button
                 type="submit"
                 id="btn-auth-continue-submit"
-                className="w-full py-3.5 px-6 rounded-2xl text-white font-extrabold text-sm tracking-tight transition-all duration-200 shadow-lg flex items-center justify-center gap-2 group active:scale-[0.99] cursor-pointer"
+                className="w-full py-3.5 px-6 rounded-2xl font-extrabold text-sm tracking-tight transition-all duration-200 shadow-lg flex items-center justify-center gap-2 group active:scale-[0.99] cursor-pointer"
                 style={{
                   backgroundColor: primaryColor,
+                  color: contrastColor,
                   boxShadow: `0 8px 20px -4px ${glowColor}`,
                 }}
               >
@@ -1189,9 +1192,10 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
                 id="btn-simulate-tap-verification-link"
                 disabled={isVerifyingLink}
                 onClick={checkVerified}
-                className="w-full py-3.5 px-6 rounded-2xl text-white font-extrabold text-sm sm:text-base tracking-tight transition-all duration-200 shadow-xl flex items-center justify-center gap-2 group active:scale-[0.99] cursor-pointer"
+                className="w-full py-3.5 px-6 rounded-2xl font-extrabold text-sm sm:text-base tracking-tight transition-all duration-200 shadow-xl flex items-center justify-center gap-2 group active:scale-[0.99] cursor-pointer"
                 style={{
                   backgroundColor: primaryColor,
+                  color: contrastColor,
                   boxShadow: `0 8px 20px -4px ${glowColor}`,
                 }}
               >
@@ -1584,9 +1588,10 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
                 type="button"
                 id="btn-account-type-continue"
                 onClick={handleAccountTypeContinue}
-                className="w-full py-3.5 px-6 rounded-2xl text-white font-extrabold text-sm tracking-tight transition-all duration-200 shadow-lg flex items-center justify-center gap-2 group active:scale-[0.99] cursor-pointer hover:opacity-95"
+                className="w-full py-3.5 px-6 rounded-2xl font-extrabold text-sm tracking-tight transition-all duration-200 shadow-lg flex items-center justify-center gap-2 group active:scale-[0.99] cursor-pointer hover:opacity-95"
                 style={{
                   backgroundColor: primaryColor,
+                  color: contrastColor,
                   boxShadow: `0 8px 20px -4px ${glowColor}`,
                 }}
               >
@@ -1715,7 +1720,7 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
                           onClick={() => setGender(g)}
                           className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                             gender === g
-                              ? 'text-white shadow-sm'
+                              ? 'shadow-sm'
                               : isLight
                               ? 'bg-zinc-50 border-zinc-300 text-zinc-700'
                               : 'bg-zinc-900 border-zinc-800 text-zinc-300'
@@ -1723,6 +1728,7 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
                           style={{
                             backgroundColor: gender === g ? primaryColor : undefined,
                             borderColor: gender === g ? primaryColor : undefined,
+                            color: gender === g ? contrastColor : undefined,
                           }}
                         >
                           {g}
@@ -1834,9 +1840,10 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
               <button
                 type="submit"
                 id="btn-continue-to-app-code"
-                className="w-full mt-3 py-3.5 px-6 rounded-2xl text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full mt-3 py-3.5 px-6 rounded-2xl font-extrabold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer"
                 style={{
                   backgroundColor: primaryColor,
+                  color: contrastColor,
                   boxShadow: `0 8px 20px -4px ${glowColor}`,
                 }}
               >
@@ -1971,9 +1978,10 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
                 type="button"
                 id="btn-complete-new-account"
                 onClick={handleCompleteNewAccount}
-                className="w-full py-4 px-6 rounded-2xl text-white font-extrabold text-sm sm:text-base tracking-tight transition-all duration-200 shadow-xl flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-4 px-6 rounded-2xl font-extrabold text-sm sm:text-base tracking-tight transition-all duration-200 shadow-xl flex items-center justify-center gap-2 cursor-pointer"
                 style={{
                   backgroundColor: primaryColor,
+                  color: contrastColor,
                   boxShadow: `0 10px 24px -4px ${glowColor}`,
                 }}
               >
@@ -2149,9 +2157,10 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
                 id="btn-simulate-forgot-verify-link"
                 disabled={isVerifyingLink}
                 onClick={handleForgotVerifyEmail}
-                className="w-full py-4 px-6 rounded-2xl text-white font-extrabold text-sm sm:text-base tracking-tight transition-all duration-200 shadow-xl flex items-center justify-center gap-2 group active:scale-[0.99] cursor-pointer"
+                className="w-full py-4 px-6 rounded-2xl font-extrabold text-sm sm:text-base tracking-tight transition-all duration-200 shadow-xl flex items-center justify-center gap-2 group active:scale-[0.99] cursor-pointer"
                 style={{
                   backgroundColor: primaryColor,
+                  color: contrastColor,
                   boxShadow: `0 10px 24px -4px ${glowColor}`,
                 }}
               >
@@ -2308,9 +2317,10 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
                 type="button"
                 id="btn-save-new-pin-and-continue"
                 onClick={handleCompleteResetCode}
-                className="w-full py-4 px-6 rounded-2xl text-white font-extrabold text-sm sm:text-base tracking-tight transition-all duration-200 shadow-xl flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-4 px-6 rounded-2xl font-extrabold text-sm sm:text-base tracking-tight transition-all duration-200 shadow-xl flex items-center justify-center gap-2 cursor-pointer"
                 style={{
                   backgroundColor: primaryColor,
+                  color: contrastColor,
                   boxShadow: `0 10px 24px -4px ${glowColor}`,
                 }}
               >

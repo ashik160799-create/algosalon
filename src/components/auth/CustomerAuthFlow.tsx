@@ -287,7 +287,7 @@ export const CustomerAuthFlow: React.FC<CustomerAuthFlowProps> = ({
                 onClick={() => setCustomerType('new')}
                 className={`py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   customerType === 'new'
-                    ? 'text-white shadow-md'
+                    ? 'shadow-md'
                     : isLight
                     ? 'text-zinc-800 hover:text-zinc-950'
                     : 'text-zinc-300 hover:text-white'
@@ -297,6 +297,10 @@ export const CustomerAuthFlow: React.FC<CustomerAuthFlowProps> = ({
                     customerType === 'new'
                       ? currentThemeConfig.primaryHex
                       : 'transparent',
+                  color:
+                    customerType === 'new'
+                      ? currentThemeConfig.contrastText || '#ffffff'
+                      : undefined,
                 }}
               >
                 <User className="w-4 h-4" />
@@ -309,7 +313,7 @@ export const CustomerAuthFlow: React.FC<CustomerAuthFlowProps> = ({
                 onClick={() => setCustomerType('existing')}
                 className={`py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   customerType === 'existing'
-                    ? 'text-white shadow-md'
+                    ? 'shadow-md'
                     : isLight
                     ? 'text-zinc-800 hover:text-zinc-950'
                     : 'text-zinc-300 hover:text-white'
@@ -319,6 +323,10 @@ export const CustomerAuthFlow: React.FC<CustomerAuthFlowProps> = ({
                     customerType === 'existing'
                       ? currentThemeConfig.primaryHex
                       : 'transparent',
+                  color:
+                    customerType === 'existing'
+                      ? currentThemeConfig.contrastText || '#ffffff'
+                      : undefined,
                 }}
               >
                 <Lock className="w-4 h-4" />
@@ -426,9 +434,10 @@ export const CustomerAuthFlow: React.FC<CustomerAuthFlowProps> = ({
               <button
                 type="submit"
                 id="customer-continue-submit-btn"
-                className="w-full mt-2 py-3.5 px-6 rounded-2xl text-white font-extrabold text-sm transition-all duration-200 shadow-lg flex items-center justify-center gap-2 group active:scale-[0.99]"
+                className="w-full mt-2 py-3.5 px-6 rounded-2xl font-extrabold text-sm transition-all duration-200 shadow-lg flex items-center justify-center gap-2 group active:scale-[0.99]"
                 style={{
                   backgroundColor: currentThemeConfig.primaryHex,
+                  color: currentThemeConfig.contrastText || '#ffffff',
                   boxShadow: `0 8px 20px -4px ${currentThemeConfig.glowHex}`,
                 }}
               >
@@ -582,8 +591,11 @@ export const CustomerAuthFlow: React.FC<CustomerAuthFlowProps> = ({
               <button
                 type="button"
                 onClick={handleCompleteNewAccount}
-                className="w-full mt-3 py-3.5 rounded-2xl text-white font-extrabold text-sm shadow-md"
-                style={{ backgroundColor: currentThemeConfig.primaryHex }}
+                className="w-full mt-3 py-3.5 rounded-2xl font-extrabold text-sm shadow-md"
+                style={{
+                  backgroundColor: currentThemeConfig.primaryHex,
+                  color: currentThemeConfig.contrastText || '#ffffff',
+                }}
               >
                 Complete Registration
               </button>
@@ -627,8 +639,11 @@ export const CustomerAuthFlow: React.FC<CustomerAuthFlowProps> = ({
             <p className="text-xs text-zinc-400">Welcome to ALGO Salon. You can now book premier salons instantly.</p>
             <button
               onClick={onComplete}
-              className="w-full py-3.5 rounded-2xl text-white font-extrabold text-sm shadow-md"
-              style={{ backgroundColor: currentThemeConfig.primaryHex }}
+              className="w-full py-3.5 rounded-2xl font-extrabold text-sm shadow-md"
+              style={{
+                backgroundColor: currentThemeConfig.primaryHex,
+                color: currentThemeConfig.contrastText || '#ffffff',
+              }}
             >
               Start Exploring Salons
             </button>

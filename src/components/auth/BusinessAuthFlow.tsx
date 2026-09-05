@@ -284,7 +284,7 @@ export const BusinessAuthFlow: React.FC<BusinessAuthFlowProps> = ({
                 onClick={() => setBusinessType('new')}
                 className={`py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   businessType === 'new'
-                    ? 'text-white shadow-md'
+                    ? 'shadow-md'
                     : isLight
                     ? 'text-zinc-800 hover:text-zinc-950'
                     : 'text-zinc-300 hover:text-white'
@@ -294,6 +294,10 @@ export const BusinessAuthFlow: React.FC<BusinessAuthFlowProps> = ({
                     businessType === 'new'
                       ? currentThemeConfig.primaryHex
                       : 'transparent',
+                  color:
+                    businessType === 'new'
+                      ? currentThemeConfig.contrastText || '#ffffff'
+                      : undefined,
                 }}
               >
                 <Store className="w-4 h-4" />
@@ -306,7 +310,7 @@ export const BusinessAuthFlow: React.FC<BusinessAuthFlowProps> = ({
                 onClick={() => setBusinessType('existing')}
                 className={`py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   businessType === 'existing'
-                    ? 'text-white shadow-md'
+                    ? 'shadow-md'
                     : isLight
                     ? 'text-zinc-800 hover:text-zinc-950'
                     : 'text-zinc-300 hover:text-white'
@@ -316,6 +320,10 @@ export const BusinessAuthFlow: React.FC<BusinessAuthFlowProps> = ({
                     businessType === 'existing'
                       ? currentThemeConfig.primaryHex
                       : 'transparent',
+                  color:
+                    businessType === 'existing'
+                      ? currentThemeConfig.contrastText || '#ffffff'
+                      : undefined,
                 }}
               >
                 <Lock className="w-4 h-4" />
@@ -415,9 +423,10 @@ export const BusinessAuthFlow: React.FC<BusinessAuthFlowProps> = ({
               <button
                 type="submit"
                 id="business-continue-submit-btn"
-                className="w-full mt-2 py-3.5 px-6 rounded-2xl text-white font-extrabold text-sm transition-all duration-200 shadow-lg flex items-center justify-center gap-2 group active:scale-[0.99]"
+                className="w-full mt-2 py-3.5 px-6 rounded-2xl font-extrabold text-sm transition-all duration-200 shadow-lg flex items-center justify-center gap-2 group active:scale-[0.99]"
                 style={{
                   backgroundColor: currentThemeConfig.primaryHex,
+                  color: currentThemeConfig.contrastText || '#ffffff',
                   boxShadow: `0 8px 20px -4px ${currentThemeConfig.glowHex}`,
                 }}
               >
