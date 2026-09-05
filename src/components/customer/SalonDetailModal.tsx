@@ -105,356 +105,533 @@ export const SalonDetailModal: React.FC<SalonDetailModalProps> = ({ salon, onClo
     onClose();
   };
 
-  const serviceCategories = ['All', ...Array.from(new Set(salonServices.map(s => s.category)))];
+  const handleBookStaff = (staff: StaffMember) => {
+    setPreselectedSalon(salon);
+    setPreselectedStaff(staff);
+    setPreselectedService(null);
+    setBookingModalOpen(true);
+    onClose();
+  };
 
   return (
     <div
       id="salon-detail-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/70 backdrop-blur-md animate-fadeIn"
-      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200"
     >
       <div
-        id="salon-detail-modal-container"
-        onClick={e => e.stopPropagation()}
-        className={`relative w-full max-w-4xl max-h-[92vh] rounded-3xl border shadow-2xl flex flex-col overflow-hidden animate-slideUp ${
-          isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'
+        id="salon-detail-modal"
+        className={`relative w-full max-w-3xl rounded-3xl border shadow-2xl overflow-hidden my-6 max-h-[92vh] flex flex-col transition-colors animate-in zoom-in-95 duration-200 ${
+          isLight
+            ? 'bg-white border-slate-200 text-slate-900'
+            : 'bg-slate-900 border-slate-800 text-slate-100'
         }`}
+        style={{
+          boxShadow: `0 20px 50px -10px ${currentThemeConfig.glowHex}`,
+        }}
       >
-        {/* Header Hero Image & Actions */}
-        <div className="relative h-60 sm:h-72 md:h-80 w-full shrink-0 overflow-hidden">
+        <div className="relative h-52 sm:h-64 w-full shrink-0">
           <img
-            src={salon.image}
+            src={salon.coverImage || salon.image}
             alt={salon.name}
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-black/30" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-black/30" />
 
-          {/* Top Bar Actions */}
-          <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none">
-            {/* Live Open / Closed Badge */}
-            <div
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold backdrop-blur-md border shadow-md flex items-center gap-2 pointer-events-auto ${
-                liveStatus.isOpen
-                  ? 'bg-emerald-500/90 text-white border-emerald-400/50'
-                  : 'bg-rose-500/90 text-white border-rose-400/50'
-              }`}
-            >
+          <div className="absolute top-3.5 left-3.5 right-3.5 sm:top-4 sm:left-4 sm:right-4 flex items-center justify-between z-10">
+            <div className="flex items-center gap-2">
               <span
-                className={`w-2 h-2 rounded-full ${
-                  liveStatus.isOpen ? 'bg-white animate-pulse' : 'bg-white/80'
-                }`}
-              />
-              <span>{liveStatus.isOpen ? 'Open Now' : 'Closed'}</span>
+                className="px-3 py-1 rounded-full text-white font-extrabold text-xs shadow-md"
+                style={{
+                  backgroundColor: currentThemeConfig.primaryHex,
+                  boxShadow: `0 4px 12px ${currentThemeConfig.glowHex}`,
+                }}
+              >
+                ★ ALGO Partner
+              </span>
+              <span
+                className={`px-2.5 py-1 rounded-full text-xs font-bold ${liveStatus.badgeClass || (
+                  liveStatus.isOpen
+                    ? 'bg-emerald-500 text-white shadow-sm'
+                    : 'bg-slate-800 text-slate-300'
+                )}`}
+              >
+                {liveStatus.badgeLabel || (liveStatus.isOpen ? 'Open Now' : 'Closed')}
+              </span>
             </div>
 
-            {/* Right Buttons: Favorite + Close */}
-            <div className="flex items-center gap-2 pointer-events-auto">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => toggleFavoriteSalon(salon.id)}
-                className={`p-2.5 rounded-full backdrop-blur-md border shadow-md transition-transform active:scale-90 ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md transition-all shadow-md active:scale-95 cursor-pointer border border-white/15 ${
                   isSaved
-                    ? 'bg-rose-500 text-white border-rose-400'
-                    : 'bg-slate-900/70 text-white border-white/20 hover:bg-slate-900 hover:text-rose-400'
+                    ? 'bg-rose-600/90 text-white shadow-rose-600/40'
+                    : 'bg-black/60 text-white hover:bg-black/80'
                 }`}
-                title={isSaved ? 'Remove from Saved' : 'Save Salon'}
+                title={isSaved ? 'Remove from Saved' : 'Save to Favorites'}
               >
-                <Heart className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
+                <Heart className={`w-3.5 h-3.5 text-rose-400 ${isSaved ? 'fill-white text-white' : 'fill-rose-400'}`} />
+                <span className="text-xs font-bold leading-none">{salon.likesCount || 128}</span>
+              </button>
+
+              <button
+                id="close-salon-detail-btn"
+                type="button"
+                onClick={onClose}
+                className="p-2 rounded-full bg-black/60 text-white hover:bg-black/80 backdrop-blur-md transition-colors shadow-md border border-white/15 cursor-pointer"
+              >
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="absolute bottom-3.5 left-4 right-4 sm:bottom-4 sm:left-5 sm:right-5 text-white flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-bold mb-1 flex-wrap">
+                <span className="flex items-center gap-1 bg-black/80 px-2.5 py-1 rounded-xl backdrop-blur-md text-amber-400 border border-white/15 shadow-sm">
+                  <Star className="w-3.5 h-3.5 fill-amber-400" />
+                  <span>{salon.rating ? salon.rating.toFixed(1) : '4.8'} ({salon.reviewCount || 142})</span>
+                </span>
+                <span
+                  className="bg-black/80 px-2.5 py-1 rounded-xl backdrop-blur-md text-slate-200 border border-white/15 shadow-sm"
+                >
+                  {salon.categories?.[0] || 'Salon'} • {salon.distanceKm || 0.8} km away
+                </span>
+                <span
+                  className="bg-black/80 px-2.5 py-1 rounded-xl backdrop-blur-md text-white font-extrabold border border-white/15 shadow-sm"
+                >
+                  From ${salon.startingPrice || 32}
+                </span>
+              </div>
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white font-['Outfit',sans-serif]">
+                {salon.name}
+              </h2>
+              <p className="text-xs sm:text-sm font-medium text-slate-200 mt-0.5 line-clamp-1">
+                {salon.tagline}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                id="modal-header-map-btn"
+                onClick={handleOpenMap}
+                className="px-3 py-1.5 rounded-xl bg-black/80 hover:bg-slate-900 border border-rose-500/40 text-white font-bold text-xs backdrop-blur-md transition-all flex items-center gap-1.5 shadow-md hover:scale-105 active:scale-95 cursor-pointer"
+                title="Open Directions in Google Maps"
+              >
+                <Navigation className="w-3.5 h-3.5 text-rose-400" />
+                <span>Map</span>
               </button>
 
               <button
                 type="button"
-                onClick={onClose}
-                className="p-2.5 rounded-full bg-slate-900/70 text-white border border-white/20 backdrop-blur-md hover:bg-slate-900 transition-colors active:scale-90"
+                id="modal-header-call-btn"
+                onClick={() => setIsCallModalOpen(true)}
+                className="px-3 py-1.5 rounded-xl bg-black/80 hover:bg-slate-900 border border-emerald-500/40 text-white font-bold text-xs backdrop-blur-md transition-all flex items-center gap-1.5 shadow-md hover:scale-105 active:scale-95 cursor-pointer"
+                title="Call or Message Salon"
               >
-                <X className="w-4 h-4" />
+                <Phone className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Call</span>
               </button>
             </div>
           </div>
-
-          {/* Salon Info Inside Hero */}
-          <div className="absolute bottom-4 left-4 right-4 text-white">
-            <div className="flex flex-wrap items-center gap-2 mb-1.5">
-              <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold bg-amber-500/90 text-white backdrop-blur-md border border-amber-400/40">
-                <Star className="w-3.5 h-3.5 fill-current" />
-                <span>{salon.rating.toFixed(1)}</span>
-                <span className="text-[11px] font-normal opacity-90">({salon.reviewCount} reviews)</span>
-              </div>
-              <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-white/20 backdrop-blur-md border border-white/20">
-                {salon.priceRange}
-              </span>
-              {salon.distanceKm !== undefined && (
-                <span className="px-2.5 py-1 rounded-xl text-xs font-medium bg-emerald-500/80 backdrop-blur-md border border-emerald-400/30 flex items-center gap-1">
-                  <Navigation className="w-3 h-3" />
-                  {salon.distanceKm.toFixed(1)} km away
-                </span>
-              )}
-            </div>
-
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight drop-shadow-md">
-              {salon.name}
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-200 mt-1 flex items-center gap-1.5 drop-shadow">
-              <MapPin className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
-              <span>{salon.address}</span>
-            </p>
-          </div>
         </div>
 
-        {/* Action Hub Row: Map, Direct Call, WhatsApp, Live Hours */}
         <div
-          className={`p-3 sm:p-4 border-b flex flex-wrap items-center justify-between gap-2.5 shrink-0 ${
-            isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950/60 border-slate-800'
+          className={`px-5 pt-3 border-b shrink-0 flex items-center gap-2 sm:gap-4 overflow-x-auto text-xs font-bold ${
+            isLight ? 'bg-white border-slate-100' : 'bg-slate-900 border-slate-800'
           }`}
         >
-          {/* Live Working Hours text */}
-          <div className="flex items-center gap-2 text-xs sm:text-sm">
-            <Clock className="w-4 h-4 text-emerald-500 shrink-0" />
-            <span className="font-semibold">{liveStatus.displayText}</span>
-          </div>
-
-          {/* Quick Communication & Direction Buttons */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={handleOpenMap}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-all active:scale-95 ${
-                isLight
-                  ? 'bg-white border-slate-200 text-slate-750 hover:bg-slate-100 hover:text-slate-900 shadow-sm'
-                  : 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-750'
-              }`}
-            >
-              <Navigation className="w-3.5 h-3.5 text-blue-500" />
-              <span>Directions</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsCallModalOpen(true)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-all active:scale-95 ${
-                isLight
-                  ? 'bg-white border-slate-200 text-slate-750 hover:bg-slate-100 hover:text-slate-900 shadow-sm'
-                  : 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-750'
-              }`}
-            >
-              <Phone className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Call</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleWhatsApp}
-              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
-            >
-              <MessageCircle className="w-3.5 h-3.5" />
-              <span>WhatsApp</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab('services')}
+            className={`pb-3 border-b-2 transition-all ${
+              activeTab === 'services'
+                ? isLight ? 'text-slate-900 font-extrabold' : 'text-white font-extrabold'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+            style={{
+              borderColor: activeTab === 'services' ? currentThemeConfig.primaryHex : 'transparent',
+            }}
+          >
+            Services ({salonServices.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('staff')}
+            className={`pb-3 border-b-2 transition-all ${
+              activeTab === 'staff'
+                ? isLight ? 'text-slate-900 font-extrabold' : 'text-white font-extrabold'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+            style={{
+              borderColor: activeTab === 'staff' ? currentThemeConfig.primaryHex : 'transparent',
+            }}
+          >
+            Stylists & Staff ({salonStaff.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('reviews')}
+            className={`pb-3 border-b-2 transition-all ${
+              activeTab === 'reviews'
+                ? isLight ? 'text-slate-900 font-extrabold' : 'text-white font-extrabold'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+            style={{
+              borderColor: activeTab === 'reviews' ? currentThemeConfig.primaryHex : 'transparent',
+            }}
+          >
+            Reviews ({salonReviews.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('hours')}
+            className={`pb-3 border-b-2 transition-all ${
+              activeTab === 'hours'
+                ? isLight ? 'text-slate-900 font-extrabold' : 'text-white font-extrabold'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+            style={{
+              borderColor: activeTab === 'hours' ? currentThemeConfig.primaryHex : 'transparent',
+            }}
+          >
+            Location & Hours
+          </button>
         </div>
 
-        {/* Tab Navigation */}
-        <div
-          className={`flex items-center gap-2 px-4 sm:px-6 pt-3 border-b shrink-0 overflow-x-auto no-scrollbar ${
-            isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'
-          }`}
-        >
-          {(['services', 'staff', 'reviews', 'hours'] as const).map(tabKey => (
-            <button
-              key={tabKey}
-              type="button"
-              onClick={() => setActiveTab(tabKey)}
-              className={`pb-3 px-3 text-xs sm:text-sm font-semibold capitalize border-b-2 transition-all shrink-0 ${
-                activeTab === tabKey
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              {tabKey === 'services' && `Services (${salonServices.length})`}
-              {tabKey === 'staff' && `Staff & Stylists (${salonStaff.length})`}
-              {tabKey === 'reviews' && `Reviews (${salonReviews.length})`}
-              {tabKey === 'hours' && 'Hours & Location'}
-            </button>
-          ))}
-        </div>
-
-        {/* Scrollable Tab Body Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-          {/* TAB 1: SERVICES */}
+        <div className={`p-5 overflow-y-auto flex-1 space-y-5 custom-scrollbar ${isLight ? 'bg-white' : 'bg-slate-900'}`}>
           {activeTab === 'services' && (
             <div className="space-y-4">
-              {/* Category Pills */}
-              {serviceCategories.length > 1 && (
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-                  {serviceCategories.map(cat => (
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                {['All', 'Haircut', 'Styling', 'Coloring', 'Beard & Shave', 'Spa & Facial', 'Nails & Lashes'].map(
+                  cat => (
                     <button
                       key={cat}
                       type="button"
                       onClick={() => setSelectedServiceCat(cat)}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
                         selectedServiceCat === cat
-                          ? 'bg-primary text-white border-primary shadow-sm'
+                          ? 'text-white shadow-sm'
                           : isLight
-                          ? 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
-                          : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-750'
+                          ? 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                          : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white'
                       }`}
+                      style={{
+                        backgroundColor: selectedServiceCat === cat ? currentThemeConfig.primaryHex : undefined,
+                        borderColor: selectedServiceCat === cat ? currentThemeConfig.primaryHex : undefined,
+                      }}
                     >
                       {cat}
                     </button>
-                  ))}
-                </div>
-              )}
+                  )
+                )}
+              </div>
 
-              {/* Service Cards Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {filteredServices.map(service => (
                   <ServiceBannerCard
                     key={service.id}
                     service={service}
+                    variant="customer"
+                    showCurrency="AED"
                     onBook={handleBookService}
-                    badgeText={service.popular ? 'Popular Choice' : undefined}
                   />
                 ))}
               </div>
-
-              {filteredServices.length === 0 && (
-                <div className="text-center py-12 text-slate-400">
-                  <p>No services found in this category.</p>
-                </div>
-              )}
             </div>
           )}
 
-          {/* TAB 2: STAFF */}
           {activeTab === 'staff' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               {salonStaff.map(staff => (
                 <div
                   key={staff.id}
-                  className={`p-4 rounded-2xl border flex items-center gap-3.5 transition-all ${
+                  onClick={() => handleBookStaff(staff)}
+                  className={`p-4 rounded-2xl border transition-all flex items-start gap-3.5 cursor-pointer hover:scale-[1.01] hover:shadow-md group ${
                     isLight
-                      ? 'bg-slate-50 border-slate-200 hover:bg-white hover:shadow-md'
-                      : 'bg-slate-800/60 border-slate-750 hover:bg-slate-800'
+                      ? 'bg-slate-50/80 border-slate-200 hover:border-slate-300 hover:bg-white'
+                      : 'bg-slate-950 border-slate-800 hover:border-slate-700'
                   }`}
                 >
                   <StaffAvatar
-                    avatarUrl={staff.avatar}
                     name={staff.name}
-                    isAvailable={staff.available}
-                    size="lg"
+                    avatar={staff.avatar}
+                    gender={staff.gender}
+                    size="md"
+                    className="shrink-0 group-hover:scale-105 transition-transform"
                   />
-                  <div className="min-w-0 flex-1">
-                    <h4 className="text-sm font-bold truncate">{staff.name}</h4>
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <h4 className={`text-sm font-extrabold ${isLight ? 'text-slate-900' : 'text-white'}`}>{staff.name}</h4>
+                      <span className="flex items-center gap-0.5 text-xs text-amber-500 font-bold">
+                        ★{staff.rating}
+                      </span>
+                    </div>
                     <p
-                      className={`text-xs truncate ${
-                        isLight ? 'text-slate-500' : 'text-slate-400'
-                      }`}
+                      className="text-xs font-bold"
+                      style={{ color: currentThemeConfig.primaryHex }}
                     >
-                      {staff.role}
+                      {staff.roleTitle}
                     </p>
-                    <div className="flex items-center gap-1 mt-1 text-xs font-semibold text-amber-500">
-                      <Star className="w-3 h-3 fill-current" />
-                      <span>{staff.rating.toFixed(1)}</span>
-                      <span className="text-slate-400 font-normal">({staff.reviewsCount})</span>
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {staff.specialties.map(spec => (
+                        <span
+                          key={spec}
+                          className={`text-[10px] px-2 py-0.5 rounded-md border ${
+                            isLight
+                              ? 'bg-white border-slate-200 text-slate-700'
+                              : 'bg-slate-900 border-slate-800 text-slate-300'
+                          }`}
+                        >
+                          {spec}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="pt-2 flex justify-end">
+                      <span
+                        className="text-[11px] font-extrabold flex items-center gap-1 group-hover:underline"
+                        style={{ color: currentThemeConfig.primaryHex }}
+                      >
+                        Book Appointment →
+                      </span>
                     </div>
                   </div>
                 </div>
               ))}
-
-              {salonStaff.length === 0 && (
-                <div className="col-span-full text-center py-12 text-slate-400">
-                  <p>No staff profiles listed currently.</p>
-                </div>
-              )}
             </div>
           )}
 
-          {/* TAB 3: REVIEWS */}
           {activeTab === 'reviews' && (
             <div className="space-y-4">
-              {salonReviews.map(review => (
-                <div
-                  key={review.id}
-                  className={`p-4 rounded-2xl border space-y-2 ${
-                    isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-800/60 border-slate-750'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 text-white font-bold flex items-center justify-center text-xs">
-                        {review.customerName.charAt(0)}
-                      </div>
-                      <div>
-                        <h4 className="text-xs sm:text-sm font-bold">{review.customerName}</h4>
-                        <span className="text-[11px] text-slate-400">{review.date}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-0.5 text-amber-500">
-                      {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                className={`p-4 rounded-2xl border flex items-center justify-between ${
+                  isLight ? 'bg-slate-50/80 border-slate-200' : 'bg-slate-950 border-slate-800'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-3xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>{salon.rating}</span>
+                    <div className="flex items-center text-amber-400">
+                      {[...Array(5)].map((_, i) => (
                         <Star
                           key={i}
-                          className={`w-3.5 h-3.5 ${
-                            i < review.rating ? 'fill-current' : 'text-slate-300 dark:text-slate-700'
+                          className={`w-4 h-4 ${
+                            i < Math.floor(salon.rating)
+                              ? 'fill-amber-400 text-amber-400'
+                              : isLight
+                              ? 'text-slate-300'
+                              : 'text-slate-700'
                           }`}
                         />
                       ))}
                     </div>
                   </div>
-
-                  <p className={`text-xs sm:text-sm ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-                    {review.comment}
+                  <p className={`text-xs mt-0.5 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                    Based on {salon.reviewCount} verified client ratings
                   </p>
+                </div>
+                <div className="text-right text-xs text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                  <ShieldCheck className="w-4 h-4" />
+                  100% Verified Visits
+                </div>
+              </div>
 
-                  {review.reply && (
-                    <div
-                      className={`p-3 rounded-xl border mt-2 text-xs space-y-1 ${
-                        isLight
-                          ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
-                          : 'bg-emerald-950/30 border-emerald-800/40 text-emerald-200'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between font-bold">
-                        <span>Response from {review.reply.authorName}</span>
-                        <span className="text-[10px] opacity-75">{review.reply.date}</span>
+              <div className="space-y-3">
+                {salonReviews.map(rev => (
+                  <div
+                    key={rev.id}
+                    className={`p-4 rounded-2xl border space-y-2 ${
+                      isLight ? 'bg-slate-50/60 border-slate-200' : 'bg-slate-950 border-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <img
+                          src={rev.customerAvatar}
+                          alt={rev.customerName}
+                          className="w-8 h-8 rounded-full object-cover"
+                        />
+                        <div>
+                          <h5 className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>{rev.customerName}</h5>
+                          <div className="flex items-center gap-0.5 text-[10px] text-amber-400">
+                            {[...Array(rev.rating)].map((_, i) => (
+                              <Star key={i} className="w-3 h-3 fill-amber-400" />
+                            ))}
+                          </div>
+                        </div>
                       </div>
-                      <p className="opacity-90">{review.reply.comment}</p>
+                      <span className="text-[10px] text-slate-400">{rev.date}</span>
                     </div>
-                  )}
-                </div>
-              ))}
 
-              {salonReviews.length === 0 && (
-                <div className="text-center py-12 text-slate-400">
-                  <p>No customer reviews yet. Be the first to review!</p>
-                </div>
-              )}
+                    {rev.serviceName && (
+                      <p
+                        className="text-[11px] font-bold"
+                        style={{ color: currentThemeConfig.primaryHex }}
+                      >
+                        Service: {rev.serviceName} {rev.staffName ? `with ${rev.staffName}` : ''}
+                      </p>
+                    )}
+
+                    <p className={`text-xs leading-relaxed ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>{rev.comment}</p>
+
+                    {rev.businessReply && (
+                      <div
+                        className={`mt-2 p-2.5 rounded-xl border text-xs space-y-0.5 ${
+                          isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'
+                        }`}
+                        style={{ borderColor: `${currentThemeConfig.primaryHex}30` }}
+                      >
+                        <p
+                          className="text-[11px] font-bold flex items-center gap-1"
+                          style={{ color: currentThemeConfig.primaryHex }}
+                        >
+                          <span>Response from Salon Manager</span>
+                          <span className="text-slate-400">• {rev.businessReply.date}</span>
+                        </p>
+                        <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>{rev.businessReply.message}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
-          {/* TAB 4: HOURS & LOCATION */}
           {activeTab === 'hours' && (
-            <div className="space-y-6">
-              {/* Working Hours Table */}
-              <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">
-                  Weekly Schedule
-                </h3>
+            <div className="space-y-4 text-xs">
+              <div
+                className={`p-4 rounded-2xl border space-y-3.5 ${
+                  isLight ? 'bg-slate-50/80 border-slate-200' : 'bg-slate-950 border-slate-800'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <h4 className={`font-bold text-sm ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                    Salon Location & Direct Contact
+                  </h4>
+                  <span className="text-[11px] text-slate-400 font-medium">{salon.distanceKm} km away</span>
+                </div>
+
+                <div className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                  isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'
+                }`}>
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <MapPin className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Salon Address</span>
+                      <p className={`font-medium text-xs truncate ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
+                        {salon.address}, {salon.city}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    id="modal-hours-map-btn"
+                    onClick={handleOpenMap}
+                    className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-bold text-xs border border-rose-500/30 transition-all flex items-center justify-center gap-1.5 shrink-0 active:scale-95"
+                    title="Open in Google Maps"
+                  >
+                    <Navigation className="w-3.5 h-3.5" />
+                    <span>Get Directions</span>
+                    <ExternalLink className="w-3 h-3 opacity-60" />
+                  </button>
+                </div>
+
+                <div className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                  isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'
+                }`}>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="p-1.5 rounded-lg text-white shrink-0"
+                      style={{ backgroundColor: currentThemeConfig.primaryHex }}
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Phone & WhatsApp</span>
+                      <p className={`font-black font-mono text-xs ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
+                        {salon.phone}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                    <button
+                      type="button"
+                      id="modal-hours-copy-btn"
+                      onClick={handleCopyPhone}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-1 ${
+                        phoneCopied
+                          ? 'bg-emerald-500 text-white border-emerald-500'
+                          : isLight
+                          ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
+                          : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300'
+                      }`}
+                    >
+                      {phoneCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                      <span>{phoneCopied ? 'Copied!' : 'Copy'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      id="modal-hours-whatsapp-btn"
+                      onClick={handleWhatsApp}
+                      className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all flex items-center gap-1"
+                    >
+                      <MessageCircle className="w-3 h-3" />
+                      <span>WhatsApp</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      id="modal-hours-call-btn"
+                      onClick={handleDirectCall}
+                      className="px-3 py-1.5 rounded-lg text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1 active:scale-95"
+                      style={{ backgroundColor: currentThemeConfig.primaryHex }}
+                    >
+                      <PhoneCall className="w-3 h-3" />
+                      <span>Call Now</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {salon.description && (
                 <div
-                  className={`rounded-2xl border divide-y overflow-hidden ${
-                    isLight
-                      ? 'bg-slate-50 border-slate-200 divide-slate-200'
-                      : 'bg-slate-800/60 border-slate-750 divide-slate-750'
+                  className={`p-4 rounded-2xl border space-y-1.5 ${
+                    isLight ? 'bg-slate-50/80 border-slate-200' : 'bg-slate-950 border-slate-800'
                   }`}
                 >
+                  <h4 className={`font-bold text-sm ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                    About {salon.name}
+                  </h4>
+                  <p className={`text-xs leading-relaxed ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                    {salon.description}
+                  </p>
+                </div>
+              )}
+
+              <div
+                className={`p-4 rounded-2xl border space-y-2 ${
+                  isLight ? 'bg-slate-50/80 border-slate-200' : 'bg-slate-950 border-slate-800'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <h4 className={`font-bold text-sm ${isLight ? 'text-slate-900' : 'text-white'}`}>Weekly Working Hours</h4>
+                  <span className="text-[11px] font-semibold text-emerald-500">{liveStatus.statusText}</span>
+                </div>
+                <div className={`divide-y ${isLight ? 'divide-slate-200' : 'divide-slate-800'}`}>
                   {salon.workingHours.map(wh => (
-                    <div key={wh.day} className="px-4 py-3 flex items-center justify-between text-xs sm:text-sm">
-                      <span className="font-semibold">{wh.day}</span>
+                    <div key={wh.day} className="py-1.5 flex items-center justify-between">
+                      <span className={`font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>{wh.day}</span>
                       <span
                         className={
                           wh.isOpen
                             ? isLight
-                              ? 'text-slate-700 font-medium'
-                              : 'text-slate-200 font-medium'
-                            : 'text-rose-500 font-bold'
+                              ? 'text-slate-900 font-mono font-bold text-xs'
+                              : 'text-slate-200 font-mono text-xs'
+                            : 'text-rose-500 font-medium text-xs'
                         }
                       >
                         {wh.isOpen ? `${format12Hour(wh.open)} - ${format12Hour(wh.close)}` : 'Closed'}
@@ -462,25 +639,45 @@ export const SalonDetailModal: React.FC<SalonDetailModalProps> = ({ salon, onClo
                     </div>
                   ))}
                 </div>
+
+                {salon.specialSchedules && salon.specialSchedules.length > 0 && (
+                  <div className="pt-2 mt-2 border-t border-slate-200 dark:border-slate-800 space-y-1.5">
+                    <h5 className={`font-bold text-xs ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>Special Dates & Holiday Hours</h5>
+                    {salon.specialSchedules.map(sp => (
+                      <div key={sp.id} className="flex items-center justify-between text-xs py-1">
+                        <span className={isLight ? 'text-slate-600' : 'text-slate-400'}>
+                          {sp.date} ({sp.title})
+                        </span>
+                        <span className={sp.isOpen ? 'text-emerald-500 font-mono font-bold' : 'text-rose-500 font-medium'}>
+                          {sp.isOpen ? `${format12Hour(sp.open || '')} - ${format12Hour(sp.close || '')}` : 'Store Closed'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Amenities */}
-              <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">
-                  Salon Amenities
-                </h3>
+              <div
+                className={`p-4 rounded-2xl border space-y-2 ${
+                  isLight ? 'bg-slate-50/80 border-slate-200' : 'bg-slate-950 border-slate-800'
+                }`}
+              >
+                <h4 className={`font-bold text-sm ${isLight ? 'text-slate-900' : 'text-white'}`}>Amenities & Features</h4>
                 <div className="flex flex-wrap gap-2">
-                  {salon.amenities.map(am => (
+                  {salon.amenities.map(a => (
                     <span
-                      key={am}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 ${
+                      key={a}
+                      className={`px-3 py-1 rounded-xl border flex items-center gap-1.5 font-medium ${
                         isLight
-                          ? 'bg-slate-100 text-slate-700 border-slate-200'
-                          : 'bg-slate-800 text-slate-300 border-slate-700'
+                          ? 'bg-white border-slate-200 text-slate-700'
+                          : 'bg-slate-900 border-slate-700 text-slate-300'
                       }`}
                     >
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                      <span>{am}</span>
+                      <CheckCircle2
+                        className="w-3.5 h-3.5"
+                        style={{ color: currentThemeConfig.primaryHex }}
+                      />
+                      {a}
                     </span>
                   ))}
                 </div>
@@ -489,38 +686,38 @@ export const SalonDetailModal: React.FC<SalonDetailModalProps> = ({ salon, onClo
           )}
         </div>
 
-        {/* Modal Bottom Footer CTA */}
         <div
-          className={`p-4 sm:p-5 border-t flex items-center justify-between gap-4 shrink-0 ${
+          className={`p-4 border-t shrink-0 flex items-center justify-between ${
             isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950 border-slate-800'
           }`}
         >
           <div>
-            <span className="text-xs text-slate-400 block">Experience luxury care</span>
-            <span className="text-sm sm:text-base font-bold text-primary">Instant Confirmation</span>
+            <span className={`text-[11px] block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Pricing starts from</span>
+            <span className={`text-lg font-black font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>
+              ${salonServices[0]?.price || 35} - ${Math.max(...salonServices.map(s => s.price), 90)}
+            </span>
           </div>
 
           <button
+            id="book-from-salon-detail-modal"
             type="button"
             onClick={handleGeneralBook}
-            className="px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-bold text-white shadow-lg transition-all active:scale-95 flex items-center gap-2"
+            className="px-6 py-2.5 rounded-2xl text-white font-extrabold text-xs shadow-lg transition-all flex items-center gap-2 active:scale-95"
             style={{
               backgroundColor: currentThemeConfig.primaryHex,
-              boxShadow: `0 4px 18px 0 ${currentThemeConfig.glowHex}`,
+              boxShadow: `0 4px 16px ${currentThemeConfig.glowHex}`,
             }}
           >
             <Calendar className="w-4 h-4" />
-            <span>Book Appointment</span>
+            <span>Select Date & Time</span>
           </button>
         </div>
       </div>
 
-      {/* Direct Call Modal */}
       <CallContactModal
+        salon={salon}
         isOpen={isCallModalOpen}
         onClose={() => setIsCallModalOpen(false)}
-        phoneNumber={salon.phone}
-        salonName={salon.name}
       />
     </div>
   );
