@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { AppointmentStatus, Appointment } from '../../types';
-import { isSlotWithinNextHours } from '../../utils/dateTimeUtils';
+import { isSlotWithinNextHours, getLocalDateString } from '../../utils/dateTimeUtils';
 import {
   Calendar as CalendarIcon,
   Clock,
@@ -83,8 +83,8 @@ const formatBookingId = (aptId: string) => {
 const formatBookingSlotDisplay = (dateStr: string, timeSlot: string) => {
   if (!dateStr) return timeSlot || '';
   try {
-    const today = new Date().toISOString().split('T')[0];
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const today = getLocalDateString();
+    const tomorrow = getLocalDateString(new Date(Date.now() + 86400000));
     let dayPrefix = '';
     if (dateStr === today) {
       dayPrefix = 'Today';
@@ -163,7 +163,7 @@ export const BusinessAppointments: React.FC = () => {
   const [walkinServiceId, setWalkinServiceId] = useState(salonServices[0]?.id || '');
   const [walkinStaffId, setWalkinStaffId] = useState(salonStaff[0]?.id || '');
   const [walkinTimeSlot, setWalkinTimeSlot] = useState('03:00 PM');
-  const [walkinDate, setWalkinDate] = useState(new Date().toISOString().split('T')[0]);
+  const [walkinDate, setWalkinDate] = useState(getLocalDateString());
   const [walkinNotes, setWalkinNotes] = useState('');
 
   // Status Change Confirmation / Cancel Modal state
@@ -203,16 +203,16 @@ export const BusinessAppointments: React.FC = () => {
   };
 
   // Today, tomorrow, this week strings
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const todayStr = useMemo(() => getLocalDateString(), []);
   const tomorrowStr = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
-    return d.toISOString().split('T')[0];
+    return getLocalDateString(d);
   }, []);
   const weekEndStr = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() + 7);
-    return d.toISOString().split('T')[0];
+    return getLocalDateString(d);
   }, []);
 
   // Filter and automatically sort appointments into a logical queue
@@ -649,7 +649,7 @@ export const BusinessAppointments: React.FC = () => {
                     ? 'text-white border-transparent shadow-md'
                     : isLight
                     ? 'bg-slate-100/90 hover:bg-slate-200 text-slate-700 hover:text-slate-950 border-slate-200/80'
-                    : 'bg-slate-800/80 hover:bg-slate-750 text-slate-300 hover:text-white border-slate-700/80'
+                    : 'bg-slate-800/80 hover:bg-slate-755 text-slate-300 hover:text-white border-slate-700/80'
                 }`}
                 style={{
                   backgroundColor: isSelected ? currentThemeConfig.primaryHex : undefined,
