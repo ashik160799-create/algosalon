@@ -543,8 +543,11 @@ export const SalonDetailModal: React.FC<SalonDetailModalProps> = ({ salon, onClo
                 }`}>
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div
-                      className="p-1.5 rounded-lg text-white shrink-0"
-                      style={{ backgroundColor: currentThemeConfig.primaryHex }}
+                      className="p-1.5 rounded-lg shrink-0"
+                      style={{
+                        backgroundColor: currentThemeConfig.primaryHex,
+                        color: currentThemeConfig.contrastText || '#ffffff',
+                      }}
                     >
                       <Phone className="w-3.5 h-3.5" />
                     </div>
@@ -587,8 +590,11 @@ export const SalonDetailModal: React.FC<SalonDetailModalProps> = ({ salon, onClo
                       type="button"
                       id="modal-hours-call-btn"
                       onClick={handleDirectCall}
-                      className="px-3 py-1.5 rounded-lg text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1 active:scale-95"
-                      style={{ backgroundColor: currentThemeConfig.primaryHex }}
+                      className="px-3 py-1.5 rounded-lg font-bold text-xs shadow-xs transition-all flex items-center gap-1 active:scale-95"
+                      style={{
+                        backgroundColor: currentThemeConfig.primaryHex,
+                        color: currentThemeConfig.contrastText || '#ffffff',
+                      }}
                     >
                       <PhoneCall className="w-3 h-3" />
                       <span>Call Now</span>
@@ -702,9 +708,10 @@ export const SalonDetailModal: React.FC<SalonDetailModalProps> = ({ salon, onClo
             id="book-from-salon-detail-modal"
             type="button"
             onClick={handleGeneralBook}
-            className="px-6 py-2.5 rounded-2xl text-white font-extrabold text-xs shadow-lg transition-all flex items-center gap-2 active:scale-95"
+            className="px-6 py-2.5 rounded-2xl font-extrabold text-xs shadow-lg transition-all flex items-center gap-2 active:scale-95"
             style={{
               backgroundColor: currentThemeConfig.primaryHex,
+              color: currentThemeConfig.contrastText || '#ffffff',
               boxShadow: `0 4px 16px ${currentThemeConfig.glowHex}`,
             }}
           >

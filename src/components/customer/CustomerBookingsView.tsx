@@ -656,12 +656,13 @@ export const CustomerBookingsView: React.FC = () => {
                   {apt.status === 'completed' && (
                     <button
                       type="button"
-                      onClick={() => setReviewingAppointment(apt)}
+                      onClick={() => !apt.reviewed && setReviewingAppointment(apt)}
+                      disabled={Boolean(apt.reviewed)}
                       className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                         apt.reviewed
                           ? isLight
-                            ? 'bg-amber-50 text-amber-900 border border-amber-200'
-                            : 'bg-slate-800 text-amber-300 border border-amber-500/20'
+                            ? 'bg-amber-50 text-amber-900 border border-amber-200 cursor-default opacity-80'
+                            : 'bg-slate-800 text-amber-300 border border-amber-500/20 cursor-default opacity-80'
                           : 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md shadow-amber-500/20'
                       }`}
                     >
@@ -673,9 +674,10 @@ export const CustomerBookingsView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleRebook(apt)}
-                    className="px-4 py-1.5 rounded-xl text-white text-xs font-extrabold shadow-md transition-all flex items-center gap-1.5 active:scale-95"
+                    className="px-4 py-1.5 rounded-xl text-xs font-extrabold shadow-md transition-all flex items-center gap-1.5 active:scale-95"
                     style={{
                       backgroundColor: currentThemeConfig.primaryHex,
+                      color: currentThemeConfig.contrastText || '#ffffff',
                       boxShadow: `0 4px 12px ${currentThemeConfig.glowHex}`,
                     }}
                   >
