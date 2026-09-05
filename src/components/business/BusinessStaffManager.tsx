@@ -47,6 +47,7 @@ export const BusinessStaffManager: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
   const [notificationMsg, setNotificationMsg] = useState<string | null>(null);
+  const [staffToDelete, setStaffToDelete] = useState<StaffMember | null>(null);
 
   const [name, setName] = useState('');
   const [gender, setGender] = useState<'Male' | 'Female'>('Male');
@@ -325,8 +326,8 @@ export const BusinessStaffManager: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => deleteStaffMember(st.id)}
-                      className="p-1.5 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/15 transition-colors"
+                      onClick={() => setStaffToDelete(st)}
+                      className="p-1.5 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/15 transition-colors cursor-pointer"
                       title="Remove Staff"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -643,9 +644,10 @@ export const BusinessStaffManager: React.FC = () => {
 
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-2xl text-xs font-black text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
+                  className="px-6 py-2.5 rounded-2xl text-xs font-black shadow-lg transition-transform hover:scale-105 active:scale-95 cursor-pointer"
                   style={{
                     backgroundColor: currentThemeConfig.primaryHex,
+                    color: currentThemeConfig.contrastText || '#ffffff',
                     boxShadow: `0 4px 14px ${currentThemeConfig.glowHex}`,
                   }}
                 >
@@ -656,7 +658,85 @@ export const BusinessStaffManager: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Staff Confirmation Modal */}
+      {staffToDelete && (
+        <div
+          id="staff-delete-confirm-backdrop"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={e => {
+            if (e.target === e.currentTarget) setStaffToDelete(null);
+          }}
+        >
+          <div
+            id="staff-delete-confirm-card"
+            className={`w-full max-w-md rounded-3xl p-6 border shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 ${
+              isLight
+                ? 'bg-white border-slate-200 text-slate-900 shadow-slate-300/50'
+                : 'bg-slate-900 border-slate-800 text-white shadow-black/80'
+            }`}
+          >
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center shrink-0">
+                <Trash2 className="w-6 h-6 text-rose-500" />
+              </div>
+              <div>
+                <h3 className="text-base sm:text-lg font-black tracking-tight">
+                  Remove Team Member?
+                </h3>
+                <p className={`text-xs mt-0.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                  This action permanently removes the stylist profile from your active team.
+                </p>
+              </div>
+            </div>
+
+            <div className={`p-4 rounded-2xl border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950 border-slate-800'}`}>
+              <div className="flex items-center gap-3">
+                <img
+                  src={staffToDelete.avatar || AVATAR_PRESETS[0]}
+                  alt={staffToDelete.name}
+                  className="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-800"
+                />
+                <div className="min-w-0">
+                  <h4 className="text-xs font-black truncate">{staffToDelete.name}</h4>
+                  <p className="text-[11px] font-bold truncate" style={{ color: currentThemeConfig.primaryHex }}>
+                    {staffToDelete.roleTitle}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setStaffToDelete(null)}
+                className={`px-4 py-2.5 rounded-2xl text-xs font-bold border transition-colors cursor-pointer ${
+                  isLight
+                    ? 'border-slate-200 text-slate-700 hover:bg-slate-100'
+                    : 'border-slate-800 text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                id="confirm-delete-staff-btn"
+                onClick={() => {
+                  deleteStaffMember(staffToDelete.id);
+                  setNotificationMsg(`Stylist "${staffToDelete.name}" removed from team.`);
+                  setStaffToDelete(null);
+                  setTimeout(() => setNotificationMsg(null), 3000);
+                }}
+                className="px-5 py-2.5 rounded-2xl text-xs font-black text-white bg-rose-600 hover:bg-rose-500 transition-all flex items-center gap-1.5 shadow-lg shadow-rose-600/20 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Remove Stylist</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
-
