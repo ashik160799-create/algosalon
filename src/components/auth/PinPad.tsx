@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Delete, Eye, EyeOff, ArrowLeft, KeyRound, HelpCircle, RotateCcw } from 'lucide-react';
+import { Delete, Eye, EyeOff, ArrowLeft, KeyRound, HelpCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 
@@ -283,21 +283,6 @@ export const PinPad: React.FC<PinPadProps> = ({
           <p className="text-xs text-red-500 font-bold text-center">
             {displayError}
           </p>
-          <button
-            type="button"
-            id="pinpad-retry-quick-btn"
-            onClick={() => {
-              handleClear();
-              handleKeyPress(1);
-              handleKeyPress(2);
-              handleKeyPress(3);
-              handleKeyPress(4);
-            }}
-            className="text-[11px] font-bold px-2.5 py-1 rounded-lg border border-red-300 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 hover:opacity-80 transition-opacity flex items-center gap-1 cursor-pointer"
-          >
-            <RotateCcw className="w-3 h-3" />
-            <span>Fill Demo PIN (1234)</span>
-          </button>
         </motion.div>
       )}
 
@@ -378,4 +363,3 @@ export const PinPad: React.FC<PinPadProps> = ({
     </div>
   );
 };
-
