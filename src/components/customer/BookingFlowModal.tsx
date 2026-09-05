@@ -3,7 +3,13 @@ import { useApp } from '../../context/AppContext';
 import { Salon, ServiceItem, StaffMember } from '../../types';
 import { StaffAvatar } from '../common/StaffAvatar';
 import { getRecommendedAiBanner } from '../../utils/aiBannerGenerator';
-import { isSlotInPast, getLocalDateString, parseTimeSlotHoursMinutes } from '../../utils/dateTimeUtils';
+import {
+  isSlotInPast,
+  getLocalDateString,
+  parseTimeSlotHoursMinutes,
+  getSalonTimezone,
+  getDualBookingTime,
+} from '../../utils/dateTimeUtils';
 import {
   generateTimeSlotsForDate,
   getSalonScheduleForDate,
@@ -49,11 +55,13 @@ export const BookingFlowModal: React.FC = () => {
     colorThemeMode,
     formatPrice,
     t,
+    activeCountry,
   } = useApp();
 
   const isLight = colorThemeMode === 'light';
 
   const salon = preselectedSalon || salons[0];
+  const salonTimezone = useMemo(() => getSalonTimezone(salon).timeZone, [salon]);
   const salonServices = services.filter(s => s.salonId === salon?.id);
   const salonStaff = staffMembers.filter(st => st.salonId === salon?.id);
 
@@ -258,7 +266,7 @@ export const BookingFlowModal: React.FC = () => {
     if (!selectedDate) return;
     if (allAvailableSlotsForDate.length > 0) {
       const isSlotValidAndFree = (s: string) => {
-        if (!s || isSlotInPast(selectedDate, s) || !allAvailableSlotsForDate.includes(s)) return false;
+        if (!s || isSlotInPast(selectedDate, s, salonTimezone) || !allAvailableSlotsForDate.includes(s)) return false;
         const avail = getAvailableStaffForSlot(selectedDate, s);
         return selectedStaff ? avail.some(st => st.id === selectedStaff.id) : avail.length > 0;
       };
@@ -270,12 +278,17 @@ export const BookingFlowModal: React.FC = () => {
     } else {
       setSelectedTimeSlot('');
     }
-  }, [selectedDate, allAvailableSlotsForDate, selectedStaff, selectedService]);
+  }, [selectedDate, allAvailableSlotsForDate, selectedStaff, selectedService, salonTimezone]);
+
+  const dualTime = useMemo(() => {
+    if (!selectedDate || !selectedTimeSlot || !salon) return null;
+    return getDualBookingTime(selectedDate, selectedTimeSlot, salon);
+  }, [selectedDate, selectedTimeSlot, salon]);
 
   const handleConfirmBooking = () => {
     if (!selectedService) return;
 
-    if (isSlotInPast(selectedDate, selectedTimeSlot)) {
+    if (isSlotInPast(selectedDate, selectedTimeSlot, salonTimezone)) {
       setBookingError('Please select a future appointment time.');
       setCurrentStep(3);
       return;
@@ -375,7 +388,7 @@ export const BookingFlowModal: React.FC = () => {
       }
       setCurrentStep(3);
     } else if (currentStep === 3) {
-      if (!selectedDate || !selectedTimeSlot || isSlotInPast(selectedDate, selectedTimeSlot)) {
+      if (!selectedDate || !selectedTimeSlot || isSlotInPast(selectedDate, selectedTimeSlot, salonTimezone)) {
         setBookingError('Please select a valid upcoming appointment time slot.');
         return;
       }
@@ -1265,9 +1278,16 @@ export const BookingFlowModal: React.FC = () => {
                 </div>
                 <div className={`flex items-center justify-between pb-2 border-b ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
                   <span className={isLight ? 'text-slate-500' : 'text-slate-400'}>Date & Time</span>
-                  <span className={`font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                    {selectedDate} at {selectedTimeSlot}
-                  </span>
+                  <div className="text-right">
+                    <span className={`font-bold block ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                      {selectedDate} at {selectedTimeSlot}
+                    </span>
+                    {dualTime && !dualTime.isSameTimezone && (
+                      <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 block">
+                        {dualTime.salonTzCode} • Your time: {dualTime.customerFormatted.split('__')[1] || dualTime.customerTzCode}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center justify-between pt-1">
                   <span className={`font-bold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>{t('booking.total', 'Total Due')}</span>
@@ -1504,7 +1524,7 @@ export const BookingFlowModal: React.FC = () => {
                     (currentStep === 1 && !selectedService) ||
                     (currentStep === 3 &&
                       (!selectedTimeSlot ||
-                        isSlotInPast(selectedDate, selectedTimeSlot) ||
+                        isSlotInPast(selectedDate, selectedTimeSlot, salonTimezone) ||
                         totalVisibleSlots === 0))
                   }
                   className="px-6 py-2.5 rounded-2xl text-white font-extrabold text-xs shadow-md transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
