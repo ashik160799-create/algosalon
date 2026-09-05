@@ -65,7 +65,7 @@ export const BusinessOverview: React.FC = () => {
 
   const totalRevenue = useMemo(() => {
     return salonAppointments
-      .filter(a => a.status === 'completed' || a.status === 'confirmed')
+      .filter(a => a.status === 'completed')
       .reduce((acc, curr) => acc + curr.servicePrice, 0);
   }, [salonAppointments]);
 
@@ -107,7 +107,9 @@ export const BusinessOverview: React.FC = () => {
         bookingsCount: 0,
         lastDate: apt.date,
       };
-      existing.totalSpent += apt.servicePrice;
+      if (apt.status === 'completed') {
+        existing.totalSpent += apt.servicePrice;
+      }
       existing.bookingsCount += 1;
       existing.lastDate = apt.date;
       map.set(apt.customerName, existing);

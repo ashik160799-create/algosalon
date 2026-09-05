@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { AlgoLogo } from '../common/AlgoLogo';
 import { ThemeSwitcherModal } from '../common/ThemeSwitcherModal';
 import { LocaleRegionSwitcherModal } from '../common/LocaleRegionSwitcherModal';
+import { formatTimeAgo } from '../../utils/dateTimeUtils';
 import {
   Home,
   Calendar,
@@ -298,7 +299,9 @@ export const CustomerNavbar: React.FC = () => {
                           <div className="flex items-start justify-between gap-2">
                             <h4 className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>{n.title}</h4>
                             <div className="flex items-center gap-1 shrink-0">
-                              <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{n.timestamp}</span>
+                              <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                                {formatTimeAgo(n.timestamp || n.date)}
+                              </span>
                               <button
                                 type="button"
                                 onClick={(e) => {

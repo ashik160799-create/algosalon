@@ -81,7 +81,7 @@ export const BusinessReports: React.FC = () => {
 
   const grossRevenue = useMemo(() => {
     return filteredAppointments
-      .filter(a => a.status === 'completed' || a.status === 'confirmed')
+      .filter(a => a.status === 'completed')
       .reduce((acc, curr) => acc + curr.servicePrice, 0);
   }, [filteredAppointments]);
 
@@ -94,7 +94,7 @@ export const BusinessReports: React.FC = () => {
   const totalBookings = filteredAppointments.length;
   const completedBookings = filteredAppointments.filter(a => a.status === 'completed').length;
   const confirmedBookings = filteredAppointments.filter(a => a.status === 'confirmed').length;
-  const avgOrderValue = totalBookings > 0 ? Math.round(grossRevenue / totalBookings) : 0;
+  const avgOrderValue = completedBookings > 0 ? Math.round(grossRevenue / completedBookings) : 0;
   const occupancyRate = 84;
 
   const categoryStats = useMemo(() => {
@@ -106,12 +106,14 @@ export const BusinessReports: React.FC = () => {
     });
 
     filteredAppointments.forEach(apt => {
-      const srv = salonServices.find(s => s.id === apt.serviceId);
-      const cat = srv ? srv.category : 'Haircut';
-      const existing = map.get(cat) || { count: 0, revenue: 0 };
-      existing.count += 1;
-      existing.revenue += apt.servicePrice;
-      map.set(cat, existing);
+      if (apt.status === 'completed') {
+        const srv = salonServices.find(s => s.id === apt.serviceId);
+        const cat = srv ? srv.category : 'Haircut';
+        const existing = map.get(cat) || { count: 0, revenue: 0 };
+        existing.count += 1;
+        existing.revenue += apt.servicePrice;
+        map.set(cat, existing);
+      }
     });
 
     return Array.from(map.entries())
@@ -206,11 +208,11 @@ export const BusinessReports: React.FC = () => {
       headers = 'Stylist Name,Role,Completed Slots,Gross Revenue (AED),Commission Rate,Net Payout (AED),Status\n';
       rows = salonStaff
         .map(s => {
-          const slots = salonAppointments.filter(a => a.staffId === s.id);
+          const slots = salonAppointments.filter(a => a.staffId === s.id && a.status === 'completed');
           const rev = slots.reduce((acc, curr) => acc + curr.servicePrice, 0);
-          const payout = Math.round(rev * 0.4);
+          const payout = Math.round(rev * (s.commissionRate ? s.commissionRate / 100 : 0.4));
           const isPaid = settledPayouts[s.id] ? 'Settled' : 'Pending';
-          return `"${s.name}","${s.role}","${slots.length}","${rev}","40%","${payout}","${isPaid}"`;
+          return `"${s.name}","${s.role}","${slots.length}","${rev}","${s.commissionRate ?? 40}%","${payout}","${isPaid}"`;
         })
         .join('\n');
       fileName = `ALGO_${salon.name.replace(/\s+/g, '_')}_Staff_Payroll.csv`;
@@ -940,7 +942,7 @@ export const BusinessReports: React.FC = () => {
             <div className="space-y-3">
               {salonStaff.map(staff => {
                 const staffBookings = salonAppointments.filter(
-                  a => a.staffId === staff.id && (a.status === 'completed' || a.status === 'confirmed')
+                  a => a.staffId === staff.id && a.status === 'completed'
                 );
                 const grossGen = staffBookings.reduce((acc, curr) => acc + curr.servicePrice, 0);
                 const commissionRate = staff.commissionRate ?? 40;

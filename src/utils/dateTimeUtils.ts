@@ -301,3 +301,41 @@ export function getFirstAvailableSlot(
   if (available.length > 0) return available[0];
   return allSlots[0] || fallback;
 }
+
+/**
+ * Formats an ISO string or date into a human-friendly relative time label
+ * e.g. "Just now", "5m ago", "2h ago", "Yesterday", "3d ago", "2w ago"
+ */
+export function formatTimeAgo(dateOrIso?: string): string {
+  if (!dateOrIso) return 'Just now';
+  if (dateOrIso === 'Just now') return 'Just now';
+
+  try {
+    const d = new Date(dateOrIso);
+    if (isNaN(d.getTime())) return dateOrIso;
+
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    if (diffMs < 0) return 'Just now';
+
+    const diffSecs = Math.floor(diffMs / 1000);
+    if (diffSecs < 60) return 'Just now';
+
+    const diffMins = Math.floor(diffSecs / 60);
+    if (diffMins < 60) return `${diffMins}m ago`;
+
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays}d ago`;
+
+    const diffWeeks = Math.floor(diffDays / 7);
+    if (diffWeeks < 4) return `${diffWeeks}w ago`;
+
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  } catch {
+    return dateOrIso;
+  }
+}

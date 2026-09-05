@@ -16,6 +16,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { NotificationItem } from '../../types';
+import { formatTimeAgo } from '../../utils/dateTimeUtils';
 
 interface BusinessNotificationDrawerProps {
   isOpen: boolean;
@@ -340,7 +341,7 @@ export const BusinessNotificationDrawer: React.FC<BusinessNotificationDrawerProp
                             isLight ? 'text-slate-400' : 'text-slate-500'
                           }`}>
                             <Clock className="w-3 h-3" />
-                            {item.timestamp || 'Just now'}
+                            {formatTimeAgo(item.timestamp || item.date)}
                           </span>
                           <button
                             type="button"

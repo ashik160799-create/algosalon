@@ -744,34 +744,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (result.staff && result.staff.length > 0) setStaffMembers(result.staff);
     });
 
-    // 2. Hydrate appointments
+    // 2. Hydrate appointments (replace initial mock data with live database appointments)
     fetchAppointmentsFromDb().then(liveApts => {
-      if (!isMounted || !liveApts || liveApts.length === 0) return;
+      if (!isMounted || !liveApts) return;
       setAppointments(prev => {
-        const existingIds = new Set(prev.map(a => a.id));
-        const newOnes = liveApts.filter(a => !existingIds.has(a.id));
-        return [...newOnes, ...prev];
+        const nonMock = prev.filter(a => !a.id.startsWith('apt-'));
+        const liveIds = new Set(liveApts.map(a => a.id));
+        const unsynced = nonMock.filter(a => !liveIds.has(a.id));
+        const combined = [...liveApts, ...unsynced];
+        localStorage.setItem('algosalon_appointments', JSON.stringify(combined));
+        return combined;
       });
     });
 
-    // 3. Hydrate reviews
+    // 3. Hydrate reviews (replace initial mock reviews with live database reviews)
     fetchReviewsFromDb().then(liveReviews => {
-      if (!isMounted || !liveReviews || liveReviews.length === 0) return;
+      if (!isMounted || !liveReviews) return;
       setReviews(prev => {
-        const existingIds = new Set(prev.map(r => r.id));
-        const newOnes = liveReviews.filter(r => !existingIds.has(r.id));
-        const updatedPrev = prev.map(localRev => {
-          const liveRev = liveReviews.find(r => r.id === localRev.id);
-          if (liveRev) {
-            return {
-              ...localRev,
-              reply: liveRev.reply || localRev.reply,
-              businessReply: liveRev.businessReply || localRev.businessReply,
-            };
-          }
-          return localRev;
-        });
-        return [...newOnes, ...updatedPrev];
+        const nonMock = prev.filter(r => !r.id.startsWith('rev-'));
+        const liveIds = new Set(liveReviews.map(r => r.id));
+        const unsynced = nonMock.filter(r => !liveIds.has(r.id));
+        const combined = [...liveReviews, ...unsynced];
+        localStorage.setItem('algosalon_reviews', JSON.stringify(combined));
+        return combined;
       });
     });
 
@@ -781,20 +776,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       fetchReviewsFromDb().then(liveReviews => {
         if (!isMounted || !liveReviews) return;
         setReviews(prev => {
-          const existingIds = new Set(prev.map(r => r.id));
-          const newOnes = liveReviews.filter(r => !existingIds.has(r.id));
-          const updatedPrev = prev.map(localRev => {
-            const liveRev = liveReviews.find(r => r.id === localRev.id);
-            if (liveRev) {
-              return {
-                ...localRev,
-                reply: liveRev.reply || localRev.reply,
-                businessReply: liveRev.businessReply || localRev.businessReply,
-              };
-            }
-            return localRev;
-          });
-          return [...newOnes, ...updatedPrev];
+          const nonMock = prev.filter(r => !r.id.startsWith('rev-'));
+          const liveIds = new Set(liveReviews.map(r => r.id));
+          const unsynced = nonMock.filter(r => !liveIds.has(r.id));
+          const combined = [...liveReviews, ...unsynced];
+          localStorage.setItem('algosalon_reviews', JSON.stringify(combined));
+          return combined;
         });
       });
     });
@@ -1021,11 +1008,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           });
 
           fetchNotificationsFromDb(authUser.id).then(liveNotifs => {
-            if (!isMounted || !liveNotifs || liveNotifs.length === 0) return;
+            if (!isMounted || !liveNotifs) return;
             setNotifications(prev => {
-              const existingIds = new Set(prev.map(n => n.id));
-              const newOnes = liveNotifs.filter(n => !existingIds.has(n.id));
-              return [...newOnes, ...prev];
+              const nonMock = prev.filter(n => n.id !== 'notif-1' && n.id !== 'notif-2');
+              const liveIds = new Set(liveNotifs.map(n => n.id));
+              const unsynced = nonMock.filter(n => !liveIds.has(n.id));
+              const combined = [...liveNotifs, ...unsynced];
+              localStorage.setItem('algosalon_notifications', JSON.stringify(combined));
+              return combined;
             });
           });
         }
@@ -1058,11 +1048,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const currentUserId = currentRole === 'customer' ? customerUser?.id : businessUser?.id;
     if (currentUserId) {
       fetchNotificationsFromDb(currentUserId, currentRole).then(liveNotifs => {
-        if (!isMounted || !liveNotifs || liveNotifs.length === 0) return;
+        if (!isMounted || !liveNotifs) return;
         setNotifications(prev => {
-          const existingIds = new Set(prev.map(n => n.id));
-          const newOnes = liveNotifs.filter(n => !existingIds.has(n.id));
-          return [...newOnes, ...prev];
+          const nonMock = prev.filter(n => n.id !== 'notif-1' && n.id !== 'notif-2');
+          const liveIds = new Set(liveNotifs.map(n => n.id));
+          const unsynced = nonMock.filter(n => !liveIds.has(n.id));
+          const combined = [...liveNotifs, ...unsynced];
+          localStorage.setItem('algosalon_notifications', JSON.stringify(combined));
+          return combined;
         });
       });
 
@@ -1242,7 +1235,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       userType: 'customer',
       title: `Welcome, ${freshCustomer.name.split(' ')[0]}!`,
       message: 'Your new client account is active. Explore top-tier salons and book appointments in real time.',
-      date: 'Just now',
+      date: new Date().toISOString(),
       type: 'system',
       read: false,
       timestamp: new Date().toISOString(),
@@ -1815,7 +1808,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         id: `notif-${Date.now()}-biz`,
         title: initialStatus === 'pending' ? 'New Booking Request' : 'New Appointment Booked',
         message: `${data.customerName} requested ${data.serviceName} with ${data.staffName} for ${data.date} at ${data.timeSlot}.`,
-        date: 'Just now',
+        date: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
         read: false,
         userType: 'business',
         linkTab: initialStatus === 'pending' ? 'customers' : 'calendar',
@@ -1824,7 +1818,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         id: `notif-${Date.now()}-cust`,
         title: initialStatus === 'pending' ? 'Booking Request Submitted' : 'Booking Confirmed',
         message: `Your booking for ${data.serviceName} at ${data.salonName} on ${data.date} at ${data.timeSlot} has been placed.`,
-        date: 'Just now',
+        date: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
         read: false,
         userType: 'customer',
         linkTab: 'bookings',
@@ -1946,7 +1941,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         id: `notif-${Date.now()}-status-${status}`,
         title: notifTitle,
         message: notifMsg,
-        date: 'Just now',
+        date: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
         read: false,
         userType: 'customer',
         linkTab: 'bookings',
@@ -1982,7 +1978,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         id: `notif-${Date.now()}-accept`,
         title: 'Booking Request Accepted! 🎉',
         message: `Your appointment for ${targetApt.serviceName} on ${targetApt.date} at ${targetApt.timeSlot} has been accepted by ${targetApt.salonName}.`,
-        date: 'Just now',
+        date: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
         read: false,
         userType: 'customer',
         linkTab: 'bookings',
@@ -2055,7 +2052,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         id: `notif-${Date.now()}-resched`,
         title: 'New Time Proposed by Salon',
         message: `${targetApt.salonName} suggested rescheduling ${targetApt.serviceName} to ${newDate} at ${newTimeSlot}.`,
-        date: 'Just now',
+        date: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
         read: false,
         userType: 'customer',
         linkTab: 'bookings',
@@ -2113,7 +2111,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         id: `notif-${Date.now()}-decline`,
         title: 'Booking Request Update',
         message: `Your booking request for ${targetApt.serviceName} could not be accepted. Reason: ${reason}`,
-        date: 'Just now',
+        date: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
         read: false,
         userType: 'customer',
         linkTab: 'bookings',
@@ -2191,7 +2190,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         id: `notif-${Date.now()}-resched-accepted`,
         title: 'Rescheduled Booking Confirmed! 🎉',
         message: `${targetApt.customerName} accepted the proposed time for ${targetApt.serviceName} on ${effectiveDate} at ${effectiveTimeSlot}.`,
-        date: 'Just now',
+        date: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
         read: false,
         userType: 'business',
         linkTab: 'calendar',
@@ -2249,7 +2249,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         id: `notif-${Date.now()}-resched-declined`,
         title: 'Rescheduled Proposal Declined',
         message: `${targetApt.customerName} declined the proposed time for ${targetApt.serviceName}.`,
-        date: 'Just now',
+        date: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
         read: false,
         userType: 'business',
         linkTab: 'calendar',
