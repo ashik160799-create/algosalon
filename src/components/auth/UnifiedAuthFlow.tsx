@@ -709,7 +709,7 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
         setPinLockoutCooldown(30);
         setExistingCodeError('Too many failed attempts. For security, please wait 30 seconds or tap Forgot App Code to reset via email.');
       } else {
-        setExistingCodeError('Incorrect 4-digit App Code. Try 1234 or tap Forgot App Code.');
+        setExistingCodeError('Incorrect 4-digit App Code. Please check your code or tap Forgot App Code.');
       }
     }
   };
@@ -2147,6 +2147,7 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
                     type="button"
                     onClick={() => setResendNotice(null)}
                     className="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded-full transition-colors shrink-0 cursor-pointer"
+                    aria-label="Dismiss notice"
                   >
                     <X className="w-3.5 h-3.5 opacity-70 hover:opacity-100" />
                   </button>
