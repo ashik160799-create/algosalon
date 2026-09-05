@@ -1,443 +1,155 @@
-import { Salon, ServiceItem, WorkingDayHour, SpecialDateSchedule } from '../types';
-import { isSlotInPast, getLocalDateString } from './dateTimeUtils';
+import { Salon, WorkingDayHour } from '../types';
+import { getNowInTargetTimezone } from './dateTimeUtils';
 
-export function format12Hour(time24: string): string {
-  if (!time24) return '';
-  const [hStr, mStr] = time24.split(':');
-  let h = parseInt(hStr, 10);
-  const m = mStr || '00';
-  if (isNaN(h)) return time24;
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  h = h % 12;
-  if (h === 0) h = 12;
-  return `${h}:${m} ${ampm}`;
-}
+/**
+ * Maps salon address/city to IANA timezone identifier
+ */
+export const getSalonTimezone = (salonOrLocation?: Salon | { address?: string; city?: string } | string | null): string => {
+  if (!salonOrLocation) return 'Asia/Dubai';
+  const text = (typeof salonOrLocation === 'string' ? salonOrLocation : `${salonOrLocation.address || ''} ${salonOrLocation.city || ''}`).toLowerCase();
 
-export interface SalonDayScheduleResult {
-  isOpen: boolean;
-  open: string;
-  close: string;
-  formattedOpen: string;
-  formattedClose: string;
-  isSpecial: boolean;
-  specialTitle?: string;
-  specialReason?: string;
-  isClosedReason?: string;
-}
+  if (text.includes('saudi') || text.includes('riyadh') || text.includes('jeddah') || text.includes('dammam')) return 'Asia/Riyadh';
+  if (text.includes('qatar') || text.includes('doha')) return 'Asia/Qatar';
+  if (text.includes('kuwait')) return 'Asia/Kuwait';
+  if (text.includes('bahrain') || text.includes('manama')) return 'Asia/Bahrain';
+  if (text.includes('oman') || text.includes('muscat')) return 'Asia/Muscat';
+  if (text.includes('london') || text.includes('uk') || text.includes('united kingdom')) return 'Europe/London';
+  if (text.includes('paris') || text.includes('france')) return 'Europe/Paris';
+  if (text.includes('berlin') || text.includes('germany')) return 'Europe/Berlin';
+  if (text.includes('tokyo') || text.includes('japan')) return 'Asia/Tokyo';
+  if (text.includes('seoul') || text.includes('korea')) return 'Asia/Seoul';
+  if (text.includes('mumbai') || text.includes('delhi') || text.includes('india') || text.includes('bangalore')) return 'Asia/Kolkata';
+  if (text.includes('karachi') || text.includes('lahore') || text.includes('pakistan')) return 'Asia/Karachi';
+  if (text.includes('dhaka') || text.includes('bangladesh')) return 'Asia/Dhaka';
+  if (text.includes('singapore')) return 'Asia/Singapore';
+  if (text.includes('new york') || text.includes('ny') || text.includes('usa')) return 'America/New_York';
+  if (text.includes('toronto') || text.includes('canada')) return 'America/Toronto';
+  if (text.includes('sydney') || text.includes('australia')) return 'Australia/Sydney';
 
-export function getSalonScheduleForDate(
-  dateStr: string,
-  workingHours?: WorkingDayHour[],
-  specialSchedules?: SpecialDateSchedule[],
-  isOpenNowOverride?: boolean
-): SalonDayScheduleResult {
-  const todayStr = getLocalDateString(new Date());
+  return 'Asia/Dubai';
+};
 
-  // If business owner explicitly shut down the shop (isOpenNow === false), close today immediately
-  if (isOpenNowOverride === false && dateStr === todayStr) {
-    return {
-      isOpen: false,
-      open: '09:00',
-      close: '21:00',
-      formattedOpen: '9:00 AM',
-      formattedClose: '9:00 PM',
-      isSpecial: false,
-      isClosedReason: 'Shop Closed / Offline (Paused by Salon Owner)',
-    };
+/**
+ * Formats a 24h or 12h time string to standard clean 12-hour format e.g. "09:00 AM", "10:30 PM"
+ */
+export const format12Hour = (timeStr?: string): string => {
+  if (!timeStr) return '';
+  const clean = timeStr.trim();
+  if (clean.toUpperCase().includes('AM') || clean.toUpperCase().includes('PM')) {
+    return clean;
   }
+  const parts = clean.split(':');
+  if (parts.length < 2) return timeStr;
+  let hours = parseInt(parts[0], 10);
+  const minutes = parts[1].padStart(2, '0');
+  const meridiem = hours >= 12 ? 'PM' : 'AM';
+  if (hours > 12) hours -= 12;
+  if (hours === 0) hours = 12;
+  return `${String(hours).padStart(2, '0')}:${minutes} ${meridiem}`;
+};
 
-  // 1. Check special schedules override
-  if (specialSchedules && specialSchedules.length > 0) {
-    const special = specialSchedules.find(s => s.date === dateStr);
-    if (special) {
-      if (!special.isOpen) {
-        return {
-          isOpen: false,
-          open: '09:00',
-          close: '21:00',
-          formattedOpen: '9:00 AM',
-          formattedClose: '9:00 PM',
-          isSpecial: true,
-          specialTitle: special.title,
-          specialReason: special.reason,
-          isClosedReason: special.reason || special.title || 'Special Holiday Closure',
-        };
-      } else if (special.open && special.close) {
-        return {
-          isOpen: true,
-          open: special.open,
-          close: special.close,
-          formattedOpen: format12Hour(special.open),
-          formattedClose: format12Hour(special.close),
-          isSpecial: true,
-          specialTitle: special.title,
-          specialReason: special.reason,
-        };
-      }
-    }
-  }
-
-  // 2. Default working hours weekly schedule
-  if (!workingHours || workingHours.length === 0) {
-    return {
-      isOpen: true,
-      open: '09:00',
-      close: '21:00',
-      formattedOpen: '9:00 AM',
-      formattedClose: '9:00 PM',
-      isSpecial: false,
-    };
-  }
-
-  const [year, month, day] = dateStr.split('-').map(Number);
-  const targetDate = new Date(year, month - 1, day);
-  const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const dayName = daysOfWeek[targetDate.getDay()];
-
-  const match = workingHours.find(wh => wh.day.toLowerCase() === dayName.toLowerCase());
-  if (!match) {
-    return {
-      isOpen: true,
-      open: '09:00',
-      close: '21:00',
-      formattedOpen: '9:00 AM',
-      formattedClose: '9:00 PM',
-      isSpecial: false,
-    };
-  }
-
-  return {
-    isOpen: match.isOpen,
-    open: match.open || '09:00',
-    close: match.close || '21:00',
-    formattedOpen: format12Hour(match.open || '09:00'),
-    formattedClose: format12Hour(match.close || '21:00'),
-    isSpecial: false,
-    isClosedReason: !match.isOpen ? `Store Closed on ${match.day}s` : undefined,
-  };
-}
-
-export interface SlotPeriodGroup {
-  period: 'Morning' | 'Afternoon' | 'Evening' | 'Night';
-  timeRange: string;
-  slots: string[];
-}
-
-export interface DaySlotsResult {
-  schedule: SalonDayScheduleResult;
-  allSlots: string[];
-  allSlotGroups: SlotPeriodGroup[];
-  visibleSlotGroups: SlotPeriodGroup[];
-  totalAvailableSlots: number;
-  hasAnyFutureSlots: boolean;
-}
-
-export function generateTimeSlotsForDate(
-  dateStr: string,
-  workingHours?: WorkingDayHour[],
-  specialSchedules?: SpecialDateSchedule[],
-  stepMinutes: number = 30,
-  isOpenNowOverride?: boolean
-): DaySlotsResult {
-  const schedule = getSalonScheduleForDate(dateStr, workingHours, specialSchedules, isOpenNowOverride);
-
-  if (!schedule.isOpen) {
-    return {
-      schedule,
-      allSlots: [],
-      allSlotGroups: [],
-      visibleSlotGroups: [],
-      totalAvailableSlots: 0,
-      hasAnyFutureSlots: false,
-    };
-  }
-
-  const [openH, openM] = (schedule.open || '09:00').split(':').map(n => parseInt(n, 10) || 0);
-  const [closeH, closeM] = (schedule.close || '21:00').split(':').map(n => parseInt(n, 10) || 0);
-
-  const openMin = openH * 60 + openM;
-  let closeMin = closeH * 60 + closeM;
-  if (closeMin <= openMin) {
-    closeMin += 24 * 60; // Next day rollover (e.g., closing at 01:00 AM)
-  }
-
-  const morningSlots: string[] = [];
-  const afternoonSlots: string[] = [];
-  const eveningSlots: string[] = [];
-  const nightSlots: string[] = [];
-
-  for (let m = openMin; m < closeMin; m += stepMinutes) {
-    const rawH = Math.floor(m / 60) % 24;
-    const min = m % 60;
-    const h12 = rawH % 12 === 0 ? 12 : rawH % 12;
-    const ampm = rawH >= 12 ? 'PM' : 'AM';
-    const slotStr = `${String(h12).padStart(2, '0')}:${String(min).padStart(2, '0')} ${ampm}`;
-
-    if (rawH < 12) {
-      morningSlots.push(slotStr);
-    } else if (rawH < 17) {
-      afternoonSlots.push(slotStr);
-    } else if (rawH < 20) {
-      eveningSlots.push(slotStr);
-    } else {
-      nightSlots.push(slotStr);
-    }
-  }
-
-  const allSlotGroups: SlotPeriodGroup[] = [];
-
-  const addGroup = (period: 'Morning' | 'Afternoon' | 'Evening' | 'Night', slots: string[]) => {
-    if (slots.length === 0) return;
-    const first = slots[0];
-    const last = slots[slots.length - 1];
-    allSlotGroups.push({
-      period,
-      timeRange: first === last ? first : `${first} - ${last}`,
-      slots,
-    });
-  };
-
-  addGroup('Morning', morningSlots);
-  addGroup('Afternoon', afternoonSlots);
-  addGroup('Evening', eveningSlots);
-  addGroup('Night', nightSlots);
-
-  const allSlots = allSlotGroups.flatMap(g => g.slots);
-
-  // Filter out slots that have already passed if date is Today or in the past
-  const visibleSlotGroups: SlotPeriodGroup[] = allSlotGroups
-    .map(grp => {
-      const futureSlots = grp.slots.filter(slot => !isSlotInPast(dateStr, slot));
-      if (futureSlots.length === 0) return null;
-      const first = futureSlots[0];
-      const last = futureSlots[futureSlots.length - 1];
-      return {
-        period: grp.period,
-        timeRange: first === last ? first : `${first} - ${last}`,
-        slots: futureSlots,
-      };
-    })
-    .filter((g): g is SlotPeriodGroup => g !== null);
-
-  const totalAvailableSlots = visibleSlotGroups.reduce((acc, g) => acc + g.slots.length, 0);
-
-  return {
-    schedule,
-    allSlots,
-    allSlotGroups,
-    visibleSlotGroups,
-    totalAvailableSlots,
-    hasAnyFutureSlots: totalAvailableSlots > 0,
-  };
-}
-
-export interface LiveStatusResult {
+/**
+ * Computes live open/closed status for a salon based on its business hours and local timezone.
+ */
+export const computeSalonLiveStatus = (
+  openingTime?: string,
+  closingTime?: string,
+  daysSchedule?: WorkingDayHour[],
+  isOpenNowOverride?: boolean,
+  salonOrTimezone?: Salon | { address?: string; city?: string } | string | null
+): {
   isOpen: boolean;
   statusText: string;
-  badgeLabel: string;
-  badgeClass: string;
-  closingTimeFormatted?: string;
-  openingTimeFormatted?: string;
-}
-
-export function computeSalonLiveStatus(
-  workingHours?: WorkingDayHour[],
-  specialSchedules?: SpecialDateSchedule[],
-  isOpenNowOverride?: boolean
-): LiveStatusResult {
+  badgeColor: string;
+  nextChangeText: string;
+} => {
   if (isOpenNowOverride === false) {
     return {
       isOpen: false,
-      statusText: 'Shop Closed • Offline / Paused by Salon Owner',
-      badgeLabel: 'Shop Closed',
-      badgeClass: 'bg-rose-950/80 border border-rose-500/40 text-rose-300',
+      statusText: 'Closed Currently',
+      badgeColor: 'text-rose-500 bg-rose-500/10 border-rose-500/20',
+      nextChangeText: 'Opens tomorrow',
     };
   }
 
-  const now = new Date();
-  const todayYMD = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const targetTimezone = typeof salonOrTimezone === 'string' && salonOrTimezone.includes('/')
+    ? salonOrTimezone
+    : getSalonTimezone(salonOrTimezone);
 
-  // Check special holiday / custom date override
-  if (specialSchedules && specialSchedules.length > 0) {
-    const specialToday = specialSchedules.find(s => s.date === todayYMD);
-    if (specialToday) {
-      if (!specialToday.isOpen) {
-        return {
-          isOpen: false,
-          statusText: `Closed Today • ${specialToday.title}`,
-          badgeLabel: 'Holiday Closed',
-          badgeClass: 'bg-rose-950/80 border border-rose-500/40 text-rose-300',
-        };
-      } else if (specialToday.open && specialToday.close) {
-        const [openH, openM] = specialToday.open.split(':').map(n => parseInt(n, 10) || 0);
-        const [closeH, closeM] = specialToday.close.split(':').map(n => parseInt(n, 10) || 0);
-        const openMin = openH * 60 + openM;
-        const closeMin = closeH * 60 + closeM;
-        const formattedOpen = format12Hour(specialToday.open);
-        const formattedClose = format12Hour(specialToday.close);
-
-        if (currentMinutes < openMin) {
-          return {
-            isOpen: false,
-            statusText: `Special Hours • Opens today at ${formattedOpen}`,
-            badgeLabel: `Opens ${formattedOpen}`,
-            badgeClass: 'bg-amber-950/80 border border-amber-500/40 text-amber-300',
-            openingTimeFormatted: formattedOpen,
-          };
-        }
-        if (currentMinutes >= openMin && currentMinutes < closeMin) {
-          return {
-            isOpen: true,
-            statusText: `Special Hours • Closes ${formattedClose} (${specialToday.title})`,
-            badgeLabel: 'Special Hours',
-            badgeClass: 'bg-emerald-950/80 border border-emerald-500/50 text-emerald-300',
-            closingTimeFormatted: formattedClose,
-          };
-        }
-        return {
-          isOpen: false,
-          statusText: `Closed for today • ${specialToday.title}`,
-          badgeLabel: 'Closed',
-          badgeClass: 'bg-slate-900/90 border border-slate-700 text-slate-400',
-        };
-      }
-    }
-  }
-
-  if (!workingHours || workingHours.length === 0) {
-    return {
-      isOpen: true,
-      statusText: 'Open today',
-      badgeLabel: 'Open',
-      badgeClass: 'bg-emerald-950/80 border border-emerald-500/40 text-emerald-300',
-    };
-  }
-
+  const nowTz = getNowInTargetTimezone(targetTimezone);
   const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const todayName = daysOfWeek[now.getDay()];
+  const currentDayName = daysOfWeek[new Date(nowTz.year, nowTz.month - 1, nowTz.date).getDay()];
 
-  const todaySchedule = workingHours.find(
-    wh => wh.day.toLowerCase() === todayName.toLowerCase()
-  );
+  let openStr = openingTime || '09:00 AM';
+  let closeStr = closingTime || '10:00 PM';
 
-  if (!todaySchedule || !todaySchedule.isOpen) {
-    const todayIndex = now.getDay();
-    let nextOpenSchedule: WorkingDayHour | undefined;
-    let daysAhead = 1;
-    for (let i = 1; i <= 7; i++) {
-      const nextDayName = daysOfWeek[(todayIndex + i) % 7];
-      const found = workingHours.find(wh => wh.day.toLowerCase() === nextDayName.toLowerCase() && wh.isOpen);
-      if (found) {
-        nextOpenSchedule = found;
-        daysAhead = i;
-        break;
+  if (daysSchedule && daysSchedule.length > 0) {
+    const todaySched = daysSchedule.find(d => d.day.toLowerCase() === currentDayName.toLowerCase());
+    if (todaySched) {
+      if (todaySched.isClosed) {
+        return {
+          isOpen: false,
+          statusText: 'Closed Today',
+          badgeColor: 'text-rose-500 bg-rose-500/10 border-rose-500/20',
+          nextChangeText: 'Opens on next scheduled day',
+        };
       }
+      openStr = todaySched.open || openStr;
+      closeStr = todaySched.close || closeStr;
     }
-
-    const nextDayLabel = daysAhead === 1 ? 'Tomorrow' : (nextOpenSchedule?.day || 'Soon');
-    const openTime = nextOpenSchedule?.open ? format12Hour(nextOpenSchedule.open) : '9 AM';
-
-    return {
-      isOpen: false,
-      statusText: `Closed today • Opens ${nextDayLabel} ${openTime}`,
-      badgeLabel: 'Closed',
-      badgeClass: 'bg-slate-900/90 border border-slate-700 text-slate-400',
-    };
   }
 
-  const [openH, openM] = todaySchedule.open.split(':').map(n => parseInt(n, 10) || 0);
-  const [closeH, closeM] = todaySchedule.close.split(':').map(n => parseInt(n, 10) || 0);
+  const parseToMinutes = (tStr: string): number => {
+    const clean = tStr.trim().toUpperCase();
+    const match = clean.match(/(\d+):(\d+)\s*(AM|PM)?/);
+    if (!match) return 0;
+    let h = parseInt(match[1], 10);
+    const m = parseInt(match[2], 10);
+    const meridiem = match[3];
+    if (meridiem === 'PM' && h < 12) h += 12;
+    if (meridiem === 'AM' && h === 12) h = 0;
+    return h * 60 + m;
+  };
 
-  const openMinutes = openH * 60 + openM;
-  const closeMinutes = closeH * 60 + closeM;
+  const openMins = parseToMinutes(openStr);
+  const closeMins = parseToMinutes(closeStr);
+  const currentMins = nowTz.hours * 60 + nowTz.minutes;
 
-  const formattedOpen = format12Hour(todaySchedule.open);
-  const formattedClose = format12Hour(todaySchedule.close);
+  const isOpen = currentMins >= openMins && currentMins < closeMins;
 
-  if (currentMinutes < openMinutes) {
-    return {
-      isOpen: false,
-      statusText: `Closed • Opens today at ${formattedOpen}`,
-      badgeLabel: `Opens ${formattedOpen}`,
-      badgeClass: 'bg-amber-950/80 border border-amber-500/40 text-amber-300',
-      openingTimeFormatted: formattedOpen,
-    };
-  }
-
-  if (currentMinutes >= openMinutes && currentMinutes < closeMinutes) {
-    const minutesRemaining = closeMinutes - currentMinutes;
-    if (minutesRemaining <= 45) {
+  if (isOpen) {
+    const remainingMins = closeMins - currentMins;
+    if (remainingMins <= 60) {
       return {
         isOpen: true,
-        statusText: `Closing soon • Closes ${formattedClose}`,
-        badgeLabel: 'Closing Soon',
-        badgeClass: 'bg-amber-900/80 border border-amber-400 text-amber-200 animate-pulse',
-        closingTimeFormatted: formattedClose,
+        statusText: `Closing Soon (${remainingMins}m)`,
+        badgeColor: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
+        nextChangeText: `Closes at ${format12Hour(closeStr)}`,
       };
     }
-
     return {
       isOpen: true,
-      statusText: `Open now • Closes ${formattedClose}`,
-      badgeLabel: 'Open now',
-      badgeClass: 'bg-emerald-950/80 border border-emerald-500/50 text-emerald-300',
-      closingTimeFormatted: formattedClose,
+      statusText: 'Open Now',
+      badgeColor: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
+      nextChangeText: `Closes at ${format12Hour(closeStr)}`,
+    };
+  } else {
+    return {
+      isOpen: false,
+      statusText: 'Closed',
+      badgeColor: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
+      nextChangeText: `Opens at ${format12Hour(openStr)}`,
     };
   }
-
-  return {
-    isOpen: false,
-    statusText: `Closed for today • Opens tomorrow`,
-    badgeLabel: 'Closed',
-    badgeClass: 'bg-slate-900/90 border border-slate-700 text-slate-400',
-  };
-}
-
-export function getSalonStartingPrice(salon: Salon, services: ServiceItem[]): number {
-  if (salon.startingPrice) return salon.startingPrice;
-  const salonServices = services.filter(s => s.salonId === salon.id);
-  if (salonServices.length === 0) return 30;
-  return Math.min(...salonServices.map(s => s.price));
-}
-
-export function getSalonMapUrl(salon: {
-  name: string;
-  address: string;
-  city?: string;
-  mapUrl?: string;
-  lat?: number;
-  lng?: number;
-}): string {
-  if (salon.mapUrl && salon.mapUrl.trim().length > 0) {
-    const trimmed = salon.mapUrl.trim();
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      return trimmed;
-    }
-    return `https://${trimmed}`;
-  }
-
-  const query = `${salon.name}, ${salon.address}${salon.city ? ', ' + salon.city : ''}`;
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
-}
-
-export function getCleanPhoneNumber(phone: string): string {
-  if (!phone) return '';
-  return phone.replace(/[^\d+]/g, '');
-}
+};
 
 /**
- * Calculates geographical distance between two GPS coordinates in kilometers (Haversine formula)
+ * Returns Google Maps directions URL for a salon
  */
-export function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  if (!lat1 || !lon1 || !lat2 || !lon2) return 1.0;
-  const R = 6371; // Earth's radius in km
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const d = R * c;
-  return Math.round(d * 10) / 10;
-}
+export const getSalonMapUrl = (salon: Salon): string => {
+  if (salon.latitude && salon.longitude) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${salon.latitude},${salon.longitude}`;
+  }
+  const query = encodeURIComponent(`${salon.name}, ${salon.address}, ${salon.city}`);
+  return `https://www.google.com/maps/search/?api=1&query=${query}`;
+};
