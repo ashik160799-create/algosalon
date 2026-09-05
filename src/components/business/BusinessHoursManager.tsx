@@ -1,7 +1,34 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { WorkingDayHour } from '../../types';
-import { CheckCircle2, Save } from 'lucide-react';
+import { CheckCircle2, Save, AlertCircle } from 'lucide-react';
+
+const TIME_24H_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+const parseTimeToMinutes = (timeStr: string): number | null => {
+  if (!timeStr) return null;
+  const match = timeStr.trim().match(TIME_24H_REGEX);
+  if (!match) return null;
+  const hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  return hours * 60 + minutes;
+};
+
+const getDayTimeError = (dayItem: WorkingDayHour): string | null => {
+  if (!dayItem.isOpen) return null;
+  const openMinutes = parseTimeToMinutes(dayItem.open);
+  const closeMinutes = parseTimeToMinutes(dayItem.close);
+
+  if (openMinutes === null || closeMinutes === null) {
+    return 'Invalid time format. Please use 24-hour HH:MM (e.g. 09:00, 20:00).';
+  }
+
+  if (closeMinutes <= openMinutes) {
+    return 'Closing time must be after opening time.';
+  }
+
+  return null;
+};
 
 export const BusinessHoursManager: React.FC = () => {
   const { businessUser, salons, updateSalonProfile, currentThemeConfig, colorThemeMode } = useApp();
@@ -10,26 +37,38 @@ export const BusinessHoursManager: React.FC = () => {
 
   const [hours, setHours] = useState<WorkingDayHour[]>(salon.workingHours);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleToggleOpen = (index: number) => {
     setHours(prev =>
       prev.map((item, idx) => (idx === index ? { ...item, isOpen: !item.isOpen } : item))
     );
+    setErrorMessage(null);
   };
 
   const handleTimeChange = (index: number, field: 'open' | 'close', val: string) => {
     setHours(prev =>
       prev.map((item, idx) => (idx === index ? { ...item, [field]: val } : item))
     );
+    setErrorMessage(null);
   };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    for (const item of hours) {
+      const err = getDayTimeError(item);
+      if (err) {
+        setErrorMessage(`${item.day}: ${err}`);
+        return;
+      }
+    }
+
+    setErrorMessage(null);
     updateSalonProfile(salon.id, {
       workingHours: hours,
     });
     setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 2000);
+    setTimeout(() => setSavedSuccess(false), 2500);
   };
 
   return (
@@ -52,17 +91,27 @@ export const BusinessHoursManager: React.FC = () => {
 
         <button
           onClick={handleSave}
-          className="px-5 py-2.5 rounded-2xl text-white font-extrabold text-xs shadow-md transition-all flex items-center gap-1.5 self-start sm:self-auto hover:opacity-95"
-          style={{ backgroundColor: currentThemeConfig.primaryHex }}
+          className="px-5 py-2.5 rounded-2xl font-extrabold text-xs shadow-md transition-all flex items-center gap-1.5 self-start sm:self-auto hover:opacity-95 cursor-pointer"
+          style={{
+            backgroundColor: currentThemeConfig.primaryHex,
+            color: currentThemeConfig.contrastText || '#ffffff',
+          }}
         >
           <Save className="w-4 h-4" />
           <span>Save Weekly Schedule</span>
         </button>
       </div>
 
+      {errorMessage && (
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-500 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+          <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+          <span>{errorMessage}</span>
+        </div>
+      )}
+
       {savedSuccess && (
         <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-xs font-bold flex items-center gap-2 animate-in fade-in">
-          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
           <span>Working hours updated successfully! Customers can now book slots accordingly.</span>
         </div>
       )}
@@ -119,36 +168,52 @@ export const BusinessHoursManager: React.FC = () => {
               </div>
 
               {dayItem.isOpen ? (
-                <div className="flex items-center gap-2 text-xs flex-wrap">
-                  <div className="flex items-center gap-1">
-                    <span className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Opens:</span>
-                    <input
-                      type="text"
-                      value={dayItem.open}
-                      onChange={e => handleTimeChange(idx, 'open', e.target.value)}
-                      className={`border rounded-lg px-2.5 py-1 font-mono text-xs w-24 focus:outline-none ${
-                        isLight
-                          ? 'bg-white border-slate-300 text-slate-900 focus:border-slate-500'
-                          : 'bg-slate-900 border-slate-700 text-white focus:border-slate-500'
-                      }`}
-                    />
-                  </div>
+                <div className="flex flex-col gap-1.5 items-start sm:items-end">
+                  <div className="flex items-center gap-2 text-xs flex-wrap">
+                    <div className="flex items-center gap-1">
+                      <span className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Opens:</span>
+                      <input
+                        type="text"
+                        value={dayItem.open}
+                        placeholder="09:00"
+                        maxLength={5}
+                        onChange={e => handleTimeChange(idx, 'open', e.target.value)}
+                        className={`border rounded-lg px-2.5 py-1 font-mono text-xs w-24 focus:outline-none ${
+                          getDayTimeError(dayItem)
+                            ? 'border-rose-500 bg-rose-500/5 text-rose-500'
+                            : isLight
+                            ? 'bg-white border-slate-300 text-slate-900 focus:border-slate-500'
+                            : 'bg-slate-900 border-slate-700 text-white focus:border-slate-500'
+                        }`}
+                      />
+                    </div>
 
-                  <span className="text-slate-400 font-bold">—</span>
+                    <span className="text-slate-400 font-bold">—</span>
 
-                  <div className="flex items-center gap-1">
-                    <span className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Closes:</span>
-                    <input
-                      type="text"
-                      value={dayItem.close}
-                      onChange={e => handleTimeChange(idx, 'close', e.target.value)}
-                      className={`border rounded-lg px-2.5 py-1 font-mono text-xs w-24 focus:outline-none ${
-                        isLight
-                          ? 'bg-white border-slate-300 text-slate-900 focus:border-slate-500'
-                          : 'bg-slate-900 border-slate-700 text-white focus:border-slate-500'
-                      }`}
-                    />
+                    <div className="flex items-center gap-1">
+                      <span className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Closes:</span>
+                      <input
+                        type="text"
+                        value={dayItem.close}
+                        placeholder="20:00"
+                        maxLength={5}
+                        onChange={e => handleTimeChange(idx, 'close', e.target.value)}
+                        className={`border rounded-lg px-2.5 py-1 font-mono text-xs w-24 focus:outline-none ${
+                          getDayTimeError(dayItem)
+                            ? 'border-rose-500 bg-rose-500/5 text-rose-500'
+                            : isLight
+                            ? 'bg-white border-slate-300 text-slate-900 focus:border-slate-500'
+                            : 'bg-slate-900 border-slate-700 text-white focus:border-slate-500'
+                        }`}
+                      />
+                    </div>
                   </div>
+                  {getDayTimeError(dayItem) && (
+                    <span className="text-[10px] font-bold text-rose-500 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      <span>{getDayTimeError(dayItem)}</span>
+                    </span>
+                  )}
                 </div>
               ) : (
                 <span className="hidden sm:inline-block text-xs font-semibold text-rose-500 bg-rose-500/10 px-3 py-1 rounded-lg border border-rose-500/20">
@@ -166,11 +231,12 @@ export const BusinessHoursManager: React.FC = () => {
           type="button"
           onClick={handleSave}
           aria-label="Save Weekly Schedule"
-          className={`px-5 py-3.5 sm:px-6 sm:py-4 rounded-2xl sm:rounded-3xl font-black text-xs sm:text-sm text-white shadow-2xl transition-all duration-300 flex items-center justify-center gap-2.5 hover:scale-105 active:scale-95 cursor-pointer border border-white/20 backdrop-blur-md relative ${
-            savedSuccess ? 'bg-emerald-600 border-emerald-400 ring-4 ring-emerald-500/30' : ''
+          className={`px-5 py-3.5 sm:px-6 sm:py-4 rounded-2xl sm:rounded-3xl font-black text-xs sm:text-sm shadow-2xl transition-all duration-300 flex items-center justify-center gap-2.5 hover:scale-105 active:scale-95 cursor-pointer border border-white/20 backdrop-blur-md relative ${
+            savedSuccess ? 'bg-emerald-600 border-emerald-400 ring-4 ring-emerald-500/30 text-white' : ''
           }`}
           style={{
             backgroundColor: savedSuccess ? '#10b981' : currentThemeConfig.primaryHex,
+            color: savedSuccess ? '#ffffff' : currentThemeConfig.contrastText || '#ffffff',
             boxShadow: savedSuccess
               ? '0 12px 35px rgba(16, 185, 129, 0.45)'
               : `0 12px 35px ${currentThemeConfig.glowHex}`,
@@ -180,7 +246,7 @@ export const BusinessHoursManager: React.FC = () => {
           {savedSuccess ? (
             <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-white animate-in zoom-in-75 duration-200" />
           ) : (
-            <Save className="w-5 h-5 sm:w-6 sm:h-6 text-white transition-transform duration-200 group-hover:rotate-6" />
+            <Save className="w-5 h-5 sm:w-6 sm:h-6 transition-transform duration-200 group-hover:rotate-6" />
           )}
           <span className="tracking-wide">
             {savedSuccess ? 'Schedule Saved!' : 'Save Schedule'}
