@@ -105,7 +105,7 @@ export const CallContactModal: React.FC<CallContactModalProps> = ({
             <p className="text-xs text-slate-400 truncate mt-0.5">{salon.address}, {salon.city}</p>
             <div className="flex items-center gap-2 mt-1">
               {(() => {
-                const live = computeSalonLiveStatus(salon.workingHours, salon.specialSchedules, salon.isOpenNow);
+                const live = computeSalonLiveStatus(salon.workingHours, salon.specialSchedules, salon.isOpenNow, salon);
                 return (
                   <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
                     live.isOpen ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-500/10 text-slate-400'

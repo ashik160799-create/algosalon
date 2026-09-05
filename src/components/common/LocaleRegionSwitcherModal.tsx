@@ -29,7 +29,7 @@ interface LocaleRegionSwitcherModalProps {
   onClose: () => void;
 }
 
-type TabType = 'country' | 'language';
+type TabType = 'country' | 'language' | 'currency' | 'dialCode';
 
 export const LocaleRegionSwitcherModal: React.FC<LocaleRegionSwitcherModalProps> = ({
   isOpen,
@@ -165,7 +165,7 @@ export const LocaleRegionSwitcherModal: React.FC<LocaleRegionSwitcherModalProps>
                 Region & Currency
               </h2>
               <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                Select your preferred Country, Language
+                Select your preferred Country, Language, Currency, or Dial Code
               </p>
             </div>
           </div>
@@ -200,6 +200,16 @@ export const LocaleRegionSwitcherModal: React.FC<LocaleRegionSwitcherModalProps>
                 label: `Language (${SUPPORTED_LANGUAGES.find(l => l.code === activeLanguage)?.nativeName || 'EN'})`,
                 icon: Languages,
               },
+              {
+                id: 'currency',
+                label: `Currency (${currencyCode})`,
+                icon: Coins,
+              },
+              {
+                id: 'dialCode',
+                label: `Dial Code (${dialCode})`,
+                icon: Phone,
+              },
             ].map(tab => {
               const isCurrent = activeTab === tab.id;
               const Icon = tab.icon;
@@ -231,8 +241,8 @@ export const LocaleRegionSwitcherModal: React.FC<LocaleRegionSwitcherModalProps>
           </div>
         </div>
 
-        {/* Search Bar for Country */}
-        {activeTab === 'country' && (
+        {/* Search Bar for Country, Currency, Dial Code */}
+        {activeTab !== 'language' && (
           <div className="px-5 pt-3">
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -240,7 +250,13 @@ export const LocaleRegionSwitcherModal: React.FC<LocaleRegionSwitcherModalProps>
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search country name, native name, code (+971, +91), or currency..."
+                placeholder={
+                  activeTab === 'country'
+                    ? "Search country name, native name, code (+971, +91), or currency..."
+                    : activeTab === 'currency'
+                    ? "Search currency code, name, symbol..."
+                    : "Search country or calling code (+971, +1)..."
+                }
                 className={`w-full pl-10 pr-4 py-2.5 text-xs font-medium rounded-2xl border focus:outline-none transition-all ${
                   isLight
                     ? 'bg-slate-50 border-slate-200 text-slate-900 focus:border-slate-400 focus:bg-white'
