@@ -414,6 +414,7 @@ export const SplashScreen: React.FC = () => {
 
   const handleLocationResolved = () => {
     localStorage.setItem('algosalon_seen_splash', 'true');
+    localStorage.setItem('algosalon_location_prompted', 'true');
     setCurrentRole(selectedRole);
     setShowSplash(false);
   };

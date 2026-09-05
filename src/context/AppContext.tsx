@@ -1044,6 +1044,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         async position => {
           setLocationPermissionGranted(true);
           localStorage.setItem('algosalon_location_permission', 'true');
+          localStorage.setItem('algosalon_location_prompted', 'true');
           const enhanced = await refreshDeviceTelemetry(true);
           setUserLocation(enhanced.zoneLocation);
           localStorage.setItem('algosalon_user_location', enhanced.zoneLocation);
@@ -1052,6 +1053,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         async error => {
           setLocationPermissionGranted(false);
           localStorage.setItem('algosalon_location_permission', 'false');
+          localStorage.setItem('algosalon_location_prompted', 'true');
           // Graceful non-blocking fallback
           await refreshDeviceTelemetry(false);
           resolve(false);
@@ -1074,6 +1076,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem('algosalon_appointments');
     localStorage.removeItem('algosalon_notifications');
     localStorage.removeItem('algosalon_pending_auth');
+    localStorage.removeItem('algosalon_location_prompted');
+    localStorage.removeItem('algosalon_location_permission');
   };
 
   /**
@@ -1156,7 +1160,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCustomerUser(freshCustomer);
     setAppointments([]);
     setNotifications([welcomeNotif]);
-    setShowSplash(false);
     setAuthModalOpen(false);
 
     return freshCustomer;
@@ -1352,7 +1355,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return updated;
     });
     setCurrentRole('customer');
-    setShowSplash(false);
     setAuthModalOpen(false);
   };
 

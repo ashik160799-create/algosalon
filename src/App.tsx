@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { SplashScreen } from './components/splash/SplashScreen';
+import { LocationPermissionScreen } from './components/splash/LocationPermissionScreen';
 import { AuthModal } from './components/auth/AuthModal';
 import { RoleSwitchPinModal } from './components/auth/RoleSwitchPinModal';
 
@@ -50,6 +51,20 @@ const MainAppContent: React.FC = () => {
     setAuthModalOpen,
   } = useApp();
 
+  const [locationPrompted, setLocationPrompted] = useState<boolean>(() => {
+    return (
+      localStorage.getItem('algosalon_location_prompted') === 'true' ||
+      localStorage.getItem('algosalon_location_permission') !== null
+    );
+  });
+
+  useEffect(() => {
+    const isPrompted =
+      localStorage.getItem('algosalon_location_prompted') === 'true' ||
+      localStorage.getItem('algosalon_location_permission') !== null;
+    setLocationPrompted(isPrompted);
+  }, [currentRole, showSplash]);
+
   if (showSplash) {
     return <SplashScreen />;
   }
@@ -68,14 +83,33 @@ const MainAppContent: React.FC = () => {
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-28 lg:pb-8 min-w-0">
         {currentRole === 'customer' ? (
           <>
-            {activeCustomerTab === 'discover' && <CustomerHome />}
-            {activeCustomerTab === 'bookings' && <CustomerBookingsView />}
-            {activeCustomerTab === 'saved' && <CustomerSavedView />}
-            {activeCustomerTab === 'profile' && <CustomerProfileView />}
+            {!locationPrompted ? (
+              <div className="w-full min-h-[72vh] flex flex-col items-center justify-center py-6">
+                <LocationPermissionScreen
+                  onAllow={() => {
+                    localStorage.setItem('algosalon_location_prompted', 'true');
+                    setLocationPrompted(true);
+                  }}
+                  onSkip={() => {
+                    localStorage.setItem('algosalon_location_prompted', 'true');
+                    setLocationPrompted(true);
+                  }}
+                  targetRole="customer"
+                  actionType="explore"
+                />
+              </div>
+            ) : (
+              <>
+                {activeCustomerTab === 'discover' && <CustomerHome />}
+                {activeCustomerTab === 'bookings' && <CustomerBookingsView />}
+                {activeCustomerTab === 'saved' && <CustomerSavedView />}
+                {activeCustomerTab === 'profile' && <CustomerProfileView />}
 
-            <SalonDetailModal />
-            <BookingFlowModal />
-            <CustomerBottomNav />
+                <SalonDetailModal />
+                <BookingFlowModal />
+                <CustomerBottomNav />
+              </>
+            )}
           </>
         ) : (
           <>

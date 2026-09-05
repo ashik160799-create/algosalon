@@ -32,6 +32,7 @@ export const LocationPermissionScreen: React.FC<LocationPermissionScreenProps> =
   const handleAllowClick = async () => {
     setIsLocating(true);
     try {
+      localStorage.setItem('algosalon_location_prompted', 'true');
       await requestLocationPermission();
       setLocationSuccess(true);
       setTimeout(() => {
@@ -42,6 +43,14 @@ export const LocationPermissionScreen: React.FC<LocationPermissionScreenProps> =
       setIsLocating(false);
       onAllow();
     }
+  };
+
+  const handleSkipClick = () => {
+    localStorage.setItem('algosalon_location_prompted', 'true');
+    if (localStorage.getItem('algosalon_location_permission') === null) {
+      localStorage.setItem('algosalon_location_permission', 'false');
+    }
+    onSkip();
   };
 
   return (
@@ -225,7 +234,7 @@ export const LocationPermissionScreen: React.FC<LocationPermissionScreenProps> =
             id="btn-maybe-later-location"
             type="button"
             disabled={isLocating}
-            onClick={onSkip}
+            onClick={handleSkipClick}
             className={`w-full min-h-11 py-2 text-xs sm:text-sm font-bold tracking-tight transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
               isLight
                 ? 'text-zinc-600 hover:text-zinc-950'
