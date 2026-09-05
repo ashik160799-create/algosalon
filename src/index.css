@@ -1,0 +1,244 @@
+@import "tailwindcss";
+
+@layer base {
+  html, body {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background-color: var(--canvas-bg);
+    color: var(--text-heading);
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  #root {
+    width: 100%;
+    max-width: 100vw;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+    background-color: var(--canvas-bg);
+  }
+
+  :root {
+    --theme-primary: #0EA36F;
+    --theme-primary-dark: #0b8457;
+    --theme-primary-light: #34d399;
+    --theme-primary-glow: rgba(14, 163, 111, 0.35);
+    --theme-accent: #34d399;
+    --theme-secondary: #0b8457;
+    --theme-border: rgba(14, 163, 111, 0.25);
+    --theme-badge-bg: rgba(14, 163, 111, 0.15);
+    --theme-badge-text: #065f46;
+    --canvas-bg: #f8fafc;
+    --card-bg: #ffffff;
+    --card-hover: #f1f5f9;
+    --card-subtle: #f8fafc;
+    --border-subtle: #e2e8f0;
+    --text-heading: #0f172a;
+    --text-body: #475569;
+  }
+
+  [data-theme="emerald"] {
+    --theme-primary: #0EA36F;
+    --theme-primary-dark: #0b8457;
+    --theme-primary-light: #34d399;
+    --theme-primary-glow: rgba(14, 163, 111, 0.35);
+    --theme-accent: #34d399;
+    --theme-secondary: #0b8457;
+    --theme-border: rgba(14, 163, 111, 0.25);
+    --theme-badge-bg: rgba(14, 163, 111, 0.15);
+    --theme-badge-text: #065f46;
+  }
+
+  [data-theme="emerald"][data-mode="dark"] {
+    --theme-badge-text: #a7f3d0;
+  }
+
+  [data-theme="monochrome"] {
+    --theme-primary: #2563eb;
+    --theme-primary-dark: #1d4ed8;
+    --theme-primary-light: #38bdf8;
+    --theme-primary-glow: rgba(37, 99, 235, 0.35);
+    --theme-accent: #38bdf8;
+    --theme-secondary: #18181b;
+    --theme-border: rgba(59, 130, 246, 0.35);
+    --theme-badge-bg: #2563eb;
+    --theme-badge-text: #ffffff;
+  }
+
+  [data-theme="monochrome"][data-mode="light"] {
+    --theme-primary: #0f172a;
+    --theme-primary-dark: #020617;
+    --theme-primary-light: #334155;
+    --theme-primary-glow: rgba(15, 23, 42, 0.12);
+    --theme-accent: #0f172a;
+    --theme-secondary: #f5f4f0;
+    --theme-border: #e7e5e0;
+    --theme-badge-bg: #0f172a;
+    --theme-badge-text: #ffffff;
+  }
+
+  [data-theme="amethyst"] {
+    --theme-primary: #9333ea;
+    --theme-primary-dark: #7c3aed;
+    --theme-primary-light: #c084fc;
+    --theme-primary-glow: rgba(147, 51, 234, 0.35);
+    --theme-accent: #e879f9;
+    --theme-secondary: #a855f7;
+    --theme-border: rgba(147, 51, 234, 0.25);
+    --theme-badge-bg: rgba(147, 51, 234, 0.18);
+    --theme-badge-text: #d8b4fe;
+  }
+
+  [data-theme="gold"] {
+    --theme-primary: #d97706;
+    --theme-primary-dark: #b45309;
+    --theme-primary-light: #fbbf24;
+    --theme-primary-glow: rgba(217, 119, 6, 0.35);
+    --theme-accent: #fde047;
+    --theme-secondary: #f59e0b;
+    --theme-border: rgba(217, 119, 6, 0.25);
+    --theme-badge-bg: rgba(217, 119, 6, 0.18);
+    --theme-badge-text: #fde68a;
+  }
+
+  [data-theme="rosegold"] {
+    --theme-primary: #e11d48;
+    --theme-primary-dark: #be123c;
+    --theme-primary-light: #fb7185;
+    --theme-primary-glow: rgba(225, 29, 72, 0.35);
+    --theme-accent: #f472b6;
+    --theme-secondary: #f43f5e;
+    --theme-border: rgba(225, 29, 72, 0.25);
+    --theme-badge-bg: rgba(225, 29, 72, 0.18);
+    --theme-badge-text: #fecdd3;
+  }
+
+  [data-theme="sapphire"] {
+    --theme-primary: #2563eb;
+    --theme-primary-dark: #1d4ed8;
+    --theme-primary-light: #38bdf8;
+    --theme-primary-glow: rgba(37, 99, 235, 0.35);
+    --theme-accent: #22d3ee;
+    --theme-secondary: #3b82f6;
+    --theme-border: rgba(37, 99, 235, 0.25);
+    --theme-badge-bg: rgba(37, 99, 235, 0.18);
+    --theme-badge-text: #bae6fd;
+  }
+
+  [data-theme="coral"] {
+    --theme-primary: #ea580c;
+    --theme-primary-dark: #c2410c;
+    --theme-primary-light: #fb923c;
+    --theme-primary-glow: rgba(234, 88, 12, 0.35);
+    --theme-accent: #f87171;
+    --theme-secondary: #f97316;
+    --theme-border: rgba(234, 88, 12, 0.25);
+    --theme-badge-bg: rgba(234, 88, 12, 0.18);
+    --theme-badge-text: #fed7aa;
+  }
+
+  [data-mode="light"] {
+    --canvas-bg: #f8fafc;
+    --card-bg: #ffffff;
+    --card-hover: #f1f5f9;
+    --card-subtle: #f8fafc;
+    --border-subtle: #e2e8f0;
+    --text-heading: #0f172a;
+    --text-body: #475569;
+  }
+
+  [data-mode="dark"] {
+    --canvas-bg: #000000;
+    --card-bg: #09090b;
+    --card-hover: #18181b;
+    --card-subtle: #121215;
+    --border-subtle: #27272a;
+    --text-heading: #ffffff;
+    --text-body: #d4d4d8;
+  }
+}
+
+.bg-theme-main {
+  background-color: var(--canvas-bg);
+}
+
+.bg-theme-card {
+  background-color: var(--card-bg);
+}
+
+.bg-theme-subtle {
+  background-color: var(--card-subtle);
+}
+
+.border-theme-subtle {
+  border-color: var(--border-subtle);
+}
+
+.text-theme-heading {
+  color: var(--text-heading);
+}
+
+.text-theme-body {
+  color: var(--text-body);
+}
+
+.btn-theme-primary {
+  background-color: var(--theme-primary);
+  color: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.btn-theme-primary:hover {
+  background-color: var(--theme-primary-dark);
+  box-shadow: 0 4px 14px var(--theme-primary-glow);
+}
+
+.text-theme-primary {
+  color: var(--theme-primary-light);
+}
+
+.border-theme-primary {
+  border-color: var(--theme-border);
+}
+
+.bg-theme-badge {
+  background-color: var(--theme-badge-bg);
+  color: var(--theme-badge-text);
+  border: 1px solid var(--theme-border);
+}
+
+.shadow-theme-glow {
+  box-shadow: 0 0 25px -5px var(--theme-primary-glow);
+}
+
+.glow-pill {
+  box-shadow: 0 0 15px -3px var(--theme-primary-glow);
+}
+
+.no-scrollbar::-webkit-scrollbar,
+.custom-scrollbar::-webkit-scrollbar {
+  display: none;
+  height: 0px;
+  width: 0px;
+}
+
+.no-scrollbar,
+.custom-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

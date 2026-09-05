@@ -1,0 +1,6 @@
+{
+  "name": "ALGO SALON by Spot-Pro",
+  "description": "Book • Look • Good salon booking platform connecting customers with beauty businesses, featuring nearby salon discovery, appointments, staff selection, and business management.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
