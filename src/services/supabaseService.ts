@@ -1928,35 +1928,60 @@ export async function deleteAvatarFromSupabase(
 }
 
 /**
- * Permanently deletes the authenticated user's account and all associated records from Supabase database
+ * Permanently deletes user account, OAuth identities, and all database records from Supabase
  */
-export async function deleteAccountInSupabase(): Promise<{ success: boolean; error?: string }> {
+export async function deleteAccountInSupabase(
+  userEmail?: string,
+  userId?: string
+): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseConfigured()) {
     return { success: true };
   }
 
   try {
     const { data: { session } } = await supabaseALGOsalonClient.auth.getSession();
-    if (!session?.user?.id) {
+    const resolvedUserId = userId || session?.user?.id;
+    const resolvedEmail = userEmail || session?.user?.email;
+
+    if (!resolvedUserId && !resolvedEmail) {
       return { success: true };
     }
 
-    const userId = session.user.id;
+    // 1. Primary RPC delete_user_account_complete (SECURITY DEFINER)
+    // Deletes from auth.users (which cascades to auth.identities [OAuth Google], sessions),
+    // public.profiles, owned salons, appointments, reviews, favorites, notifications, etc.
+    const { data: rpcData, error: rpcErr } = await supabaseALGOsalonClient.rpc(
+      'delete_user_account_complete',
+      {
+        email_to_delete: resolvedEmail || null,
+        user_id_to_delete: resolvedUserId || null,
+      }
+    );
 
-    // 1. Attempt RPC delete_user_account (SECURITY DEFINER)
-    const { error: rpcErr } = await supabaseALGOsalonClient.rpc('delete_user_account');
-    if (!rpcErr) {
+    if (!rpcErr && rpcData?.success) {
+      console.log('[Supabase] delete_user_account_complete succeeded:', rpcData);
       return { success: true };
     }
 
-    console.warn('delete_user_account RPC error, trying direct cleanup:', rpcErr.message);
+    if (rpcErr) {
+      console.warn('delete_user_account_complete RPC error, attempting fallback:', rpcErr.message);
+    }
 
-    // 2. Direct database cleanup fallback
-    await supabaseALGOsalonClient.from('salon_members').delete().eq('user_id', userId);
-    await supabaseALGOsalonClient.from('favorites').delete().eq('customer_id', userId);
-    await supabaseALGOsalonClient.from('notifications').delete().eq('user_id', userId);
-    await supabaseALGOsalonClient.from('reviews').delete().eq('customer_id', userId);
-    await supabaseALGOsalonClient.from('profiles').delete().eq('id', userId);
+    // 2. Legacy RPC fallback: delete_user_account
+    const { error: legacyRpcErr } = await supabaseALGOsalonClient.rpc('delete_user_account');
+    if (!legacyRpcErr) {
+      return { success: true };
+    }
+
+    // 3. Direct client-side cleanup fallback if user id is available
+    if (resolvedUserId) {
+      await supabaseALGOsalonClient.from('salon_members').delete().eq('user_id', resolvedUserId);
+      await supabaseALGOsalonClient.from('favorites').delete().eq('customer_id', resolvedUserId);
+      await supabaseALGOsalonClient.from('notifications').delete().eq('user_id', resolvedUserId);
+      await supabaseALGOsalonClient.from('reviews').delete().eq('customer_id', resolvedUserId);
+      await supabaseALGOsalonClient.from('appointments').delete().eq('customer_id', resolvedUserId);
+      await supabaseALGOsalonClient.from('profiles').delete().eq('id', resolvedUserId);
+    }
 
     return { success: true };
   } catch (err: any) {

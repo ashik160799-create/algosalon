@@ -1429,26 +1429,55 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   /**
-   * Permanently deletes user account from Supabase database tables, auth,
+   * Permanently deletes user account, OAuth identities, and database records from Supabase
    * and local account registry, then clears all session data and redirects to splash.
    */
   const deleteAccount = async (): Promise<boolean> => {
     try {
-      const currentEmail = currentRole === 'customer' ? customerUser.email : businessUser.email;
+      const currentEmail = currentRole === 'customer' 
+        ? customerUser.email 
+        : (businessUser.email || businessUser.signUpGmail);
+      const currentUserId = currentRole === 'customer' 
+        ? customerUser.id 
+        : businessUser.id;
 
-      // 1. Delete from Supabase database tables & auth
-      await deleteAccountInSupabase();
+      // 1. Delete from Supabase database tables & auth (including OAuth identities)
+      await deleteAccountInSupabase(currentEmail, currentUserId);
+
+      // If business has separate signup Gmail, clean that up as well
+      if (currentRole === 'business' && businessUser.signUpGmail && businessUser.signUpGmail !== currentEmail) {
+        await deleteAccountInSupabase(businessUser.signUpGmail).catch(() => {});
+      }
 
       // 2. Delete from registered accounts registry in localStorage
       if (currentEmail) {
         deleteAccountByEmail(currentEmail);
       }
+      if (businessUser.signUpGmail && businessUser.signUpGmail !== currentEmail) {
+        deleteAccountByEmail(businessUser.signUpGmail);
+      }
 
-      // 3. Clear all session data & sign out
+      // 3. Clean up in-memory context state
+      if (currentRole === 'customer') {
+        if (customerUser.id) {
+          setAppointments(prev => prev.filter(a => a.customerId !== customerUser.id));
+          setNotifications(prev => prev.filter(n => n.userId !== customerUser.id));
+        }
+      } else if (currentRole === 'business') {
+        const salonId = businessUser.salonId;
+        if (salonId) {
+          setSalons(prev => prev.filter(s => s.id !== salonId));
+          setServices(prev => prev.filter(s => s.salonId !== salonId));
+          setStaffMembers(prev => prev.filter(st => st.salonId !== salonId));
+          setAppointments(prev => prev.filter(a => a.salonId !== salonId));
+        }
+      }
+
+      // 4. Clear all session data & sign out
       clearAllSessionData();
       await signOutSupabase().catch(() => {});
 
-      // 4. Reset state & navigate to Splash
+      // 5. Reset state & navigate to Splash
       setAuthToken(null);
       setCustomerUser(INITIAL_CUSTOMER);
       setBusinessUser(INITIAL_BUSINESS_USER);
