@@ -199,7 +199,12 @@ export const CustomerAuthFlow: React.FC<CustomerAuthFlowProps> = ({
   const handleValidateExistingCode = (code = enterAppCode) => {
     const normEmail = normalizeEmail(email);
     const existing = findAccountByEmail(normEmail);
-    const validCode = existing?.appCode || customerUser.appCode || '1234';
+    const validCode = existing?.appCode || (existing ? undefined : customerUser.appCode);
+
+    if (!validCode) {
+      setExistingCodeError('No App Code configured for this account. Please reset your code below.');
+      return;
+    }
 
     if (code === validCode) {
       setExistingCodeError(null);

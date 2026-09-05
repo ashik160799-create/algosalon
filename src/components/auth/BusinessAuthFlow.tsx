@@ -192,7 +192,12 @@ export const BusinessAuthFlow: React.FC<BusinessAuthFlowProps> = ({
   const handleValidateExistingCode = (code = enterAppCode) => {
     const normEmail = normalizeEmail(email);
     const existing = findAccountByEmail(normEmail);
-    const validCode = existing?.appCode || businessUser.appCode || '1234';
+    const validCode = existing?.appCode || (existing ? undefined : businessUser.appCode);
+
+    if (!validCode) {
+      setExistingCodeError('No App Code configured for this account. Please reset your code below.');
+      return;
+    }
 
     if (code === validCode) {
       setExistingCodeError(null);
