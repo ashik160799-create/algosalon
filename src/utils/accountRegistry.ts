@@ -26,6 +26,13 @@ export const STORAGE_ACCOUNTS_KEY = 'algosalon_registered_accounts';
 export const ACCOUNTS_PURGE_VERSION_KEY = 'algosalon_clean_slate_v5';
 
 /**
+ * Generates a random 4-digit PIN code (between 1000 and 9999).
+ */
+export const generateSecurePin = (): string => {
+  return String(Math.floor(1000 + Math.random() * 9000));
+};
+
+/**
  * Default seeded accounts - kept completely empty to allow fresh user account creation.
  */
 export const SEED_ACCOUNTS: RegisteredAccount[] = [];
@@ -191,7 +198,7 @@ export const getRegisteredAccounts = (): RegisteredAccount[] => {
           id: existing.id || account.id,
           role: existing.role, // role remains strictly fixed
           email: normEmail,
-          appCode: account.appCode || existing.appCode || '1234',
+          appCode: account.appCode || existing.appCode || generateSecurePin(),
         });
       }
     });
@@ -299,7 +306,7 @@ export const registerNewAccount = (
     ...accountData,
     id: accountData.id || `${accountData.role === 'customer' ? 'cust' : 'biz'}-${Date.now()}`,
     email: normEmail,
-    appCode: accountData.appCode || '1234',
+    appCode: accountData.appCode || generateSecurePin(),
     createdAt: new Date().toISOString(),
   };
 
@@ -379,7 +386,7 @@ export const accountToCustomerUser = (account: RegisteredAccount): CustomerUser 
     gender: account.gender || 'Male',
     dateOfBirth: account.dateOfBirth || '',
     nationality: account.nationality || '',
-    appCode: account.appCode || '1234',
+    appCode: account.appCode || '',
     savedSalonIds: [],
     loyaltyPoints: 0,
   };
@@ -399,7 +406,7 @@ export const accountToBusinessUser = (account: RegisteredAccount): BusinessUser 
     businessName: account.businessName || 'My Salon Studio',
     category: account.category || 'Hair & Styling',
     location: account.location || 'Downtown Metro',
-    appCode: account.appCode || '1234',
+    appCode: account.appCode || '',
     signUpGmail: account.signUpGmail || account.email,
     isGmailLinked: true,
   };

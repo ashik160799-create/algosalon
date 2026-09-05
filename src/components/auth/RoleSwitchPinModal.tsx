@@ -61,7 +61,7 @@ export const RoleSwitchPinModal: React.FC<RoleSwitchPinModalProps> = ({
 
   if (!isOpen || !targetAccount) return null;
 
-  const expectedCode = targetAccount.appCode || '1234';
+  const expectedCode = targetAccount.appCode;
 
   const handleDigitChange = (val: string) => {
     if (lockoutTimer > 0) return;
@@ -75,6 +75,10 @@ export const RoleSwitchPinModal: React.FC<RoleSwitchPinModalProps> = ({
   };
 
   const verifyPin = (inputPin: string) => {
+    if (!expectedCode) {
+      setError('No App Code is configured for this account. Please tap Forgot App Code below to reset via email.');
+      return;
+    }
     if (inputPin === expectedCode) {
       setFailedAttempts(0);
       setError(null);
