@@ -294,7 +294,7 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
             email: sanitized,
             role: remote.role || 'customer',
             name: remote.account.name || sanitized.split('@')[0],
-            appCode: remote.account.appCode || '1234',
+            appCode: remote.account.appCode || '',
             phone: remote.account.phone || '',
             avatar: remote.account.avatar || undefined,
             signUpGmail: sanitized,
@@ -663,10 +663,15 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
         email: emailInput || 'user@example.com',
         role: selectedRole,
         name: selectedRole === 'customer' ? customerUser.name : businessUser.name,
-        appCode: selectedRole === 'customer' ? customerUser.appCode || '1234' : businessUser.appCode || '1234',
+        appCode: selectedRole === 'customer' ? customerUser.appCode : businessUser.appCode,
       };
 
-    const validCode = targetAccount.appCode || '1234';
+    const validCode = targetAccount.appCode;
+
+    if (!validCode) {
+      setExistingCodeError('No App Code configured for this account. Please reset your PIN code below.');
+      return;
+    }
 
     if (code === validCode) {
       setPinFailedAttempts(0);
@@ -1218,16 +1223,6 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
                     <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
                       Enter Supabase verification code:
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOtpCode('1234');
-                        setOtpError(null);
-                      }}
-                      className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
-                    >
-                      Autofill (1234)
-                    </button>
                   </div>
                   <div className="flex gap-2">
                     <input
@@ -1256,11 +1251,9 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
                           } finally {
                             setIsVerifyingLink(false);
                           }
-                        } else if (val.length === 4 && val === '1234') {
-                          goToNextStep();
                         }
                       }}
-                      placeholder="e.g. 123456 or 1234"
+                      placeholder="e.g. 123456"
                       className="flex-1 px-3 py-2 text-center text-sm font-black tracking-widest rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                     <button
@@ -1285,10 +1278,8 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
                           } finally {
                             setIsVerifyingLink(false);
                           }
-                        } else if (otpCode.length === 4) {
-                          goToNextStep();
                         } else {
-                          setOtpError('Please enter the 6-digit code sent to your email or test code 1234');
+                          setOtpError('Please enter the 6-digit code sent to your email.');
                         }
                       }}
                       className="px-3 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition-colors cursor-pointer flex items-center justify-center min-w-[70px]"

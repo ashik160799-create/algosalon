@@ -118,7 +118,7 @@ export const CustomerProfileView: React.FC = () => {
   const [nameVal, setNameVal] = useState(customerUser.name || '');
   const [phoneVal, setPhoneVal] = useState(customerUser.phone || '');
   const [emailVal, setEmailVal] = useState(customerUser.email || '');
-  const [pinVal, setPinVal] = useState(customerUser.appCode || '1234');
+  const [pinVal, setPinVal] = useState(customerUser.appCode || '');
   const [confirmPinVal, setConfirmPinVal] = useState('');
   const [showPin, setShowPin] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
@@ -140,8 +140,8 @@ export const CustomerProfileView: React.FC = () => {
     setNameVal(active.name || '');
     setPhoneVal(active.phone || '');
     setEmailVal(active.email || '');
-    setPinVal(active.appCode || '1234');
-    setConfirmPinVal(active.appCode || '1234');
+    setPinVal(active.appCode || '');
+    setConfirmPinVal(active.appCode || '');
     setGenderVal(active.gender || 'Male');
     setDobVal(active.dateOfBirth || '');
     setNationalityVal(active.nationality || '');

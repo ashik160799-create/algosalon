@@ -268,4 +268,6 @@ export interface ThemeConfig {
   glowHex: string;
   previewGradient: string;
   badgeClass: string;
+  contrastText?: string;
+  primaryTextColor?: string;
 }

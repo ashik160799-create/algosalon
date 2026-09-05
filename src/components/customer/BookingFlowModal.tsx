@@ -83,6 +83,11 @@ export const BookingFlowModal: React.FC = () => {
   const [copiedId, setCopiedId] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
 
+  const dualTime = useMemo(() => {
+    if (!selectedDate || !selectedTimeSlot || !salon) return null;
+    return getDualBookingTime(selectedDate, selectedTimeSlot, salon, activeCountry?.code);
+  }, [selectedDate, selectedTimeSlot, salon, activeCountry?.code]);
+
   // Helper to convert any time slot string ("09:00", "09:00 AM", "14:30", "02:30 PM") into minutes from midnight
   const getSlotMinutes = (timeStr: string): number => {
     const { hour, minute } = parseTimeSlotHoursMinutes(timeStr);
@@ -280,8 +285,10 @@ export const BookingFlowModal: React.FC = () => {
     }
   }, [selectedDate, allAvailableSlotsForDate, selectedStaff, selectedService, salonTimezone]);
 
-  const handleConfirmBooking = () => {
-    if (!selectedService) return;
+  const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
+
+  const handleConfirmBooking = async () => {
+    if (!selectedService || isSubmittingBooking) return;
 
     if (isSlotInPast(selectedDate, selectedTimeSlot, salonTimezone)) {
       setBookingError('Please select a future appointment time.');
@@ -301,32 +308,45 @@ export const BookingFlowModal: React.FC = () => {
     }
 
     setBookingError(null);
+    setIsSubmittingBooking(true);
 
-    const bookingId = createAppointment({
-      salonId: salon.id,
-      salonName: salon.name,
-      salonAddress: salon.address,
-      salonPhone: salon.phone,
-      salonImage: salon.image,
-      customerId: customerUser.id,
-      customerName: customerUser.name,
-      customerPhone: customerUser.phone,
-      customerEmail: customerUser.email,
-      serviceId: selectedService.id,
-      serviceName: selectedService.name,
-      servicePrice: selectedService.price,
-      durationMinutes: selectedService.durationMinutes,
-      staffId: assignedStaff.id,
-      staffName: assignedStaff.name,
-      staffAvatar: assignedStaff.avatar,
-      date: selectedDate,
-      timeSlot: selectedTimeSlot,
-      paymentMethod,
-      notes,
-    });
+    try {
+      const res = await createAppointment({
+        salonId: salon.id,
+        salonName: salon.name,
+        salonAddress: salon.address,
+        salonPhone: salon.phone,
+        salonImage: salon.image,
+        customerId: customerUser.id,
+        customerName: customerUser.name,
+        customerPhone: customerUser.phone,
+        customerEmail: customerUser.email,
+        serviceId: selectedService.id,
+        serviceName: selectedService.name,
+        servicePrice: selectedService.price,
+        durationMinutes: selectedService.durationMinutes,
+        staffId: assignedStaff.id,
+        staffName: assignedStaff.name,
+        staffAvatar: assignedStaff.avatar,
+        date: selectedDate,
+        timeSlot: selectedTimeSlot,
+        paymentMethod,
+        notes,
+      });
 
-    setConfirmedBookingId(bookingId);
-    setCurrentStep(5);
+      if (!res.success || !res.appointmentId) {
+        setBookingError(res.error || 'This slot is unavailable or rejected by the salon server. Please choose another time slot.');
+        setIsSubmittingBooking(false);
+        return;
+      }
+
+      setConfirmedBookingId(res.appointmentId);
+      setIsSubmittingBooking(false);
+      setCurrentStep(5);
+    } catch (err: any) {
+      setBookingError(err.message || 'Failed to complete booking. Please try again.');
+      setIsSubmittingBooking(false);
+    }
   };
 
   const handleClose = () => {
@@ -1522,9 +1542,10 @@ export const BookingFlowModal: React.FC = () => {
                         isSlotInPast(selectedDate, selectedTimeSlot, salonTimezone) ||
                         totalVisibleSlots === 0))
                   }
-                  className="px-6 py-2.5 rounded-2xl text-white font-extrabold text-xs shadow-md transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-6 py-2.5 rounded-2xl font-extrabold text-xs shadow-md transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{
                     backgroundColor: currentThemeConfig.primaryHex,
+                    color: currentThemeConfig.contrastText || '#ffffff',
                     boxShadow: `0 4px 14px ${currentThemeConfig.glowHex}`,
                   }}
                 >
@@ -1544,14 +1565,16 @@ export const BookingFlowModal: React.FC = () => {
                   type="button"
                   id="confirm-booking-final-btn"
                   onClick={handleConfirmBooking}
-                  className="px-6 py-2.5 rounded-2xl text-white font-extrabold text-xs shadow-lg transition-all flex items-center gap-2 active:scale-95"
+                  disabled={isSubmittingBooking}
+                  className="px-6 py-2.5 rounded-2xl font-extrabold text-xs shadow-lg transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50"
                   style={{
                     backgroundColor: currentThemeConfig.primaryHex,
+                    color: currentThemeConfig.contrastText || '#ffffff',
                     boxShadow: `0 4px 16px ${currentThemeConfig.glowHex}`,
                   }}
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>{t('booking.confirm', 'Confirm Appointment')} ({formatPrice(selectedService?.price || 0)})</span>
+                  <span>{isSubmittingBooking ? 'Placing Booking...' : `${t('booking.confirm', 'Confirm Appointment')} (${formatPrice(selectedService?.price || 0)})`}</span>
                 </button>
               )}
             </>

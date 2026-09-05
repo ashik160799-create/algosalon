@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import {
   Role,
   CustomerUser,
@@ -14,7 +14,7 @@ import {
   ColorThemeMode,
   ThemeConfig,
 } from '../types';
-import { THEME_PRESETS } from '../utils/themeConfig';
+import { THEME_PRESETS, getContrastTextColor } from '../utils/themeConfig';
 import { getRecommendedAiBanner } from '../utils/aiBannerGenerator';
 import {
   CountryLocaleData,
@@ -56,6 +56,7 @@ import {
   accountToBusinessUser,
   normalizeEmail,
   deleteAccountByEmail,
+  generateSecurePin,
 } from '../utils/accountRegistry';
 import { parseTimeSlotHoursMinutes, getLocalDateString } from '../utils/dateTimeUtils';
 import { supabaseALGOsalonClient, isSupabaseConfigured } from '../supabaseALGOsalonClient';
@@ -67,6 +68,7 @@ import {
   fetchAppointmentsFromDb,
   fetchReviewsFromDb,
   createReviewInDb,
+  updateSalonRatingInDb,
   replyToReviewInDb,
   subscribeToReviews,
   fetchFavoritesFromDb,
@@ -192,8 +194,15 @@ interface AppContextType {
   deleteStaffMember: (staffId: string) => void;
 
   appointments: Appointment[];
-  createAppointment: (data: Omit<Appointment, 'id' | 'createdAt' | 'status'>, initialStatus?: AppointmentStatus) => string;
-  updateAppointmentStatus: (appointmentId: string, status: AppointmentStatus, reason?: string) => void;
+  createAppointment: (
+    data: Omit<Appointment, 'id' | 'createdAt' | 'status'>,
+    initialStatus?: AppointmentStatus
+  ) => Promise<{ success: boolean; appointmentId?: string; error?: string }>;
+  updateAppointmentStatus: (
+    appointmentId: string,
+    status: AppointmentStatus,
+    reason?: string
+  ) => Promise<{ success: boolean; error?: string }>;
   acceptAppointment: (appointmentId: string) => void;
   suggestNewAppointmentTime: (appointmentId: string, newDate: string, newTimeSlot: string, note?: string) => void;
   declineAppointment: (appointmentId: string, reason: string, apology?: string) => void;
@@ -204,7 +213,9 @@ interface AppContextType {
   getCustomerCompletedCount: (customerIdOrName: string, salonId?: string) => number;
 
   reviews: Review[];
-  addReview: (review: Omit<Review, 'id' | 'date'>) => void;
+  addReview: (
+    review: Omit<Review, 'id' | 'date'>
+  ) => Promise<{ success: boolean; reviewId?: string; error?: string }>;
   replyToReview: (reviewId: string, replyMessage: string) => void;
 
   notifications: NotificationItem[];
@@ -512,6 +523,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return langDict[key] || TRANSLATIONS.en[key] || fallback || key;
   };
 
+  const pendingReviewPromises = useRef<
+    Map<string, Promise<{ success: boolean; reviewId?: string; error?: string }>>
+  >(new Map());
+
   const [activeColorTheme, setActiveColorTheme] = useState<ColorThemeId>(() => {
     const saved = localStorage.getItem('algosalon_color_theme');
     return (saved as ColorThemeId) || 'emerald';
@@ -530,8 +545,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', activeColorTheme);
+    const contrastColor = currentThemeConfig.contrastText || getContrastTextColor(currentThemeConfig.primaryHex);
+    document.documentElement.style.setProperty('--theme-primary', currentThemeConfig.primaryHex);
+    document.documentElement.style.setProperty('--theme-secondary', currentThemeConfig.secondaryHex);
+    document.documentElement.style.setProperty('--theme-accent', currentThemeConfig.accentHex);
+    document.documentElement.style.setProperty('--theme-primary-glow', currentThemeConfig.glowHex);
+    document.documentElement.style.setProperty('--theme-contrast-text', contrastColor);
     localStorage.setItem('algosalon_color_theme', activeColorTheme);
-  }, [activeColorTheme]);
+  }, [activeColorTheme, currentThemeConfig]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-mode', colorThemeMode);
@@ -896,7 +917,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const chosenAvatar = userAvatar || regAccount?.avatar || undefined;
             const bizData: Partial<BusinessUser> = {
               id: authUser.id,
-              name: regAccount?.name || userName,
+              name: regAccount?.name || bizProfile?.businessName || userName,
               email: userEmail,
               signUpGmail: userEmail,
               isGmailLinked: true,
@@ -904,7 +925,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               businessName: regAccount?.businessName || bizProfile?.businessName || 'ALGO Luxury Salon & Spa - Downtown',
               salonId: regAccount?.salonId || bizProfile?.salonId || '11111111-1111-1111-1111-111111111111',
               ownerRole: regAccount?.ownerRole || bizProfile?.ownerRole || 'Owner & Salon Director',
-              appCode: regAccount?.appCode || '1234',
+              appCode: regAccount?.appCode || generateSecurePin(),
             };
             setBusinessUser(prev => ({ ...prev, ...bizData }));
             localStorage.setItem('algosalon_business_user', JSON.stringify({ ...INITIAL_BUSINESS_USER, ...bizData }));
@@ -918,7 +939,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 email: userEmail,
                 role: 'business',
                 name: userName,
-                appCode: '1234',
+                appCode: bizData.appCode,
                 phone: bizProfile?.phone || authUser.phone || '',
                 businessName: bizProfile?.businessName || 'ALGO Luxury Salon & Spa - Downtown',
                 salonId: bizProfile?.salonId || '11111111-1111-1111-1111-111111111111',
@@ -938,7 +959,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               phone: regAccount?.phone || authUser.phone || '',
               avatar: chosenAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
               gender: regAccount?.gender || 'Male',
-              appCode: regAccount?.appCode || '1234',
+              appCode: regAccount?.appCode || generateSecurePin(),
             };
             setCustomerUser(prev => ({ ...prev, ...custData }));
             localStorage.setItem('algosalon_customer', JSON.stringify({ ...INITIAL_CUSTOMER, ...custData }));
@@ -952,7 +973,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 email: userEmail,
                 role: 'customer',
                 name: userName,
-                appCode: '1234',
+                appCode: custData.appCode,
                 phone: authUser.phone || '',
                 avatar: chosenAvatar,
                 signUpGmail: userEmail,
@@ -1180,7 +1201,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       gender: userData.gender || 'Male',
       dateOfBirth: userData.dateOfBirth || '',
       nationality: userData.nationality || '',
-      appCode: userData.appCode || '1234',
+      appCode: userData.appCode || generateSecurePin(),
       savedSalonIds: userData.savedSalonIds || [],
       loyaltyPoints: userData.loyaltyPoints ?? 0,
     };
@@ -1295,7 +1316,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       businessName: userData.businessName?.trim() || freshSalon.name,
       category: userData.category || 'Hair & Styling',
       location: userData.location || freshSalon.city,
-      appCode: userData.appCode || '1234',
+      appCode: userData.appCode || generateSecurePin(),
       signUpGmail: userData.signUpGmail?.trim() || userData.email?.trim() || 'partner@algosalon.com',
       isGmailLinked: true,
     };
@@ -1735,14 +1756,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const createAppointment = (
+  const createAppointment = async (
     data: Omit<Appointment, 'id' | 'createdAt' | 'status'>,
     initialStatus: AppointmentStatus = 'pending'
-  ): string => {
-    const newId = `apt-${Date.now()}`;
+  ): Promise<{ success: boolean; appointmentId?: string; error?: string }> => {
+    let resolvedAppointmentId = `apt-${Date.now()}`;
+
+    // If Supabase is configured, validate and create booking in DB first
+    if (isSupabaseConfigured()) {
+      const { hour, minute } = parseTimeSlotHoursMinutes(data.timeSlot || '10:00');
+      const bookingDate = new Date(`${data.date}T00:00:00`);
+      bookingDate.setHours(hour, minute, 0, 0);
+
+      try {
+        const res = await createBookingInDb({
+          salonId: data.salonId,
+          serviceId: data.serviceId,
+          staffId: data.staffId,
+          startsAt: bookingDate.toISOString(),
+          customerName: data.customerName,
+          customerPhone: data.customerPhone,
+          customerEmail: data.customerEmail,
+          paymentMethod: data.paymentMethod,
+          notes: data.notes,
+        });
+
+        if (!res.success || !res.appointmentId) {
+          console.warn('Booking rejected by backend:', res.error);
+          return {
+            success: false,
+            error: res.error || 'The requested slot is unavailable or rejected by the salon server.',
+          };
+        }
+
+        resolvedAppointmentId = res.appointmentId;
+      } catch (err: any) {
+        console.error('Error creating booking in Supabase:', err);
+        return { success: false, error: err.message || 'Network error while placing booking.' };
+      }
+    }
+
     const newAppointment: Appointment = {
       ...data,
-      id: newId,
+      id: resolvedAppointmentId,
       status: initialStatus,
       createdAt: new Date().toISOString(),
     };
@@ -1781,7 +1837,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return updated;
     });
 
-    // Asynchronously call Supabase RPC create_booking if configured
     if (isSupabaseConfigured()) {
       if (businessUser?.id) {
         createNotificationInDb({
@@ -1803,41 +1858,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           linkTab: newNotifs[1].linkTab,
         }).catch(err => console.warn('Background customer notification sync error:', err));
       }
-
-      const { hour, minute } = parseTimeSlotHoursMinutes(data.timeSlot || '10:00');
-      const bookingDate = new Date(`${data.date}T00:00:00`);
-      bookingDate.setHours(hour, minute, 0, 0);
-
-      createBookingInDb({
-        salonId: data.salonId,
-        serviceId: data.serviceId,
-        staffId: data.staffId,
-        startsAt: bookingDate.toISOString(),
-        customerName: data.customerName,
-        customerPhone: data.customerPhone,
-        customerEmail: data.customerEmail,
-        paymentMethod: data.paymentMethod,
-        notes: data.notes,
-      }).then(res => {
-        if (res.success && res.appointmentId) {
-          setAppointments(prev =>
-            prev.map(a => (a.id === newId ? { ...a, id: res.appointmentId! } : a))
-          );
-        }
-      }).catch(err => {
-        console.warn('Background Supabase booking error:', err);
-      });
     }
 
-    return newId;
+    return { success: true, appointmentId: resolvedAppointmentId };
   };
 
-  const updateAppointmentStatus = (
+  const updateAppointmentStatus = async (
     appointmentId: string,
     status: AppointmentStatus,
     reason?: string
-  ) => {
+  ): Promise<{ success: boolean; error?: string }> => {
     const targetApt = appointments.find(a => a.id === appointmentId);
+    const previousStatus = targetApt?.status;
+
+    // Optimistically update appointment
     setAppointments(prev => {
       const updated = prev.map(a =>
         a.id === appointmentId
@@ -1855,13 +1889,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (targetApt) {
       // Synchronize status update to Supabase
       if (isSupabaseConfigured()) {
-        setAppointmentStatusInDb({
-          appointmentId,
-          status,
-          reason,
-        }).catch(err => {
+        try {
+          const res = await setAppointmentStatusInDb({
+            appointmentId,
+            status,
+            reason,
+          });
+
+          if (!res.success) {
+            console.warn('Backend rejected appointment status change:', res.error);
+            // Revert local state to previous status
+            if (previousStatus) {
+              setAppointments(prev => {
+                const reverted = prev.map(a =>
+                  a.id === appointmentId ? { ...a, status: previousStatus } : a
+                );
+                localStorage.setItem('algosalon_appointments', JSON.stringify(reverted));
+                return reverted;
+              });
+            }
+            return { success: false, error: res.error };
+          }
+        } catch (err: any) {
           console.warn('Background status sync error:', err);
-        });
+          if (previousStatus) {
+            setAppointments(prev => {
+              const reverted = prev.map(a =>
+                a.id === appointmentId ? { ...a, status: previousStatus } : a
+              );
+              localStorage.setItem('algosalon_appointments', JSON.stringify(reverted));
+              return reverted;
+            });
+          }
+          return { success: false, error: err.message };
+        }
       }
 
       let notifTitle = 'Appointment Update';
@@ -1908,6 +1969,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }).catch(err => console.warn('Background Supabase status notif error:', err));
       }
     }
+
+    return { success: true };
   };
 
   const acceptAppointment = (appointmentId: string) => {
@@ -2238,21 +2301,77 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  const addReview = (reviewData: Omit<Review, 'id' | 'date'>) => {
+  const addReview = async (
+    reviewData: Omit<Review, 'id' | 'date'>
+  ): Promise<{ success: boolean; reviewId?: string; error?: string }> => {
+    // Prevent duplicate review if already reviewed
+    if (reviewData.appointmentId && reviews.some(r => r.appointmentId === reviewData.appointmentId)) {
+      return { success: false, error: 'You have already reviewed this visit.' };
+    }
+
     const tempId = `rev-${Date.now()}`;
     const newRev: Review = {
       ...reviewData,
       id: tempId,
       date: getLocalDateString(),
     };
+
+    // Optimistically update reviews list
     setReviews(prev => {
       const updated = [newRev, ...prev];
       localStorage.setItem('algosalon_reviews', JSON.stringify(updated));
       return updated;
     });
 
+    // Mark appointment as reviewed in local state and localStorage
+    if (reviewData.appointmentId) {
+      setAppointments(prev => {
+        const updated = prev.map(a =>
+          a.id === reviewData.appointmentId ? { ...a, reviewed: true } : a
+        );
+        localStorage.setItem('algosalon_appointments', JSON.stringify(updated));
+        return updated;
+      });
+    }
+
+    // Recalculate Salon Rating & Review Count
+    const salonExistingReviews = reviews.filter(r => r.salonId === reviewData.salonId);
+    const updatedSalonReviews = [newRev, ...salonExistingReviews];
+    const newReviewCount = updatedSalonReviews.length;
+    const newAvgRating = Number(
+      (updatedSalonReviews.reduce((sum, r) => sum + r.rating, 0) / newReviewCount).toFixed(1)
+    );
+
+    setSalons(prev => {
+      const updated = prev.map(s =>
+        s.id === reviewData.salonId
+          ? { ...s, rating: newAvgRating, reviewCount: newReviewCount }
+          : s
+      );
+      localStorage.setItem('algosalon_salons', JSON.stringify(updated));
+      return updated;
+    });
+
+    // Also update staff rating if matched
+    if (reviewData.staffName) {
+      setStaffMembers(prev => {
+        const updated = prev.map(st => {
+          if (st.salonId === reviewData.salonId && st.name === reviewData.staffName) {
+            const stCount = (st.reviewsCount || 0) + 1;
+            const stRating = Number(
+              (((st.rating || 5.0) * (st.reviewsCount || 0) + reviewData.rating) / stCount).toFixed(1)
+            );
+            return { ...st, rating: stRating, reviewsCount: stCount };
+          }
+          return st;
+        });
+        localStorage.setItem('algosalon_staff', JSON.stringify(updated));
+        return updated;
+      });
+    }
+
     if (isSupabaseConfigured()) {
-      createReviewInDb({
+      const creationPromise = createReviewInDb({
         appointmentId: reviewData.appointmentId,
         salonId: reviewData.salonId,
         customerId: reviewData.customerId,
@@ -2262,19 +2381,67 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         comment: reviewData.comment,
         serviceName: reviewData.serviceName,
         staffName: reviewData.staffName,
-      }).then(res => {
+      });
+
+      pendingReviewPromises.current.set(tempId, creationPromise);
+
+      try {
+        const res = await creationPromise;
         if (res.success && res.reviewId) {
           setReviews(prev =>
             prev.map(r => (r.id === tempId ? { ...r, id: res.reviewId! } : r))
           );
+          // Sync rating and review count to Supabase
+          updateSalonRatingInDb(reviewData.salonId, newAvgRating, newReviewCount).catch(err =>
+            console.warn('Background Supabase salon rating update error:', err)
+          );
+          pendingReviewPromises.current.delete(tempId);
+          return { success: true, reviewId: res.reviewId };
+        } else {
+          // Rollback optimistic updates on failure / duplicate
+          console.warn('Review creation in DB failed:', res.error);
+          setReviews(prev => {
+            const reverted = prev.filter(r => r.id !== tempId);
+            localStorage.setItem('algosalon_reviews', JSON.stringify(reverted));
+            return reverted;
+          });
+          if (reviewData.appointmentId) {
+            setAppointments(prev => {
+              const reverted = prev.map(a =>
+                a.id === reviewData.appointmentId ? { ...a, reviewed: false } : a
+              );
+              localStorage.setItem('algosalon_appointments', JSON.stringify(reverted));
+              return reverted;
+            });
+          }
+          pendingReviewPromises.current.delete(tempId);
+          return { success: false, error: res.error || 'Failed to submit review' };
         }
-      }).catch(err => {
+      } catch (err: any) {
         console.warn('Background Supabase review error:', err);
-      });
+        setReviews(prev => {
+          const reverted = prev.filter(r => r.id !== tempId);
+          localStorage.setItem('algosalon_reviews', JSON.stringify(reverted));
+          return reverted;
+        });
+        if (reviewData.appointmentId) {
+          setAppointments(prev => {
+            const reverted = prev.map(a =>
+              a.id === reviewData.appointmentId ? { ...a, reviewed: false } : a
+            );
+            localStorage.setItem('algosalon_appointments', JSON.stringify(reverted));
+            return reverted;
+          });
+        }
+        pendingReviewPromises.current.delete(tempId);
+        return { success: false, error: err.message || 'Error saving review' };
+      }
     }
+
+    return { success: true, reviewId: tempId };
   };
 
-  const replyToReview = (reviewId: string, replyMessage: string) => {
+  const replyToReview = async (reviewId: string, replyMessage: string) => {
     setReviews(prev => {
       const updated = prev.map(r =>
         r.id === reviewId
@@ -2293,7 +2460,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     if (isSupabaseConfigured()) {
-      replyToReviewInDb(reviewId, replyMessage).catch(err => {
+      let targetDbId = reviewId;
+
+      // If reply is issued while tempId is still resolving in DB, await the real ID
+      if (reviewId.startsWith('rev-') && pendingReviewPromises.current.has(reviewId)) {
+        try {
+          const pendingRes = await pendingReviewPromises.current.get(reviewId);
+          if (pendingRes?.success && pendingRes?.reviewId) {
+            targetDbId = pendingRes.reviewId;
+          }
+        } catch (e) {
+          console.warn('Pending review promise failed:', e);
+        }
+      }
+
+      replyToReviewInDb(targetDbId, replyMessage).catch(err => {
         console.warn('Background Supabase review reply error:', err);
       });
     }

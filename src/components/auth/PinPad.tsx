@@ -363,3 +363,4 @@ export const PinPad: React.FC<PinPadProps> = ({
     </div>
   );
 };
+

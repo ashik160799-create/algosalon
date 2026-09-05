@@ -437,12 +437,12 @@ export const BusinessAppointments: React.FC = () => {
     setCustomCancelReason('');
   };
 
-  const handleAddWalkin = (e: React.FormEvent) => {
+  const handleAddWalkin = async (e: React.FormEvent) => {
     e.preventDefault();
     const service = salonServices.find(s => s.id === walkinServiceId) || salonServices[0];
     const staff = salonStaff.find(st => st.id === walkinStaffId) || salonStaff[0];
 
-    createAppointment(
+    await createAppointment(
       {
         salonId: salon.id,
         salonName: salon.name,

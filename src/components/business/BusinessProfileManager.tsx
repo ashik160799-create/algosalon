@@ -424,7 +424,7 @@ export const BusinessProfileManager: React.FC = () => {
   const [signUpGmail, setSignUpGmail] = useState(
     businessUser.signUpGmail || businessUser.email || 'partner@algosalon.com'
   );
-  const [appCode, setAppCode] = useState(businessUser.appCode || '1234');
+  const [appCode, setAppCode] = useState(businessUser.appCode || '');
   const [showAppCode, setShowAppCode] = useState(false);
   const [copiedAppCode, setCopiedAppCode] = useState(false);
   const [isResetAppCodeModalOpen, setIsResetAppCodeModalOpen] = useState(false);
@@ -438,7 +438,7 @@ export const BusinessProfileManager: React.FC = () => {
     setOwnerRole(active.ownerRole || 'Owner & Salon Director');
     setOwnerEmail(active.email || 'partner@algosalon.com');
     setSignUpGmail(active.signUpGmail || active.email || 'partner@algosalon.com');
-    setAppCode(active.appCode || '1234');
+    setAppCode(active.appCode || '');
   }, [businessUser]);
 
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -2443,7 +2443,7 @@ export const BusinessProfileManager: React.FC = () => {
               </div>
 
               <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-                <span>Default station code: 1234</span>
+                <span>Station security PIN code</span>
                 <button
                   type="button"
                   onClick={() => {
