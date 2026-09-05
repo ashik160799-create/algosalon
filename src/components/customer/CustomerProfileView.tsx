@@ -1603,17 +1603,17 @@ export const CustomerProfileView: React.FC = () => {
                 </div>
                 <div>
                   <h3 className={`text-base font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                    ALGO Concierge Support
+                    ALGO VIP Concierge
                   </h3>
-                  <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                    Direct VIP support channel
+                  <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                    24/7 Priority Support
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setSupportModalOpen(false)}
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
+                className={`w-8 h-8 rounded-full flex items-center justify-center cursor-pointer ${
                   isLight ? 'hover:bg-slate-100 text-slate-500' : 'hover:bg-slate-800 text-slate-400'
                 }`}
               >
@@ -1621,61 +1621,35 @@ export const CustomerProfileView: React.FC = () => {
               </button>
             </div>
 
-            <p className={`text-xs leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-              Need help rescheduling a booked service, reporting a stylist inquiry, or asking about digital receipts? Contact our 24/7 client operations desk:
-            </p>
-
-            <div className="space-y-2">
-              <a
-                href="https://wa.me/971544298306?text=Hi%20ALGO%20Support,%20I%20need%20assistance%20with%20my%20salon%20booking."
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-all font-bold text-xs"
-              >
-                <div className="flex items-center gap-2.5">
-                  <MessageCircle className="w-4 h-4" />
-                  <span>Chat on WhatsApp Support</span>
+            <div className={`p-4 rounded-2xl border space-y-3 ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950 border-slate-800'}`}>
+              <div className="flex items-center gap-3">
+                <Phone className="w-4 h-4 text-emerald-500 shrink-0" />
+                <div>
+                  <div className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>Hotline Support</div>
+                  <div className="text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold">+971 800 ALGO (2546)</div>
                 </div>
-                <ArrowRight className="w-4 h-4" />
-              </a>
-
-              <a
-                href="mailto:support@algosalon.com?subject=ALGO%20Customer%20Support%20Inquiry"
-                className={`w-full flex items-center justify-between p-3.5 rounded-2xl border transition-all font-bold text-xs ${
-                  isLight
-                    ? 'bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100'
-                    : 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Mail className="w-4 h-4" />
-                  <span>Email: support@algosalon.com</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Mail className="w-4 h-4 text-blue-500 shrink-0" />
+                <div>
+                  <div className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>Email Concierge</div>
+                  <div className={`text-xs font-medium ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>vip-support@algosalon.ae</div>
                 </div>
-                <ArrowRight className="w-4 h-4" />
-              </a>
-
-              <a
-                href="tel:+971544298306"
-                className={`w-full flex items-center justify-between p-3.5 rounded-2xl border transition-all font-bold text-xs ${
-                  isLight
-                    ? 'bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100'
-                    : 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Phone className="w-4 h-4" />
-                  <span>Call Operations: +971 54 429 8306</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <MessageCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+                <div>
+                  <div className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>WhatsApp Instant Help</div>
+                  <div className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">Live 24/7 Agent Available</div>
                 </div>
-                <ArrowRight className="w-4 h-4" />
-              </a>
+              </div>
             </div>
 
             <button
               type="button"
               onClick={() => setSupportModalOpen(false)}
-              className={`w-full py-3 rounded-2xl font-bold text-xs border transition-colors cursor-pointer ${
-                isLight ? 'border-slate-200 text-slate-700 hover:bg-slate-100' : 'border-slate-700 text-slate-300 hover:bg-slate-800'
-              }`}
+              className="w-full py-3 rounded-2xl text-white font-bold text-xs shadow-md cursor-pointer"
+              style={{ backgroundColor: currentThemeConfig.primaryHex }}
             >
               Close
             </button>
@@ -1683,10 +1657,7 @@ export const CustomerProfileView: React.FC = () => {
         </div>
       )}
 
-      {/* Theme Switcher Modal */}
       <ThemeSwitcherModal isOpen={themeModalOpen} onClose={() => setThemeModalOpen(false)} />
-
-      {/* Locale / Region Switcher Modal */}
       <LocaleRegionSwitcherModal isOpen={isLocaleModalOpen} onClose={() => setIsLocaleModalOpen(false)} />
     </div>
   );

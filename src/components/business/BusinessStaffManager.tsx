@@ -66,15 +66,13 @@ export const BusinessStaffManager: React.FC = () => {
     'Saturday',
   ]);
 
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-
   const allDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-  const handleOpenAddModal = () => {
+  const handleOpenCreate = () => {
     setEditingStaffId(null);
     setName('');
     setGender('Male');
-    setRoleTitle('Senior Barber & Stylist');
+    setRoleTitle('Master Barber & Stylist');
     setPhone('+971 54 429 8306');
     setAvatar(AVATAR_PRESETS[0]);
     setSpecialtiesText('Skin Fades, Beard Sculpting, Hot Towel Shave');
@@ -85,471 +83,543 @@ export const BusinessStaffManager: React.FC = () => {
     setModalOpen(true);
   };
 
-  const handleOpenEditModal = (staff: StaffMember) => {
-    setEditingStaffId(staff.id);
-    setName(staff.name);
-    setGender((staff.gender as 'Male' | 'Female') || 'Male');
-    setRoleTitle(staff.roleTitle || 'Senior Barber');
-    setPhone(staff.phone || '+971 54 429 8306');
-    setAvatar(staff.avatar || AVATAR_PRESETS[0]);
-    setSpecialtiesText(staff.specialties ? staff.specialties.join(', ') : 'Skin Fades');
-    setShiftHours(staff.shiftHours || '09:00 AM - 07:00 PM');
-    setExperienceYears(staff.experienceYears || 5);
-    setCommissionRate(staff.commissionRate || 40);
-    setWorkingDays(staff.workingDays || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']);
+  const handleOpenEdit = (st: StaffMember) => {
+    setEditingStaffId(st.id);
+    setName(st.name);
+    setGender(st.gender || 'Male');
+    setRoleTitle(st.roleTitle);
+    setPhone(st.phone || '+971 54 429 8306');
+    setAvatar(st.avatar || AVATAR_PRESETS[0]);
+    setSpecialtiesText(st.specialties.join(', '));
+    setShiftHours(st.shiftHours || '09:00 AM - 07:00 PM');
+    setExperienceYears(st.experienceYears || 5);
+    setCommissionRate(st.commissionRate ?? 40);
+    setWorkingDays(st.workingDays || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
     setModalOpen(true);
   };
 
-  const handleToggleDay = (day: string) => {
-    if (workingDays.includes(day)) {
-      setWorkingDays(workingDays.filter(d => d !== day));
-    } else {
-      setWorkingDays([...workingDays, day]);
-    }
-  };
-
-  const handleSaveStaff = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
-    const specsArray = specialtiesText
+    const specialties = specialtiesText
       .split(',')
       .map(s => s.trim())
       .filter(Boolean);
 
+    const staffData = {
+      salonId: salon ? salon.id : businessUser.salonId,
+      name: name.trim(),
+      gender,
+      roleTitle: roleTitle.trim() || 'Stylist',
+      phone: phone.trim() || '+971 54 429 8306',
+      avatar: avatar.trim() || AVATAR_PRESETS[0],
+      rating: 5.0,
+      reviewsCount: 1,
+      experienceYears: Number(experienceYears),
+      commissionRate: Number(commissionRate) || 40,
+      specialties: specialties.length > 0 ? specialties : ['Precision Styling'],
+      shiftHours: shiftHours.trim() || '09:00 AM - 07:00 PM',
+      isAvailable: true,
+      workingDays: workingDays.length > 0 ? workingDays : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+    };
+
     if (editingStaffId) {
-      updateStaffMember(editingStaffId, {
-        name: name.trim(),
-        gender,
-        roleTitle: roleTitle.trim(),
-        phone: phone.trim(),
-        avatar,
-        specialties: specsArray.length > 0 ? specsArray : ['General Hair Care'],
-        shiftHours: shiftHours.trim(),
-        experienceYears: Number(experienceYears) || 1,
-        commissionRate: Number(commissionRate) || 30,
-        workingDays,
-      });
-      showNotification(`Stylist ${name} profile updated successfully.`);
+      updateStaffMember(editingStaffId, staffData);
+      setNotificationMsg(`Staff profile "${name}" updated!`);
     } else {
-      addStaffMember({
-        salonId: salon.id,
-        name: name.trim(),
-        gender,
-        roleTitle: roleTitle.trim(),
-        phone: phone.trim(),
-        avatar,
-        rating: 5.0,
-        reviewCount: 0,
-        isAvailable: true,
-        specialties: specsArray.length > 0 ? specsArray : ['General Hair Care'],
-        shiftHours: shiftHours.trim(),
-        experienceYears: Number(experienceYears) || 1,
-        commissionRate: Number(commissionRate) || 30,
-        workingDays,
-      });
-      showNotification(`New staff member ${name} onboarded.`);
+      addStaffMember(staffData);
+      setNotificationMsg(`Stylist "${name}" added to roster!`);
     }
 
     setModalOpen(false);
-  };
-
-  const handleDeleteStaff = (staffId: string) => {
-    deleteStaffMember(staffId);
-    setDeleteConfirmId(null);
-    showNotification('Staff member removed.');
-  };
-
-  const handleToggleAvailability = (staff: StaffMember) => {
-    updateStaffMember(staff.id, {
-      isAvailable: !staff.isAvailable,
-    });
-    showNotification(
-      `${staff.name} is now ${!staff.isAvailable ? 'Available for bookings' : 'Marked Off Duty'}.`
-    );
-  };
-
-  const showNotification = (msg: string) => {
-    setNotificationMsg(msg);
     setTimeout(() => setNotificationMsg(null), 3000);
   };
 
+  const toggleAvailability = (st: StaffMember) => {
+    updateStaffMember(st.id, {
+      isAvailable: !st.isAvailable,
+    });
+  };
+
+  const toggleWorkingDay = (day: string) => {
+    setWorkingDays(prev =>
+      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+    );
+  };
+
   const filteredStaff = salonStaff.filter(st => {
-    const matchSearch =
+    const matchesSearch =
       st.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (st.roleTitle && st.roleTitle.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (st.specialties && st.specialties.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())));
+      st.roleTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (st.gender && st.gender.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      st.specialties.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    const matchDay = filterDay === 'all' || (st.workingDays && st.workingDays.includes(filterDay));
+    const matchesDay = filterDay === 'all' || st.workingDays.includes(filterDay);
 
-    return matchSearch && matchDay;
+    return matchesSearch && matchesDay;
   });
 
   return (
-    <div id="business-staff-manager-root" className="space-y-6">
-      {/* Header Banner & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-6 pb-20 max-w-5xl mx-auto animate-in fade-in duration-200">
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">Staff & Stylists</h2>
-          <p className={`text-xs sm:text-sm mt-0.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-            Manage your barbers, stylists, shift hours, and commission splits
-          </p>
+          <h1 className={`text-xl sm:text-2xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
+            Staff
+          </h1>
         </div>
-
-        <button
-          type="button"
-          onClick={handleOpenAddModal}
-          className="px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold text-white shadow-md flex items-center gap-2 self-start sm:self-auto active:scale-95"
-          style={{ backgroundColor: currentThemeConfig.primaryHex }}
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add New Staff</span>
-        </button>
       </div>
 
-      {/* Quick Search & Day Filter Row */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <div
-          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-2xl border flex-1 max-w-md ${
-            isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'
-          }`}
-        >
-          <Search className="w-4 h-4 text-slate-400 shrink-0" />
+      {notificationMsg && (
+        <div className="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 text-xs font-bold flex items-center justify-between gap-2 animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 shrink-0" />
+            <span>{notificationMsg}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setNotificationMsg(null)}
+            className="text-emerald-400 hover:text-emerald-200 text-sm font-black px-2"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      <div
+        className={`p-3.5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+          isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-900 border-slate-800'
+        }`}
+      >
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search stylist by name, specialty, or title..."
-            className="w-full bg-transparent text-xs focus:outline-none placeholder:text-slate-400"
+            placeholder="Search stylists by name, role, gender, or specialty..."
+            className={`w-full pl-9 pr-4 py-2 text-xs font-semibold rounded-xl border focus:outline-none transition-all ${
+              isLight
+                ? 'bg-slate-50 border-slate-200 text-slate-900 focus:border-slate-400'
+                : 'bg-slate-950 border-slate-800 text-white focus:border-slate-600'
+            }`}
           />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery('')}
-              className="text-slate-400 hover:text-slate-600"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
         </div>
 
-        {/* Day Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+        <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 custom-scrollbar">
           <button
             type="button"
             onClick={() => setFilterDay('all')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all ${
               filterDay === 'all'
-                ? 'bg-primary text-white border-primary shadow-sm'
+                ? 'text-white'
                 : isLight
-                ? 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-                : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-850'
+                ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                : 'bg-slate-800 text-slate-300 hover:bg-slate-750'
             }`}
-            style={filterDay === 'all' ? { backgroundColor: currentThemeConfig.primaryHex } : undefined}
+            style={{
+              backgroundColor: filterDay === 'all' ? currentThemeConfig.primaryHex : undefined,
+            }}
           >
             All Days
           </button>
-          {allDays.map(day => (
+          {allDays.map(d => (
             <button
-              key={day}
+              key={d}
               type="button"
-              onClick={() => setFilterDay(day)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
-                filterDay === day
-                  ? 'bg-primary text-white border-primary shadow-sm'
+              onClick={() => setFilterDay(d)}
+              className={`px-2.5 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all ${
+                filterDay === d
+                  ? 'text-white'
                   : isLight
-                  ? 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-                  : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-850'
+                  ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-750'
               }`}
-              style={filterDay === day ? { backgroundColor: currentThemeConfig.primaryHex } : undefined}
+              style={{
+                backgroundColor: filterDay === d ? currentThemeConfig.primaryHex : undefined,
+              }}
             >
-              {day.slice(0, 3)}
+              {d.slice(0, 3)}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Toast Notification */}
-      {notificationMsg && (
-        <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-2 animate-fadeIn">
-          <CheckCircle2 className="w-4 h-4" />
-          <span>{notificationMsg}</span>
-        </div>
-      )}
+      {/* Add Staff Member Action (Left Aligned above Stylist banner cards) */}
+      <div className="flex items-center justify-start">
+        <button
+          id="add-new-staff-btn"
+          type="button"
+          onClick={handleOpenCreate}
+          className="px-4 py-2.5 rounded-2xl font-extrabold text-xs sm:text-sm text-white shadow-md transition-all flex items-center justify-center gap-2 hover:opacity-95 active:scale-95 cursor-pointer shrink-0"
+          style={{
+            backgroundColor: currentThemeConfig.primaryHex,
+            boxShadow: `0 4px 14px ${currentThemeConfig.glowHex}`,
+          }}
+        >
+          <Plus className="w-4 h-4" />
+          <span>+ Add Staff Member</span>
+        </button>
+      </div>
 
-      {/* Staff Grid Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filteredStaff.map(st => (
           <div
             key={st.id}
-            id={`staff-card-${st.id}`}
-            className={`p-4 sm:p-5 rounded-3xl border transition-all flex flex-col justify-between ${
+            className={`p-5 rounded-3xl border transition-all flex flex-col justify-between space-y-4 ${
               isLight
-                ? 'bg-white border-slate-200 shadow-sm hover:shadow-md'
-                : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+                ? 'bg-white border-slate-200/90 hover:border-slate-300 shadow-sm'
+                : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 shadow'
             }`}
           >
-            <div>
-              {/* Card Top Header: Avatar + Status Toggle */}
-              <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-3 min-w-0">
-                  <StaffAvatar
-                    avatarUrl={st.avatar}
-                    name={st.name}
-                    isAvailable={st.isAvailable}
-                    size="lg"
-                  />
-                  <div className="min-w-0">
-                    <h3 className="text-sm sm:text-base font-extrabold truncate">{st.name}</h3>
-                    <p className={`text-xs truncate font-medium ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                      {st.roleTitle || 'Stylist'}
-                    </p>
-                    <div className="flex items-center gap-1 mt-0.5 text-xs text-amber-500 font-bold">
-                      <Star className="w-3 h-3 fill-current" />
-                      <span>{st.rating.toFixed(1)}</span>
-                      <span className="text-slate-400 font-normal">({st.reviewCount || 0})</span>
-                    </div>
-                  </div>
-                </div>
+            <div className="flex items-start gap-3.5">
+              <StaffAvatar
+                name={st.name}
+                avatar={st.avatar}
+                gender={st.gender}
+                size="lg"
+                badge={
+                  <button
+                    type="button"
+                    onClick={() => toggleAvailability(st)}
+                    title={st.isAvailable ? 'Click to set on break' : 'Click to set available'}
+                    className={`w-5 h-5 rounded-full border-2 border-white dark:border-slate-900 flex items-center justify-center text-[9px] font-bold shadow-xs transition-transform hover:scale-110 ${
+                      st.isAvailable ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'
+                    }`}
+                  >
+                    {st.isAvailable ? '✓' : '✕'}
+                  </button>
+                }
+              />
 
-                {/* Duty Switch Button */}
-                <button
-                  type="button"
-                  onClick={() => handleToggleAvailability(st)}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold border transition-colors ${
-                    st.isAvailable
-                      ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
-                      : 'bg-slate-200/50 dark:bg-slate-800 text-slate-500 border-slate-300 dark:border-slate-700'
-                  }`}
-                  title="Toggle duty status"
-                >
-                  {st.isAvailable ? 'Available' : 'Off Duty'}
-                </button>
-              </div>
-
-              {/* Card Middle: Shift, Specialties, Phone */}
-              <div className="py-3 space-y-2 text-xs">
-                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                  <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
-                  <span className="font-semibold">{st.shiftHours || '09:00 AM - 07:00 PM'}</span>
-                </div>
-
-                {st.phone && (
-                  <div className="flex items-center gap-2 text-slate-500">
-                    <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span>{st.phone}</span>
-                  </div>
-                )}
-
-                {/* Specialties Tags */}
-                {st.specialties && st.specialties.length > 0 && (
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    {st.specialties.map((spec, i) => (
+              <div className="space-y-1 flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <h3 className={`text-base font-black truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                      {st.name}
+                    </h3>
+                    {st.gender && (
                       <span
-                        key={i}
-                        className={`text-[10px] px-2 py-0.5 rounded-md font-medium border ${
-                          isLight
-                            ? 'bg-slate-100 text-slate-600 border-slate-200'
-                            : 'bg-slate-800 text-slate-300 border-slate-750'
+                        className={`text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-md border shrink-0 ${
+                          st.gender === 'Female'
+                            ? 'bg-pink-500/10 border-pink-500/20 text-pink-600 dark:text-pink-400'
+                            : 'bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400'
                         }`}
                       >
-                        {spec}
+                        {st.gender}
                       </span>
-                    ))}
+                    )}
                   </div>
-                )}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="flex items-center gap-1 text-xs text-amber-500 font-extrabold bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                      <Star className="w-3.5 h-3.5 fill-amber-500" />
+                      {st.rating.toFixed(1)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEdit(st)}
+                      className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                      title="Edit Staff"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteStaffMember(st.id)}
+                      className="p-1.5 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/15 transition-colors"
+                      title="Remove Staff"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
 
-                {/* Working Days Badges */}
-                {st.workingDays && st.workingDays.length > 0 && (
-                  <div className="flex items-center gap-1 flex-wrap pt-1">
-                    {allDays.map(d => {
-                      const isWorking = st.workingDays.includes(d);
-                      return (
-                        <span
-                          key={d}
-                          className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
-                            isWorking
-                              ? 'bg-emerald-500/10 text-emerald-600'
-                              : 'text-slate-400 opacity-40'
-                          }`}
-                        >
-                          {d.slice(0, 2)}
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
+                <p
+                  className="text-xs font-bold truncate"
+                  style={{ color: currentThemeConfig.primaryHex }}
+                >
+                  {st.roleTitle}
+                </p>
+
+                <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono">
+                  <span>{st.phone || '+971 54 429 8306'}</span>
+                  <span>•</span>
+                  <span>{st.shiftHours || '09:00 AM - 07:00 PM'}</span>
+                </div>
+
+                <div className="flex flex-wrap gap-1 pt-1.5">
+                  {st.specialties.map(spec => (
+                    <span
+                      key={spec}
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
+                        isLight
+                          ? 'bg-slate-100 border-slate-200 text-slate-700'
+                          : 'bg-slate-950 border-slate-800 text-slate-300'
+                      }`}
+                    >
+                      {spec}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
 
-            {/* Card Footer: Edit & Delete Actions */}
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-              <div className="text-[11px] font-bold text-slate-500">
-                <span>{st.commissionRate || 40}% Split</span>
+            <div className={`p-3 rounded-2xl border text-xs grid grid-cols-2 gap-2 ${
+              isLight ? 'bg-slate-50 border-slate-200/80' : 'bg-slate-950/80 border-slate-800/80'
+            }`}>
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                  Daily Shift Hours
+                </span>
+                <span className="font-mono font-bold text-slate-900 dark:text-white flex items-center gap-1 mt-0.5">
+                  <Clock className="w-3 h-3 text-slate-400" />
+                  {st.shiftHours || '09:00 AM - 07:00 PM'}
+                </span>
               </div>
-
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => handleOpenEditModal(st)}
-                  className={`p-2 rounded-xl border transition-colors ${
-                    isLight
-                      ? 'border-slate-200 hover:bg-slate-100 text-slate-700'
-                      : 'border-slate-800 hover:bg-slate-800 text-slate-300'
-                  }`}
-                  title="Edit Staff Member"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                </button>
-
-                {deleteConfirmId === st.id ? (
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteStaff(st.id)}
-                      className="px-2 py-1 rounded-lg text-[10px] font-bold bg-rose-500 text-white"
-                    >
-                      Confirm
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDeleteConfirmId(null)}
-                      className="px-1.5 py-1 rounded-lg text-[10px] text-slate-400"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setDeleteConfirmId(st.id)}
-                    className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors"
-                    title="Delete Staff"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                  Booking Status
+                </span>
+                <span className={`font-bold inline-flex items-center gap-1 mt-0.5 ${
+                  st.isAvailable ? 'text-emerald-500' : 'text-rose-400'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${st.isAvailable ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+                  {st.isAvailable ? 'On Duty (Active)' : 'On Break / Off'}
+                </span>
               </div>
             </div>
           </div>
         ))}
-
-        {filteredStaff.length === 0 && (
-          <div className="col-span-full text-center py-16 space-y-3">
-            <p className="text-slate-400 text-xs">No staff members match your filter criteria.</p>
-            <button
-              type="button"
-              onClick={handleOpenAddModal}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-white shadow-md active:scale-95"
-              style={{ backgroundColor: currentThemeConfig.primaryHex }}
-            >
-              Add First Stylist
-            </button>
-          </div>
-        )}
       </div>
 
-      {/* Create / Edit Staff Modal */}
+      {/* Add / Edit Staff Modal */}
       {modalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn"
-          onClick={() => setModalOpen(false)}
-        >
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
           <div
-            onClick={e => e.stopPropagation()}
-            className={`relative w-full max-w-lg rounded-3xl border shadow-2xl p-6 max-h-[90vh] overflow-y-auto space-y-5 animate-slideUp ${
-              isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'
+            className={`w-full max-w-xl max-h-[90vh] rounded-3xl border overflow-y-auto shadow-2xl ${
+              isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-[#121316] border-slate-800 text-white'
             }`}
           >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="text-base sm:text-lg font-bold">
-                {editingStaffId ? 'Edit Stylist Profile' : 'Add New Staff Member'}
-              </h3>
+            <div className="sticky top-0 z-10 px-6 py-4 border-b flex items-center justify-between backdrop-blur-md bg-inherit">
+              <div>
+                <span
+                  className="text-[10px] font-black uppercase tracking-widest"
+                  style={{ color: currentThemeConfig.primaryHex }}
+                >
+                  {editingStaffId ? 'Update Stylist' : 'New Specialist'}
+                </span>
+                <h3 className="text-lg font-black tracking-tight">
+                  {editingStaffId ? 'Edit Stylist Profile' : 'Add Team Member'}
+                </h3>
+              </div>
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="p-2 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Form Body */}
-            <form onSubmit={handleSaveStaff} className="space-y-4">
-              {/* Name & Gender */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold block mb-1">Full Name *</label>
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              {/* Full Name & Gender */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-400 block mb-1.5">
+                    Stylist Full Name *
+                  </label>
                   <input
                     type="text"
                     required
                     value={name}
                     onChange={e => setName(e.target.value)}
-                    placeholder="e.g. Alex Morgan"
-                    className={`w-full px-3.5 py-2.5 rounded-2xl border text-xs focus:outline-none focus:border-primary ${
-                      isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-800 border-slate-700 text-white'
+                    placeholder="e.g. Marcus Vance"
+                    className={`w-full px-4 py-2.5 rounded-2xl border text-sm font-semibold outline-none ${
+                      isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900 border-slate-800'
                     }`}
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold block mb-1">Gender</label>
-                  <select
-                    value={gender}
-                    onChange={e => setGender(e.target.value as 'Male' | 'Female')}
-                    className={`w-full px-3.5 py-2.5 rounded-2xl border text-xs focus:outline-none focus:border-primary ${
-                      isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-800 border-slate-700 text-white'
-                    }`}
-                  >
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                  </select>
+                  <label className="text-xs font-bold text-slate-400 block mb-1.5">
+                    Gender *
+                  </label>
+                  <div className="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs">
+                    {(['Male', 'Female'] as const).map(g => (
+                      <button
+                        key={g}
+                        type="button"
+                        onClick={() => setGender(g)}
+                        className={`py-1.5 rounded-xl font-bold transition-all text-center ${
+                          gender === g
+                            ? 'text-white shadow-xs'
+                            : isLight
+                            ? 'text-slate-600'
+                            : 'text-slate-400'
+                        }`}
+                        style={{
+                          backgroundColor: gender === g ? currentThemeConfig.primaryHex : undefined,
+                        }}
+                      >
+                        {g}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              {/* Role Title & Phone */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Role Title, Experience & Commission Rate */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="text-xs font-bold block mb-1">Role Title</label>
+                  <label className="text-xs font-bold text-slate-400 block mb-1.5">
+                    Role / Title *
+                  </label>
                   <input
                     type="text"
+                    required
                     value={roleTitle}
                     onChange={e => setRoleTitle(e.target.value)}
-                    placeholder="e.g. Master Stylist"
-                    className={`w-full px-3.5 py-2.5 rounded-2xl border text-xs focus:outline-none focus:border-primary ${
-                      isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-800 border-slate-700 text-white'
+                    placeholder="e.g. Master Barber"
+                    className={`w-full px-4 py-2.5 rounded-2xl border text-xs font-semibold outline-none ${
+                      isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900 border-slate-800'
                     }`}
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold block mb-1">Phone / WhatsApp</label>
+                  <label className="text-xs font-bold text-slate-400 block mb-1.5">
+                    Experience (Yrs)
+                  </label>
                   <input
-                    type="text"
-                    value={phone}
-                    onChange={e => setPhone(e.target.value)}
-                    placeholder="+971 50 000 0000"
-                    className={`w-full px-3.5 py-2.5 rounded-2xl border text-xs focus:outline-none focus:border-primary ${
-                      isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-800 border-slate-700 text-white'
+                    type="number"
+                    min={1}
+                    value={experienceYears}
+                    onChange={e => setExperienceYears(Number(e.target.value))}
+                    className={`w-full px-4 py-2.5 rounded-2xl border text-xs font-mono font-bold outline-none ${
+                      isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900 border-slate-800'
                     }`}
                   />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-400 block mb-1.5">
+                    Commission (%)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={commissionRate}
+                    onChange={e => setCommissionRate(Number(e.target.value))}
+                    placeholder="40"
+                    className={`w-full px-4 py-2.5 rounded-2xl border text-xs font-mono font-bold outline-none ${
+                      isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900 border-slate-800'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Phone & Shift Hours */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-400 block mb-1.5">
+                    Contact Phone Number
+                  </label>
+                  <div className="relative">
+                    <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={e => setPhone(e.target.value)}
+                      placeholder="+971 54 429 8306"
+                      className={`w-full pl-9 pr-3 py-2.5 rounded-2xl border text-xs font-mono outline-none ${
+                        isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900 border-slate-800'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-400 block mb-1.5">
+                    Working Shift Hours
+                  </label>
+                  <div className="relative">
+                    <Clock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={shiftHours}
+                      onChange={e => setShiftHours(e.target.value)}
+                      placeholder="09:00 AM - 07:00 PM"
+                      className={`w-full pl-9 pr-3 py-2.5 rounded-2xl border text-xs font-mono outline-none ${
+                        isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900 border-slate-800'
+                      }`}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Specialties */}
+              <div>
+                <label className="text-xs font-bold text-slate-400 block mb-1.5">
+                  Specialties (Comma Separated)
+                </label>
+                <input
+                  type="text"
+                  value={specialtiesText}
+                  onChange={e => setSpecialtiesText(e.target.value)}
+                  placeholder="e.g. Skin Fades, Beard Sculpt, Scissor Artistry, Hot Towel"
+                  className={`w-full px-4 py-2.5 rounded-2xl border text-xs font-semibold outline-none ${
+                    isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900 border-slate-800'
+                  }`}
+                />
+              </div>
+
+              {/* Working Days */}
+              <div>
+                <label className="text-xs font-bold text-slate-400 block mb-1.5">
+                  Available Working Days
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {allDays.map(day => {
+                    const isSelected = workingDays.includes(day);
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => toggleWorkingDay(day)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          isSelected
+                            ? 'text-white shadow-xs'
+                            : isLight
+                            ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            : 'bg-slate-900 text-slate-400 hover:bg-slate-800'
+                        }`}
+                        style={{
+                          backgroundColor: isSelected ? currentThemeConfig.primaryHex : undefined,
+                        }}
+                      >
+                        {day}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Avatar Presets */}
               <div>
-                <label className="text-xs font-bold block mb-1.5">Select Profile Avatar</label>
-                <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                  {AVATAR_PRESETS.map((url, i) => (
+                <label className="text-xs font-bold text-slate-400 block mb-2">
+                  Select Profile Avatar
+                </label>
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                  {AVATAR_PRESETS.map((p, idx) => (
                     <img
-                      key={i}
-                      src={url}
-                      alt="Avatar option"
-                      onClick={() => setAvatar(url)}
-                      className={`w-12 h-12 rounded-2xl object-cover cursor-pointer border-2 transition-all shrink-0 ${
-                        avatar === url
-                          ? 'border-primary ring-2 ring-primary/30 scale-105'
+                      key={idx}
+                      src={p}
+                      alt={`preset-${idx}`}
+                      onClick={() => setAvatar(p)}
+                      className={`w-12 h-12 rounded-2xl object-cover cursor-pointer transition-transform hover:scale-105 border-2 ${
+                        avatar === p
+                          ? 'border-indigo-500 ring-2 ring-indigo-500/40 scale-105'
                           : 'border-transparent opacity-75 hover:opacity-100'
                       }`}
                     />
@@ -557,94 +627,29 @@ export const BusinessStaffManager: React.FC = () => {
                 </div>
               </div>
 
-              {/* Specialties */}
-              <div>
-                <label className="text-xs font-bold block mb-1">
-                  Specialties (comma separated)
-                </label>
-                <input
-                  type="text"
-                  value={specialtiesText}
-                  onChange={e => setSpecialtiesText(e.target.value)}
-                  placeholder="Skin Fades, Balayage, Beard Sculpting, Keratin"
-                  className={`w-full px-3.5 py-2.5 rounded-2xl border text-xs focus:outline-none focus:border-primary ${
-                    isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-800 border-slate-700 text-white'
-                  }`}
-                />
-              </div>
-
-              {/* Shift Hours & Commission Rate */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold block mb-1">Shift Hours</label>
-                  <input
-                    type="text"
-                    value={shiftHours}
-                    onChange={e => setShiftHours(e.target.value)}
-                    placeholder="09:00 AM - 07:00 PM"
-                    className={`w-full px-3.5 py-2.5 rounded-2xl border text-xs focus:outline-none focus:border-primary ${
-                      isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-800 border-slate-700 text-white'
-                    }`}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold block mb-1">Commission Split (%)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={commissionRate}
-                    onChange={e => setCommissionRate(Number(e.target.value))}
-                    className={`w-full px-3.5 py-2.5 rounded-2xl border text-xs focus:outline-none focus:border-primary ${
-                      isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-800 border-slate-700 text-white'
-                    }`}
-                  />
-                </div>
-              </div>
-
-              {/* Working Days Multi-Select */}
-              <div>
-                <label className="text-xs font-bold block mb-1.5">Weekly Working Days</label>
-                <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
-                  {allDays.map(day => {
-                    const isSelected = workingDays.includes(day);
-                    return (
-                      <button
-                        key={day}
-                        type="button"
-                        onClick={() => handleToggleDay(day)}
-                        className={`py-2 rounded-xl text-xs font-bold border transition-all text-center ${
-                          isSelected
-                            ? 'bg-primary text-white border-primary shadow-sm'
-                            : isLight
-                            ? 'bg-slate-50 text-slate-600 border-slate-200'
-                            : 'bg-slate-800 text-slate-300 border-slate-700'
-                        }`}
-                        style={isSelected ? { backgroundColor: currentThemeConfig.primaryHex } : undefined}
-                      >
-                        {day.slice(0, 3)}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Modal Footer Buttons */}
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
+              {/* Action Buttons */}
+              <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700"
+                  className={`px-5 py-2.5 rounded-2xl text-xs font-bold border transition-colors ${
+                    isLight
+                      ? 'border-slate-200 text-slate-700 hover:bg-slate-100'
+                      : 'border-slate-800 text-slate-300 hover:bg-slate-800'
+                  }`}
                 >
                   Cancel
                 </button>
+
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-white shadow-md active:scale-95"
-                  style={{ backgroundColor: currentThemeConfig.primaryHex }}
+                  className="px-6 py-2.5 rounded-2xl text-xs font-black text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
+                  style={{
+                    backgroundColor: currentThemeConfig.primaryHex,
+                    boxShadow: `0 4px 14px ${currentThemeConfig.glowHex}`,
+                  }}
                 >
-                  {editingStaffId ? 'Save Changes' : 'Onboard Stylist'}
+                  {editingStaffId ? 'Save Changes' : 'Add Stylist'}
                 </button>
               </div>
             </form>
@@ -654,3 +659,4 @@ export const BusinessStaffManager: React.FC = () => {
     </div>
   );
 };
+

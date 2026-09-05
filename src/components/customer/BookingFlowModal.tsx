@@ -280,11 +280,6 @@ export const BookingFlowModal: React.FC = () => {
     }
   }, [selectedDate, allAvailableSlotsForDate, selectedStaff, selectedService, salonTimezone]);
 
-  const dualTime = useMemo(() => {
-    if (!selectedDate || !selectedTimeSlot || !salon) return null;
-    return getDualBookingTime(selectedDate, selectedTimeSlot, salon);
-  }, [selectedDate, selectedTimeSlot, salon]);
-
   const handleConfirmBooking = () => {
     if (!selectedService) return;
 

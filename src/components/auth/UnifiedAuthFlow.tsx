@@ -2147,7 +2147,6 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
                     type="button"
                     onClick={() => setResendNotice(null)}
                     className="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded-full transition-colors shrink-0 cursor-pointer"
-                    aria-label="Dismiss notice"
                   >
                     <X className="w-3.5 h-3.5 opacity-70 hover:opacity-100" />
                   </button>

@@ -649,7 +649,7 @@ export const BusinessAppointments: React.FC = () => {
                     ? 'text-white border-transparent shadow-md'
                     : isLight
                     ? 'bg-slate-100/90 hover:bg-slate-200 text-slate-700 hover:text-slate-950 border-slate-200/80'
-                    : 'bg-slate-800/80 hover:bg-slate-755 text-slate-300 hover:text-white border-slate-700/80'
+                    : 'bg-slate-800/80 hover:bg-slate-750 text-slate-300 hover:text-white border-slate-700/80'
                 }`}
                 style={{
                   backgroundColor: isSelected ? currentThemeConfig.primaryHex : undefined,

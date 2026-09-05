@@ -211,7 +211,6 @@ export async function setAppointmentStatusInDb(params: {
   reason?: string;
   proposedStartsAt?: string;
   proposedEndsAt?: string;
-  customerNote?: string;
 }): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseConfigured()) return { success: false, error: 'Supabase unconfigured' };
 
@@ -1991,3 +1990,5 @@ export async function deleteAccountInSupabase(
     return { success: false, error: err.message || 'Database error during account deletion' };
   }
 }
+
+
