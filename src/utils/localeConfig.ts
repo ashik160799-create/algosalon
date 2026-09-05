@@ -2,18 +2,608 @@ export interface CountryLocaleData {
   code: string;
   name: string;
   nativeName: string;
-  flag: string;
-  dialCode: string;
   currency: string;
-  currencySymbol: string;
-  currencySymbolNative: string;
-  defaultLanguage: SupportedLanguage;
-  supportedLanguages: SupportedLanguage[];
-  timeZone: string;
-  phoneDigits: number;
+  symbol: string;
+  symbolNative: string;
+  dialCode: string;
+  flag: string;
+  defaultLanguage: 'en' | 'ar' | 'hi' | 'fr' | 'es' | 'de';
+  placeholder: string;
+  defaultCity: string;
+  exchangeRateFromAED: number;
 }
 
-export type SupportedLanguage = 'en' | 'ar' | 'hi' | 'fr' | 'de' | 'es' | 'ur' | 'bn' | 'ja' | 'ko';
+export const COUNTRY_LOCALE_REGISTRY: Record<string, CountryLocaleData> = {
+  AE: {
+    code: 'AE',
+    name: 'United Arab Emirates',
+    nativeName: 'الإمارات العربية المتحدة',
+    currency: 'AED',
+    symbol: 'AED',
+    symbolNative: 'د.إ',
+    dialCode: '+971',
+    flag: '🇦🇪',
+    defaultLanguage: 'en',
+    placeholder: '54 429 8306',
+    defaultCity: 'Dubai Marina, UAE',
+    exchangeRateFromAED: 1.0,
+  },
+  IN: {
+    code: 'IN',
+    name: 'India',
+    nativeName: 'भारत',
+    currency: 'INR',
+    symbol: '₹',
+    symbolNative: '₹',
+    dialCode: '+91',
+    flag: '🇮🇳',
+    defaultLanguage: 'en',
+    placeholder: '98765 43210',
+    defaultCity: 'Bandra West, Mumbai',
+    exchangeRateFromAED: 22.8,
+  },
+  SA: {
+    code: 'SA',
+    name: 'Saudi Arabia',
+    nativeName: 'المملكة العربية السعودية',
+    currency: 'SAR',
+    symbol: 'SAR',
+    symbolNative: 'ر.س',
+    dialCode: '+966',
+    flag: '🇸🇦',
+    defaultLanguage: 'ar',
+    placeholder: '50 123 4567',
+    defaultCity: 'Olaya, Riyadh',
+    exchangeRateFromAED: 1.02,
+  },
+  US: {
+    code: 'US',
+    name: 'United States',
+    nativeName: 'United States',
+    currency: 'USD',
+    symbol: '$',
+    symbolNative: '$',
+    dialCode: '+1',
+    flag: '🇺🇸',
+    defaultLanguage: 'en',
+    placeholder: '(555) 000-0000',
+    defaultCity: 'Downtown, Los Angeles',
+    exchangeRateFromAED: 0.272,
+  },
+  GB: {
+    code: 'GB',
+    name: 'United Kingdom',
+    nativeName: 'United Kingdom',
+    currency: 'GBP',
+    symbol: '£',
+    symbolNative: '£',
+    dialCode: '+44',
+    flag: '🇬🇧',
+    defaultLanguage: 'en',
+    placeholder: '7911 123456',
+    defaultCity: 'Mayfair, London',
+    exchangeRateFromAED: 0.215,
+  },
+  QA: {
+    code: 'QA',
+    name: 'Qatar',
+    nativeName: 'دولة قطر',
+    currency: 'QAR',
+    symbol: 'QAR',
+    symbolNative: 'ر.ق',
+    dialCode: '+974',
+    flag: '🇶🇦',
+    defaultLanguage: 'ar',
+    placeholder: '3312 3456',
+    defaultCity: 'West Bay, Doha',
+    exchangeRateFromAED: 0.99,
+  },
+  KW: {
+    code: 'KW',
+    name: 'Kuwait',
+    nativeName: 'دولة الكويت',
+    currency: 'KWD',
+    symbol: 'KWD',
+    symbolNative: 'د.ك',
+    dialCode: '+965',
+    flag: '🇰🇼',
+    defaultLanguage: 'ar',
+    placeholder: '9123 4567',
+    defaultCity: 'Salmiya, Kuwait City',
+    exchangeRateFromAED: 0.083,
+  },
+  OM: {
+    code: 'OM',
+    name: 'Oman',
+    nativeName: 'سلطنة عمان',
+    currency: 'OMR',
+    symbol: 'OMR',
+    symbolNative: 'ر.ع',
+    dialCode: '+968',
+    flag: '🇴🇲',
+    defaultLanguage: 'ar',
+    placeholder: '9123 4567',
+    defaultCity: 'Qurum, Muscat',
+    exchangeRateFromAED: 0.105,
+  },
+  BH: {
+    code: 'BH',
+    name: 'Bahrain',
+    nativeName: 'مملكة البحرين',
+    currency: 'BHD',
+    symbol: 'BHD',
+    symbolNative: 'د.ب',
+    dialCode: '+973',
+    flag: '🇧🇭',
+    defaultLanguage: 'ar',
+    placeholder: '3600 1234',
+    defaultCity: 'Seef, Manama',
+    exchangeRateFromAED: 0.103,
+  },
+  CA: {
+    code: 'CA',
+    name: 'Canada',
+    nativeName: 'Canada',
+    currency: 'CAD',
+    symbol: 'CA$',
+    symbolNative: '$',
+    dialCode: '+1',
+    flag: '🇨🇦',
+    defaultLanguage: 'en',
+    placeholder: '(555) 000-0000',
+    defaultCity: 'Downtown, Toronto',
+    exchangeRateFromAED: 0.375,
+  },
+  AU: {
+    code: 'AU',
+    name: 'Australia',
+    nativeName: 'Australia',
+    currency: 'AUD',
+    symbol: 'A$',
+    symbolNative: '$',
+    dialCode: '+61',
+    flag: '🇦🇺',
+    defaultLanguage: 'en',
+    placeholder: '412 345 678',
+    defaultCity: 'CBD, Sydney',
+    exchangeRateFromAED: 0.42,
+  },
+  SG: {
+    code: 'SG',
+    name: 'Singapore',
+    nativeName: 'Singapore',
+    currency: 'SGD',
+    symbol: 'S$',
+    symbolNative: '$',
+    dialCode: '+65',
+    flag: '🇸🇬',
+    defaultLanguage: 'en',
+    placeholder: '9123 4567',
+    defaultCity: 'Orchard Road, Singapore',
+    exchangeRateFromAED: 0.365,
+  },
+  MY: {
+    code: 'MY',
+    name: 'Malaysia',
+    nativeName: 'Malaysia',
+    currency: 'MYR',
+    symbol: 'RM',
+    symbolNative: 'RM',
+    dialCode: '+60',
+    flag: '🇲🇾',
+    defaultLanguage: 'en',
+    placeholder: '12-345 6789',
+    defaultCity: 'Bukit Bintang, Kuala Lumpur',
+    exchangeRateFromAED: 1.22,
+  },
+  EG: {
+    code: 'EG',
+    name: 'Egypt',
+    nativeName: 'مصر',
+    currency: 'EGP',
+    symbol: 'EGP',
+    symbolNative: 'ج.م',
+    dialCode: '+20',
+    flag: '🇪🇬',
+    defaultLanguage: 'ar',
+    placeholder: '100 123 4567',
+    defaultCity: 'Zamalek, Cairo',
+    exchangeRateFromAED: 13.2,
+  },
+  PK: {
+    code: 'PK',
+    name: 'Pakistan',
+    nativeName: 'پاکستان',
+    currency: 'PKR',
+    symbol: 'PKR',
+    symbolNative: '₨',
+    dialCode: '+92',
+    flag: '🇵🇰',
+    defaultLanguage: 'en',
+    placeholder: '300 1234567',
+    defaultCity: 'Gulberg, Lahore',
+    exchangeRateFromAED: 76.5,
+  },
+  BD: {
+    code: 'BD',
+    name: 'Bangladesh',
+    nativeName: 'বাংলাদেশ',
+    currency: 'BDT',
+    symbol: 'BDT',
+    symbolNative: '৳',
+    dialCode: '+880',
+    flag: '🇧🇩',
+    defaultLanguage: 'en',
+    placeholder: '1712 345678',
+    defaultCity: 'Gulshan, Dhaka',
+    exchangeRateFromAED: 32.5,
+  },
+  PH: {
+    code: 'PH',
+    name: 'Philippines',
+    nativeName: 'Pilipinas',
+    currency: 'PHP',
+    symbol: '₱',
+    symbolNative: '₱',
+    dialCode: '+63',
+    flag: '🇵🇭',
+    defaultLanguage: 'en',
+    placeholder: '917 123 4567',
+    defaultCity: 'BGC, Taguig, Manila',
+    exchangeRateFromAED: 15.5,
+  },
+  DE: {
+    code: 'DE',
+    name: 'Germany',
+    nativeName: 'Deutschland',
+    currency: 'EUR',
+    symbol: '€',
+    symbolNative: '€',
+    dialCode: '+49',
+    flag: '🇩🇪',
+    defaultLanguage: 'de',
+    placeholder: '151 23456789',
+    defaultCity: 'Mitte, Berlin',
+    exchangeRateFromAED: 0.252,
+  },
+  FR: {
+    code: 'FR',
+    name: 'France',
+    nativeName: 'France',
+    currency: 'EUR',
+    symbol: '€',
+    symbolNative: '€',
+    dialCode: '+33',
+    flag: '🇫🇷',
+    defaultLanguage: 'fr',
+    placeholder: '6 12 34 56 78',
+    defaultCity: 'Le Marais, Paris',
+    exchangeRateFromAED: 0.252,
+  },
+  IT: {
+    code: 'IT',
+    name: 'Italy',
+    nativeName: 'Italia',
+    currency: 'EUR',
+    symbol: '€',
+    symbolNative: '€',
+    dialCode: '+39',
+    flag: '🇮🇹',
+    defaultLanguage: 'en',
+    placeholder: '312 345 6789',
+    defaultCity: 'Brera, Milan',
+    exchangeRateFromAED: 0.252,
+  },
+  ES: {
+    code: 'ES',
+    name: 'Spain',
+    nativeName: 'España',
+    currency: 'EUR',
+    symbol: '€',
+    symbolNative: '€',
+    dialCode: '+34',
+    flag: '🇪🇸',
+    defaultLanguage: 'es',
+    placeholder: '612 34 56 78',
+    defaultCity: 'Salamanca, Madrid',
+    exchangeRateFromAED: 0.252,
+  },
+  TR: {
+    code: 'TR',
+    name: 'Turkey',
+    nativeName: 'Türkiye',
+    currency: 'TRY',
+    symbol: '₺',
+    symbolNative: '₺',
+    dialCode: '+90',
+    flag: '🇹🇷',
+    defaultLanguage: 'en',
+    placeholder: '532 123 4567',
+    defaultCity: 'Nişantaşı, Istanbul',
+    exchangeRateFromAED: 9.3,
+  },
+  JO: {
+    code: 'JO',
+    name: 'Jordan',
+    nativeName: 'الأردن',
+    currency: 'JOD',
+    symbol: 'JOD',
+    symbolNative: 'د.أ',
+    dialCode: '+962',
+    flag: '🇯🇴',
+    defaultLanguage: 'ar',
+    placeholder: '7 9012 3456',
+    defaultCity: 'Abdoun, Amman',
+    exchangeRateFromAED: 0.193,
+  },
+  JP: {
+    code: 'JP',
+    name: 'Japan',
+    nativeName: '日本',
+    currency: 'JPY',
+    symbol: '¥',
+    symbolNative: '円',
+    dialCode: '+81',
+    flag: '🇯🇵',
+    defaultLanguage: 'en',
+    placeholder: '90-1234-5678',
+    defaultCity: 'Ginza, Tokyo',
+    exchangeRateFromAED: 41.5,
+  },
+  CH: {
+    code: 'CH',
+    name: 'Switzerland',
+    nativeName: 'Schweiz',
+    currency: 'CHF',
+    symbol: 'CHF',
+    symbolNative: 'CHF',
+    dialCode: '+41',
+    flag: '🇨🇭',
+    defaultLanguage: 'de',
+    placeholder: '79 123 4567',
+    defaultCity: 'Bahnhofstrasse, Zurich',
+    exchangeRateFromAED: 0.245,
+  },
+  NL: {
+    code: 'NL',
+    name: 'Netherlands',
+    nativeName: 'Nederland',
+    currency: 'EUR',
+    symbol: '€',
+    symbolNative: '€',
+    dialCode: '+31',
+    flag: '🇳🇱',
+    defaultLanguage: 'en',
+    placeholder: '6 12345678',
+    defaultCity: 'Centrum, Amsterdam',
+    exchangeRateFromAED: 0.252,
+  },
+  KR: {
+    code: 'KR',
+    name: 'South Korea',
+    nativeName: '대한민국',
+    currency: 'KRW',
+    symbol: '₩',
+    symbolNative: '₩',
+    dialCode: '+82',
+    flag: '🇰🇷',
+    defaultLanguage: 'en',
+    placeholder: '10-1234-5678',
+    defaultCity: 'Gangnam, Seoul',
+    exchangeRateFromAED: 368.0,
+  },
+};
+
+export const ALL_COUNTRY_LOCALES: CountryLocaleData[] = Object.values(COUNTRY_LOCALE_REGISTRY);
+
+export interface CurrencyInfo {
+  code: string;
+  name: string;
+  symbol: string;
+  symbolNative: string;
+  flag: string;
+  exchangeRateFromAED: number;
+}
+
+export const SUPPORTED_CURRENCIES: CurrencyInfo[] = [
+  { code: 'AED', name: 'UAE Dirham', symbol: 'AED', symbolNative: 'د.إ', flag: '🇦🇪', exchangeRateFromAED: 1.0 },
+  { code: 'USD', name: 'US Dollar', symbol: '$', symbolNative: '$', flag: '🇺🇸', exchangeRateFromAED: 0.272 },
+  { code: 'EUR', name: 'Euro', symbol: '€', symbolNative: '€', flag: '🇪🇺', exchangeRateFromAED: 0.252 },
+  { code: 'GBP', name: 'British Pound', symbol: '£', symbolNative: '£', flag: '🇬🇧', exchangeRateFromAED: 0.215 },
+  { code: 'INR', name: 'Indian Rupee', symbol: '₹', symbolNative: '₹', flag: '🇮🇳', exchangeRateFromAED: 22.8 },
+  { code: 'SAR', name: 'Saudi Riyal', symbol: 'SAR', symbolNative: 'ر.س', flag: '🇸🇦', exchangeRateFromAED: 1.02 },
+  { code: 'QAR', name: 'Qatari Riyal', symbol: 'QAR', symbolNative: 'ر.ق', flag: '🇶🇦', exchangeRateFromAED: 0.99 },
+  { code: 'KWD', name: 'Kuwaiti Dinar', symbol: 'KWD', symbolNative: 'د.ك', flag: '🇰🇼', exchangeRateFromAED: 0.083 },
+  { code: 'OMR', name: 'Omani Rial', symbol: 'OMR', symbolNative: 'ر.ع', flag: '🇴🇲', exchangeRateFromAED: 0.105 },
+  { code: 'BHD', name: 'Bahraini Dinar', symbol: 'BHD', symbolNative: 'د.ب', flag: '🇧🇭', exchangeRateFromAED: 0.103 },
+  { code: 'CAD', name: 'Canadian Dollar', symbol: 'CA$', symbolNative: '$', flag: '🇨🇦', exchangeRateFromAED: 0.375 },
+  { code: 'AUD', name: 'Australian Dollar', symbol: 'A$', symbolNative: '$', flag: '🇦🇺', exchangeRateFromAED: 0.42 },
+  { code: 'SGD', name: 'Singapore Dollar', symbol: 'S$', symbolNative: '$', flag: '🇸🇬', exchangeRateFromAED: 0.365 },
+  { code: 'MYR', name: 'Malaysian Ringgit', symbol: 'RM', symbolNative: 'RM', flag: '🇲🇾', exchangeRateFromAED: 1.22 },
+  { code: 'EGP', name: 'Egyptian Pound', symbol: 'EGP', symbolNative: 'ج.م', flag: '🇪🇬', exchangeRateFromAED: 13.2 },
+  { code: 'PKR', name: 'Pakistani Rupee', symbol: 'PKR', symbolNative: '₨', flag: '🇵🇰', exchangeRateFromAED: 76.5 },
+  { code: 'BDT', name: 'Bangladeshi Taka', symbol: '৳', symbolNative: '৳', flag: '🇧🇩', exchangeRateFromAED: 32.5 },
+  { code: 'PHP', name: 'Philippine Peso', symbol: '₱', symbolNative: '₱', flag: '🇵🇭', exchangeRateFromAED: 15.5 },
+  { code: 'CHF', name: 'Swiss Franc', symbol: 'CHF', symbolNative: 'CHF', flag: '🇨🇭', exchangeRateFromAED: 0.245 },
+  { code: 'TRY', name: 'Turkish Lira', symbol: '₺', symbolNative: '₺', flag: '🇹🇷', exchangeRateFromAED: 9.3 },
+  { code: 'JPY', name: 'Japanese Yen', symbol: '¥', symbolNative: '円', flag: '🇯🇵', exchangeRateFromAED: 41.5 },
+  { code: 'KRW', name: 'South Korean Won', symbol: '₩', symbolNative: '₩', flag: '🇰🇷', exchangeRateFromAED: 368.0 },
+];
+
+export function getCurrencyInfo(code: string): CurrencyInfo {
+  const found = SUPPORTED_CURRENCIES.find(c => c.code.toUpperCase() === code.toUpperCase());
+  if (found) return found;
+  return SUPPORTED_CURRENCIES[0]; // AED default
+}
+
+export interface DetectedRegionResult {
+  countryCode: string;
+  languageCode: SupportedLanguage;
+  country: CountryLocaleData;
+  rawLocale: string;
+  source: 'gps' | 'sim' | 'ip' | 'timezone' | 'manual' | 'default';
+  isAutoDetected: boolean;
+  isUnresolved?: boolean;
+}
+
+export function detectDeviceRegion(): DetectedRegionResult {
+  let rawLocale = 'en-AE';
+  let extractedLanguage: SupportedLanguage = 'en';
+  let extractedCountry = '';
+  let source: DetectedRegionResult['source'] = 'default';
+
+  try {
+    if (typeof Intl !== 'undefined' && Intl.NumberFormat) {
+      const resolved = Intl.NumberFormat().resolvedOptions();
+      if (resolved && resolved.locale) {
+        rawLocale = resolved.locale;
+      }
+    }
+  } catch (e) {
+  }
+
+  if (!rawLocale && typeof navigator !== 'undefined') {
+    rawLocale = navigator.language || (navigator.languages && navigator.languages[0]) || 'en-AE';
+  }
+
+  // Language is extracted purely for UI language preference, NEVER for Country / Currency
+  const cleanLang = rawLocale.split(/[-_]/)[0].toLowerCase();
+  if (cleanLang in TRANSLATIONS) {
+    extractedLanguage = cleanLang as SupportedLanguage;
+  } else {
+    extractedLanguage = 'en';
+  }
+
+  // Priority detection: Check device timezone
+  if (typeof Intl !== 'undefined' && Intl.DateTimeFormat) {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (tz) {
+        if (tz.includes('Dubai') || tz.includes('Abu_Dhabi') || tz.includes('Muscat')) {
+          extractedCountry = tz.includes('Muscat') ? 'OM' : 'AE';
+          source = 'timezone';
+        } else if (tz.includes('Calcutta') || tz.includes('Kolkata') || tz.includes('India')) {
+          extractedCountry = 'IN';
+          source = 'timezone';
+        } else if (tz.includes('Riyadh')) {
+          extractedCountry = 'SA';
+          source = 'timezone';
+        } else if (tz.includes('Qatar') || tz.includes('Doha')) {
+          extractedCountry = 'QA';
+          source = 'timezone';
+        } else if (tz.includes('Kuwait')) {
+          extractedCountry = 'KW';
+          source = 'timezone';
+        } else if (tz.includes('Bahrain')) {
+          extractedCountry = 'BH';
+          source = 'timezone';
+        } else if (tz.includes('London') || tz === 'GB') {
+          extractedCountry = 'GB';
+          source = 'timezone';
+        } else if (tz.includes('New_York') || tz.includes('Los_Angeles') || tz.includes('Chicago') || tz.includes('Detroit') || tz.includes('Denver') || tz.includes('Phoenix')) {
+          extractedCountry = 'US';
+          source = 'timezone';
+        } else if (tz.includes('Toronto') || tz.includes('Montreal') || tz.includes('Vancouver') || tz.includes('Edmonton')) {
+          extractedCountry = 'CA';
+          source = 'timezone';
+        } else if (tz.includes('Sydney') || tz.includes('Melbourne') || tz.includes('Brisbane') || tz.includes('Perth')) {
+          extractedCountry = 'AU';
+          source = 'timezone';
+        } else if (tz.includes('Paris')) {
+          extractedCountry = 'FR';
+          source = 'timezone';
+        } else if (tz.includes('Berlin')) {
+          extractedCountry = 'DE';
+          source = 'timezone';
+        } else if (tz.includes('Rome')) {
+          extractedCountry = 'IT';
+          source = 'timezone';
+        } else if (tz.includes('Madrid')) {
+          extractedCountry = 'ES';
+          source = 'timezone';
+        } else if (tz.includes('Istanbul')) {
+          extractedCountry = 'TR';
+          source = 'timezone';
+        } else if (tz.includes('Tokyo')) {
+          extractedCountry = 'JP';
+          source = 'timezone';
+        } else if (tz.includes('Cairo')) {
+          extractedCountry = 'EG';
+          source = 'timezone';
+        }
+      }
+    } catch (e) {
+    }
+  }
+
+  const isUnresolved = !extractedCountry;
+  if (!extractedCountry || !COUNTRY_LOCALE_REGISTRY[extractedCountry]) {
+    extractedCountry = 'AE';
+    source = 'default';
+  }
+
+  const matchedCountry = COUNTRY_LOCALE_REGISTRY[extractedCountry] || COUNTRY_LOCALE_REGISTRY.AE;
+
+  return {
+    countryCode: matchedCountry.code,
+    languageCode: extractedLanguage,
+    country: matchedCountry,
+    rawLocale,
+    source,
+    isAutoDetected: true,
+    isUnresolved,
+  };
+}
+
+export function formatLocalizedPrice(
+  amountInAED: number,
+  country: CountryLocaleData,
+  options?: {
+    useNativeSymbol?: boolean;
+    compact?: boolean;
+    overrideCurrencyCode?: string;
+  }
+): string {
+  let rate = country.exchangeRateFromAED || 1;
+  let symbol = options?.useNativeSymbol ? country.symbolNative : country.symbol;
+  let currencyCode = country.currency;
+
+  if (options?.overrideCurrencyCode) {
+    const customInfo = getCurrencyInfo(options.overrideCurrencyCode);
+    rate = customInfo.exchangeRateFromAED || 1;
+    symbol = options?.useNativeSymbol ? customInfo.symbolNative : customInfo.symbol;
+    currencyCode = customInfo.code;
+  }
+
+  const converted = amountInAED * rate;
+
+  let finalValue: number;
+  if (converted >= 500) {
+    finalValue = Math.round(converted / 10) * 10;
+  } else if (converted >= 50) {
+    finalValue = Math.round(converted);
+  } else if (converted < 10 && rate < 0.2) {
+    finalValue = Math.round(converted * 10) / 10;
+  } else {
+    finalValue = Math.round(converted);
+  }
+
+  if (['USD', 'GBP', 'INR', 'CAD', 'AUD', 'PHP', 'JPY'].includes(currencyCode)) {
+    return `${symbol}${finalValue.toLocaleString()}`;
+  }
+
+  if (['EUR', 'TRY'].includes(currencyCode)) {
+    return `${finalValue.toLocaleString()} ${symbol}`;
+  }
+
+  if (options?.useNativeSymbol && ['AED', 'SAR', 'QAR', 'KWD', 'EGP', 'OMR', 'BHD'].includes(currencyCode)) {
+    return `${finalValue.toLocaleString()} ${symbol}`;
+  }
+
+  return `${symbol} ${finalValue.toLocaleString()}`;
+}
+
+export type SupportedLanguage = 'en' | 'ar' | 'hi' | 'fr' | 'es' | 'de';
 
 export interface LanguageInfo {
   code: SupportedLanguage;
@@ -23,317 +613,236 @@ export interface LanguageInfo {
   dir: 'ltr' | 'rtl';
 }
 
-export interface CurrencyInfo {
-  code: string;
-  name: string;
-  symbol: string;
-  symbolNative: string;
-  flag: string;
-  rateToAED: number;
-}
-
 export const SUPPORTED_LANGUAGES: LanguageInfo[] = [
   { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧', dir: 'ltr' },
   { code: 'ar', name: 'Arabic', nativeName: 'العربية', flag: '🇦🇪', dir: 'rtl' },
   { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी', flag: '🇮🇳', dir: 'ltr' },
-  { code: 'ur', name: 'Urdu', nativeName: 'اردو', flag: '🇵🇰', dir: 'rtl' },
-  { code: 'bn', name: 'Bengali', nativeName: 'বাংলা', flag: '🇧🇩', dir: 'ltr' },
   { code: 'fr', name: 'French', nativeName: 'Français', flag: '🇫🇷', dir: 'ltr' },
-  { code: 'de', name: 'German', nativeName: 'Deutsch', flag: '🇩🇪', dir: 'ltr' },
   { code: 'es', name: 'Spanish', nativeName: 'Español', flag: '🇪🇸', dir: 'ltr' },
-  { code: 'ja', name: 'Japanese', nativeName: '日本語', flag: '🇯🇵', dir: 'ltr' },
-  { code: 'ko', name: 'Korean', nativeName: '한국어', flag: '🇰🇷', dir: 'ltr' },
+  { code: 'de', name: 'German', nativeName: 'Deutsch', flag: '🇩🇪', dir: 'ltr' },
 ];
 
-export const SUPPORTED_CURRENCIES: CurrencyInfo[] = [
-  { code: 'AED', name: 'UAE Dirham', symbol: 'AED', symbolNative: 'د.إ', flag: '🇦🇪', rateToAED: 1.0 },
-  { code: 'SAR', name: 'Saudi Riyal', symbol: 'SAR', symbolNative: 'ر.س', flag: '🇸🇦', rateToAED: 1.02 },
-  { code: 'QAR', name: 'Qatari Riyal', symbol: 'QAR', symbolNative: 'ر.ق', flag: '🇶🇦', rateToAED: 0.99 },
-  { code: 'KWD', name: 'Kuwaiti Dinar', symbol: 'KWD', symbolNative: 'د.ك', flag: '🇰🇼', rateToAED: 0.084 },
-  { code: 'BHD', name: 'Bahraini Dinar', symbol: 'BHD', symbolNative: 'د.ب', flag: '🇧🇭', rateToAED: 0.10 },
-  { code: 'OMR', name: 'Omani Rial', symbol: 'OMR', symbolNative: 'ر.ع', flag: '🇴🇲', rateToAED: 0.105 },
-  { code: 'USD', name: 'US Dollar', symbol: '$', symbolNative: '$', flag: '🇺🇸', rateToAED: 0.27 },
-  { code: 'EUR', name: 'Euro', symbol: '€', symbolNative: '€', flag: '🇪🇺', rateToAED: 0.25 },
-  { code: 'GBP', name: 'British Pound', symbol: '£', symbolNative: '£', flag: '🇬🇧', rateToAED: 0.21 },
-  { code: 'INR', name: 'Indian Rupee', symbol: '₹', symbolNative: '₹', flag: '🇮🇳', rateToAED: 22.8 },
-  { code: 'PKR', name: 'Pakistani Rupee', symbol: 'PKR', symbolNative: '₨', flag: '🇵🇰', rateToAED: 76.5 },
-  { code: 'BDT', name: 'Bangladeshi Taka', symbol: 'BDT', symbolNative: '৳', flag: '🇧🇩', rateToAED: 32.5 },
-  { code: 'JPY', name: 'Japanese Yen', symbol: '¥', symbolNative: '円', flag: '🇯🇵', rateToAED: 41.5 },
-  { code: 'KRW', name: 'South Korean Won', symbol: '₩', symbolNative: '₩', flag: '🇰🇷', rateToAED: 360.0 },
-  { code: 'CHF', name: 'Swiss Franc', symbol: 'CHF', symbolNative: 'CHF', flag: '🇨🇭', rateToAED: 0.24 },
-  { code: 'CAD', name: 'Canadian Dollar', symbol: 'CA$', symbolNative: '$', flag: '🇨🇦', rateToAED: 0.37 },
-  { code: 'AUD', name: 'Australian Dollar', symbol: 'AU$', symbolNative: '$', flag: '🇦🇺', rateToAED: 0.41 },
-];
-
-export const COUNTRY_LOCALE_REGISTRY: Record<string, CountryLocaleData> = {
-  AE: {
-    code: 'AE',
-    name: 'United Arab Emirates',
-    nativeName: 'الإمارات',
-    flag: '🇦🇪',
-    dialCode: '+971',
-    currency: 'AED',
-    currencySymbol: 'AED',
-    currencySymbolNative: 'د.إ',
-    defaultLanguage: 'en',
-    supportedLanguages: ['en', 'ar'],
-    timeZone: 'Asia/Dubai',
-    phoneDigits: 9,
+export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
+  en: {
+    'nav.home': 'Home',
+    'nav.bookings': 'Bookings',
+    'nav.saved': 'Saved',
+    'nav.profile': 'Profile',
+    'nav.discover': 'Discover',
+    'hero.search_placeholder': 'Search salons, master stylists, haircut, spa...',
+    'badge.open_now': 'Open now',
+    'badge.closed': 'Closed',
+    'badge.closing_soon': 'Closing Soon',
+    'badge.verified': 'Verified Salon',
+    'card.starting_from': 'Starting from',
+    'card.book_now': 'Book',
+    'card.details': 'Details',
+    'card.reviews': 'reviews',
+    'section.nearby_salons': 'Nearby Salons & Studios',
+    'section.top_services': 'Popular Services',
+    'section.featured_stylists': 'Top Rated Stylists',
+    'booking.title': 'Book Appointment',
+    'booking.select_service': 'Select Service',
+    'booking.select_stylist': 'Select Stylist',
+    'booking.date_time': 'Date & Time',
+    'booking.confirm': 'Confirm Booking',
+    'booking.success': 'Booking Confirmed!',
+    'booking.subtotal': 'Subtotal',
+    'booking.vat_tax': 'Taxes & Fees',
+    'booking.total': 'Total',
+    'booking.pay_at_salon': 'Pay at Salon (Cash / Card)',
+    'booking.pay_now': 'Pay with Card / Apple Pay',
+    'locale.device_detected': 'Auto-detected from Device',
+    'locale.zero_permission': 'Zero permission popup • Instant OS locale match',
+    'locale.region': 'Region',
+    'locale.currency': 'Currency',
+    'locale.dial_code': 'Dial Code',
+    'locale.language': 'Language',
+    'locale.auto_sync': 'Device Auto-Sync',
   },
-  SA: {
-    code: 'SA',
-    name: 'Saudi Arabia',
-    nativeName: 'المملكة العربية السعودية',
-    flag: '🇸🇦',
-    dialCode: '+966',
-    currency: 'SAR',
-    currencySymbol: 'SAR',
-    currencySymbolNative: 'ر.س',
-    defaultLanguage: 'ar',
-    supportedLanguages: ['ar', 'en'],
-    timeZone: 'Asia/Riyadh',
-    phoneDigits: 9,
+  ar: {
+    'nav.home': 'الرئيسية',
+    'nav.bookings': 'الحجوزات',
+    'nav.saved': 'المفضلة',
+    'nav.profile': 'الملف الشخصي',
+    'nav.discover': 'استكشاف',
+    'hero.search_placeholder': 'ابحث عن صالونات، حلاقة، عناية، مساج...',
+    'badge.open_now': 'مفتوح الآن',
+    'badge.closed': 'مغلق',
+    'badge.closing_soon': 'يغلق قريباً',
+    'badge.verified': 'صالون موثق',
+    'card.starting_from': 'يبدأ من',
+    'card.book_now': 'احجز',
+    'card.details': 'تفاصيل',
+    'card.reviews': 'تقييم',
+    'section.nearby_salons': 'الصالونات القريبة منك',
+    'section.top_services': 'أبرز الخدمات',
+    'section.featured_stylists': 'أفضل مصففي الشعر',
+    'booking.title': 'حجز موعد',
+    'booking.select_service': 'اختر الخدمة',
+    'booking.select_stylist': 'اختر المصفف',
+    'booking.date_time': 'التاريخ والوقت',
+    'booking.confirm': 'تأكيد الحجز',
+    'booking.success': 'تم تأكيد الحجز بنجاح!',
+    'booking.subtotal': 'المجموع الفرعي',
+    'booking.vat_tax': 'الضرائب والرسوم',
+    'booking.total': 'الإجمالي',
+    'booking.pay_at_salon': 'الدفع في الصالون (نقداً أو بطاقة)',
+    'booking.pay_now': 'الدفع بالبطاقة / Apple Pay',
+    'locale.device_detected': 'تم الكشف تلقائياً من إعدادات الهاتف',
+    'locale.zero_permission': 'بدون أذونات • مطابقة فورية لإعدادات الجهاز',
+    'locale.region': 'المنطقة',
+    'locale.currency': 'العملة',
+    'locale.dial_code': 'رمز الاتصال',
+    'locale.language': 'اللغة',
+    'locale.auto_sync': 'المزامنة التلقائية مع الهاتف',
   },
-  QA: {
-    code: 'QA',
-    name: 'Qatar',
-    nativeName: 'قطر',
-    flag: '🇶🇦',
-    dialCode: '+974',
-    currency: 'QAR',
-    currencySymbol: 'QAR',
-    currencySymbolNative: 'ر.ق',
-    defaultLanguage: 'ar',
-    supportedLanguages: ['ar', 'en'],
-    timeZone: 'Asia/Qatar',
-    phoneDigits: 8,
+  hi: {
+    'nav.home': 'होम',
+    'nav.bookings': 'बुकिंग्स',
+    'nav.saved': 'सेव किए गए',
+    'nav.profile': 'प्रोफ़ाइल',
+    'nav.discover': 'खोजें',
+    'hero.search_placeholder': 'सैलून, हेयरकट, स्पा, स्टाइल खोजें...',
+    'badge.open_now': 'अभी खुला है',
+    'badge.closed': 'बंद है',
+    'badge.closing_soon': 'जल्द बंद होगा',
+    'badge.verified': 'वेरिफाइड सैलून',
+    'card.starting_from': 'शुरुआती कीमत',
+    'card.book_now': 'बुक करें',
+    'card.details': 'विवरण',
+    'card.reviews': 'रिव्यू',
+    'section.nearby_salons': 'नज़दीकी सैलून',
+    'section.top_services': 'लोकप्रिय सेवाएं',
+    'section.featured_stylists': 'टॉप रेटेड हेयर स्टाइलिस्ट',
+    'booking.title': 'अपॉइंटमेंट बुक करें',
+    'booking.select_service': 'सेवा चुनें',
+    'booking.select_stylist': 'स्टाइलिस्ट चुनें',
+    'booking.date_time': 'तारीख और समय',
+    'booking.confirm': 'बुकिंग कन्फर्म करें',
+    'booking.success': 'बुकिंग सफलतापूर्वक हो गई!',
+    'booking.subtotal': 'सबटोटल',
+    'booking.vat_tax': 'टैक्स व शुल्क',
+    'booking.total': 'कुल राशि',
+    'booking.pay_at_salon': 'सैलून में भुगतान करें',
+    'booking.pay_now': 'कार्ड / यूपीआई द्वारा भुगतान',
+    'locale.device_detected': 'डिवाइस से ऑटो-डिटेक्टेड',
+    'locale.zero_permission': 'बिना जीपीएस अनुमति • तुरंत डिवाइस रीजन मैच',
+    'locale.region': 'क्षेत्र / देश',
+    'locale.currency': 'मुद्रा (करेंसी)',
+    'locale.dial_code': 'कॉलिंग कोड',
+    'locale.language': 'भाषा',
+    'locale.auto_sync': 'डिवाइस ऑटो-सिंक',
   },
-  KW: {
-    code: 'KW',
-    name: 'Kuwait',
-    nativeName: 'الكويت',
-    flag: '🇰🇼',
-    dialCode: '+965',
-    currency: 'KWD',
-    currencySymbol: 'KWD',
-    currencySymbolNative: 'د.ك',
-    defaultLanguage: 'ar',
-    supportedLanguages: ['ar', 'en'],
-    timeZone: 'Asia/Kuwait',
-    phoneDigits: 8,
+  fr: {
+    'nav.home': 'Accueil',
+    'nav.bookings': 'Réservations',
+    'nav.saved': 'Favoris',
+    'nav.profile': 'Profil',
+    'nav.discover': 'Découvrir',
+    'hero.search_placeholder': 'Rechercher salons, coiffure, spa...',
+    'badge.open_now': 'Ouvert',
+    'badge.closed': 'Fermé',
+    'badge.closing_soon': 'Ferme bientôt',
+    'badge.verified': 'Salon Vérifié',
+    'card.starting_from': 'À partir de',
+    'card.book_now': 'Réserver',
+    'card.details': 'Détails',
+    'card.reviews': 'avis',
+    'section.nearby_salons': 'Salons à Proximité',
+    'section.top_services': 'Prestations Populaires',
+    'section.featured_stylists': 'Meilleurs Stylistes',
+    'booking.title': 'Prendre Rendez-vous',
+    'booking.select_service': 'Choisir un service',
+    'booking.select_stylist': 'Choisir un coiffeur',
+    'booking.date_time': 'Date & Heure',
+    'booking.confirm': 'Confirmer la réservation',
+    'booking.success': 'Réservation Confirmée !',
+    'booking.subtotal': 'Sous-total',
+    'booking.vat_tax': 'TVA et taxes',
+    'booking.total': 'Total',
+    'booking.pay_at_salon': 'Payer au salon',
+    'booking.pay_now': 'Payer par carte',
+    'locale.device_detected': 'Détecté depuis votre appareil',
+    'locale.zero_permission': 'Aucune autorisation GPS nécessaire',
+    'locale.region': 'Région',
+    'locale.currency': 'Devise',
+    'locale.dial_code': 'Indicatif',
+    'locale.language': 'Langue',
+    'locale.auto_sync': 'Synchronisation automatique',
   },
-  BH: {
-    code: 'BH',
-    name: 'Bahrain',
-    nativeName: 'البحرين',
-    flag: '🇧🇭',
-    dialCode: '+973',
-    currency: 'BHD',
-    currencySymbol: 'BHD',
-    currencySymbolNative: 'د.ب',
-    defaultLanguage: 'ar',
-    supportedLanguages: ['ar', 'en'],
-    timeZone: 'Asia/Bahrain',
-    phoneDigits: 8,
+  es: {
+    'nav.home': 'Inicio',
+    'nav.bookings': 'Citas',
+    'nav.saved': 'Guardados',
+    'nav.profile': 'Perfil',
+    'nav.discover': 'Descubrir',
+    'hero.search_placeholder': 'Buscar salones, cortes, barbería, spa...',
+    'badge.open_now': 'Abierto',
+    'badge.closed': 'Cerrado',
+    'badge.closing_soon': 'Cierra pronto',
+    'badge.verified': 'Salón Verificado',
+    'card.starting_from': 'Desde',
+    'card.book_now': 'Reservar',
+    'card.details': 'Detalles',
+    'card.reviews': 'reseñas',
+    'section.nearby_salons': 'Salones Cercanos',
+    'section.top_services': 'Servicios Populares',
+    'section.featured_stylists': 'Estilistas Destacados',
+    'booking.title': 'Reservar Cita',
+    'booking.select_service': 'Seleccionar Servicio',
+    'booking.select_stylist': 'Seleccionar Estilista',
+    'booking.date_time': 'Fecha y Hora',
+    'booking.confirm': 'Confirmar Reserva',
+    'booking.success': '¡Reserva Confirmada!',
+    'booking.subtotal': 'Subtotal',
+    'booking.vat_tax': 'Impuestos y tasas',
+    'booking.total': 'Total',
+    'booking.pay_at_salon': 'Pagar en el salón',
+    'booking.pay_now': 'Pagar con tarjeta',
+    'locale.device_detected': 'Detectado desde el dispositivo',
+    'locale.zero_permission': 'Sin permisos GPS • Detección instantánea',
+    'locale.region': 'Región',
+    'locale.currency': 'Moneda',
+    'locale.dial_code': 'Código de país',
+    'locale.language': 'Idioma',
+    'locale.auto_sync': 'Sincronización automática',
   },
-  OM: {
-    code: 'OM',
-    name: 'Oman',
-    nativeName: 'عُمان',
-    flag: '🇴🇲',
-    dialCode: '+968',
-    currency: 'OMR',
-    currencySymbol: 'OMR',
-    currencySymbolNative: 'ر.ع',
-    defaultLanguage: 'ar',
-    supportedLanguages: ['ar', 'en'],
-    timeZone: 'Asia/Muscat',
-    phoneDigits: 8,
-  },
-  GB: {
-    code: 'GB',
-    name: 'United Kingdom',
-    nativeName: 'United Kingdom',
-    flag: '🇬🇧',
-    dialCode: '+44',
-    currency: 'GBP',
-    currencySymbol: '£',
-    currencySymbolNative: '£',
-    defaultLanguage: 'en',
-    supportedLanguages: ['en'],
-    timeZone: 'Europe/London',
-    phoneDigits: 10,
-  },
-  US: {
-    code: 'US',
-    name: 'United States',
-    nativeName: 'United States',
-    flag: '🇺🇸',
-    dialCode: '+1',
-    currency: 'USD',
-    currencySymbol: '$',
-    currencySymbolNative: '$',
-    defaultLanguage: 'en',
-    supportedLanguages: ['en', 'es'],
-    timeZone: 'America/New_York',
-    phoneDigits: 10,
-  },
-  IN: {
-    code: 'IN',
-    name: 'India',
-    nativeName: 'भारत',
-    flag: '🇮🇳',
-    dialCode: '+91',
-    currency: 'INR',
-    currencySymbol: '₹',
-    currencySymbolNative: '₹',
-    defaultLanguage: 'en',
-    supportedLanguages: ['en', 'hi'],
-    timeZone: 'Asia/Kolkata',
-    phoneDigits: 10,
-  },
-  PK: {
-    code: 'PK',
-    name: 'Pakistan',
-    nativeName: 'پاکستان',
-    flag: '🇵🇰',
-    dialCode: '+92',
-    currency: 'PKR',
-    currencySymbol: 'PKR',
-    currencySymbolNative: '₨',
-    defaultLanguage: 'en',
-    supportedLanguages: ['en', 'ur'],
-    timeZone: 'Asia/Karachi',
-    phoneDigits: 10,
-  },
-  BD: {
-    code: 'BD',
-    name: 'Bangladesh',
-    nativeName: 'বাংলাদেশ',
-    flag: '🇧🇩',
-    dialCode: '+880',
-    currency: 'BDT',
-    currencySymbol: 'BDT',
-    currencySymbolNative: '৳',
-    defaultLanguage: 'en',
-    supportedLanguages: ['en', 'bn'],
-    timeZone: 'Asia/Dhaka',
-    phoneDigits: 10,
-  },
-  FR: {
-    code: 'FR',
-    name: 'France',
-    nativeName: 'France',
-    flag: '🇫🇷',
-    dialCode: '+33',
-    currency: 'EUR',
-    currencySymbol: '€',
-    currencySymbolNative: '€',
-    defaultLanguage: 'fr',
-    supportedLanguages: ['fr', 'en'],
-    timeZone: 'Europe/Paris',
-    phoneDigits: 9,
-  },
-  DE: {
-    code: 'DE',
-    name: 'Germany',
-    nativeName: 'Deutschland',
-    flag: '🇩🇪',
-    dialCode: '+49',
-    currency: 'EUR',
-    currencySymbol: '€',
-    currencySymbolNative: '€',
-    defaultLanguage: 'de',
-    supportedLanguages: ['de', 'en'],
-    timeZone: 'Europe/Berlin',
-    phoneDigits: 10,
-  },
-  CH: {
-    code: 'CH',
-    name: 'Switzerland',
-    nativeName: 'Schweiz',
-    flag: '🇨🇭',
-    dialCode: '+41',
-    currency: 'CHF',
-    currencySymbol: 'CHF',
-    currencySymbolNative: 'CHF',
-    defaultLanguage: 'de',
-    supportedLanguages: ['de', 'fr', 'en'],
-    timeZone: 'Europe/Zurich',
-    phoneDigits: 9,
-  },
-  NL: {
-    code: 'NL',
-    name: 'Netherlands',
-    nativeName: 'Nederland',
-    flag: '🇳🇱',
-    dialCode: '+31',
-    currency: 'EUR',
-    currencySymbol: '€',
-    currencySymbolNative: '€',
-    defaultLanguage: 'en',
-    supportedLanguages: ['en', 'de'],
-    timeZone: 'Europe/Amsterdam',
-    phoneDigits: 9,
-  },
-  JP: {
-    code: 'JP',
-    name: 'Japan',
-    nativeName: '日本',
-    flag: '🇯🇵',
-    dialCode: '+81',
-    currency: 'JPY',
-    currencySymbol: '¥',
-    currencySymbolNative: '円',
-    defaultLanguage: 'ja',
-    supportedLanguages: ['ja', 'en'],
-    timeZone: 'Asia/Tokyo',
-    phoneDigits: 10,
-  },
-  KR: {
-    code: 'KR',
-    name: 'South Korea',
-    nativeName: '대한민국',
-    flag: '🇰🇷',
-    dialCode: '+82',
-    currency: 'KRW',
-    currencySymbol: '₩',
-    currencySymbolNative: '₩',
-    defaultLanguage: 'ko',
-    supportedLanguages: ['ko', 'en'],
-    timeZone: 'Asia/Seoul',
-    phoneDigits: 10,
-  },
-  CA: {
-    code: 'CA',
-    name: 'Canada',
-    nativeName: 'Canada',
-    flag: '🇨🇦',
-    dialCode: '+1',
-    currency: 'CAD',
-    currencySymbol: 'CA$',
-    currencySymbolNative: '$',
-    defaultLanguage: 'en',
-    supportedLanguages: ['en', 'fr'],
-    timeZone: 'America/Toronto',
-    phoneDigits: 10,
-  },
-  AU: {
-    code: 'AU',
-    name: 'Australia',
-    nativeName: 'Australia',
-    flag: '🇦🇺',
-    dialCode: '+61',
-    currency: 'AUD',
-    currencySymbol: 'AU$',
-    currencySymbolNative: '$',
-    defaultLanguage: 'en',
-    supportedLanguages: ['en'],
-    timeZone: 'Australia/Sydney',
-    phoneDigits: 9,
+  de: {
+    'nav.home': 'Start',
+    'nav.bookings': 'Termine',
+    'nav.saved': 'Gespeichert',
+    'nav.profile': 'Profil',
+    'nav.discover': 'Entdecken',
+    'hero.search_placeholder': 'Salons, Haarschnitt, Bartpflege suchen...',
+    'badge.open_now': 'Geöffnet',
+    'badge.closed': 'Geschlossen',
+    'badge.closing_soon': 'Schließt bald',
+    'badge.verified': 'Verifizierter Salon',
+    'card.starting_from': 'Ab',
+    'card.book_now': 'Buchen',
+    'card.details': 'Details',
+    'card.reviews': 'Bewertungen',
+    'section.nearby_salons': 'Salons in der Nähe',
+    'section.top_services': 'Beliebte Angebote',
+    'section.featured_stylists': 'Top Stylisten',
+    'booking.title': 'Termin Buchen',
+    'booking.select_service': 'Service wählen',
+    'booking.select_stylist': 'Stylist wählen',
+    'booking.date_time': 'Datum & Uhrzeit',
+    'booking.confirm': 'Buchung bestätigen',
+    'booking.success': 'Buchung bestätigt!',
+    'booking.subtotal': 'Zwischensumme',
+    'booking.vat_tax': 'MwSt. & Gebühren',
+    'booking.total': 'Gesamtbetrag',
+    'booking.pay_at_salon': 'Im Salon bezahlen',
+    'booking.pay_now': 'Online bezahlen',
+    'locale.device_detected': 'Vom Gerät automatisch erkannt',
+    'locale.zero_permission': 'Keine GPS-Berechtigung erforderlich',
+    'locale.region': 'Region',
+    'locale.currency': 'Währung',
+    'locale.dial_code': 'Vorwahl',
+    'locale.language': 'Sprache',
+    'locale.auto_sync': 'Automatische Synchronisierung',
   },
 };
-
-export const ALL_COUNTRY_LOCALES: CountryLocaleData[] = Object.values(COUNTRY_LOCALE_REGISTRY);
-
-export const DEFAULT_COUNTRY_LOCALE: CountryLocaleData = COUNTRY_LOCALE_REGISTRY['AE'];
