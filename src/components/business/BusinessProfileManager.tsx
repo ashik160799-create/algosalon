@@ -5,6 +5,7 @@ import { SecurityBadge } from '../common/SecurityBadge';
 import { LocaleRegionSwitcherModal } from '../common/LocaleRegionSwitcherModal';
 import { getSalonMapUrl, format12Hour } from '../../utils/salonUtils';
 import { ALL_COUNTRY_LOCALES } from '../../utils/localeConfig';
+import { getLocalDateString } from '../../utils/dateTimeUtils';
 import { SalonDocument, WorkingDayHour, SpecialDateSchedule } from '../../types';
 import { uploadAvatarToSupabase, deleteAvatarFromSupabase } from '../../services/supabaseService';
 import {
@@ -582,7 +583,7 @@ export const BusinessProfileManager: React.FC = () => {
       name: newDocForm.name.trim(),
       type: newDocForm.type,
       documentNumber: newDocForm.documentNumber.trim(),
-      issueDate: new Date().toISOString().split('T')[0],
+      issueDate: getLocalDateString(),
       expiryDate: newDocForm.expiryDate || '2027-12-31',
       issuingAuthority: newDocForm.issuingAuthority.trim() || 'Government Authority',
       status: 'verified',
