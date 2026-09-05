@@ -57,7 +57,7 @@ import {
   normalizeEmail,
   deleteAccountByEmail,
 } from '../utils/accountRegistry';
-import { parseTimeSlotHoursMinutes } from '../utils/dateTimeUtils';
+import { parseTimeSlotHoursMinutes, getLocalDateString } from '../utils/dateTimeUtils';
 import { supabaseALGOsalonClient, isSupabaseConfigured } from '../supabaseALGOsalonClient';
 import {
   fetchSalonsFromDb,
@@ -590,32 +590,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [customerUser, setCustomerUser] = useState<CustomerUser>(() => {
     const saved = localStorage.getItem('algosalon_customer');
-    return saved ? JSON.parse(saved) : INITIAL_CUSTOMER;
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return INITIAL_CUSTOMER;
+      }
+    }
+    return INITIAL_CUSTOMER;
   });
 
   const [businessUser, setBusinessUser] = useState<BusinessUser>(() => {
-    const saved = localStorage.getItem('algosalon_business_user');
-    return saved ? JSON.parse(saved) : INITIAL_BUSINESS_USER;
+    const saved = localStorage.getItem('algosalon_business');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return INITIAL_BUSINESS_USER;
+      }
+    }
+    return INITIAL_BUSINESS_USER;
   });
 
   const [salons, setSalons] = useState<Salon[]>(() => {
     const saved = localStorage.getItem('algosalon_salons');
     if (saved) {
       try {
-        const parsed: Salon[] = JSON.parse(saved);
-        // Clear out deprecated unsplash stock logo presets if still in storage
-        return parsed.map(s => {
-          if (
-            s.logo &&
-            (s.logo.includes('photo-1599305445671-ac291c95aaa9') ||
-              s.logo.includes('photo-1522337360788-8b13dee7a37e') ||
-              s.logo.includes('photo-1503951914875-452162b0f3f1') ||
-              s.logo.includes('photo-1585747860715-2ba37e788b70'))
-          ) {
-            return { ...s, logo: '' };
-          }
-          return s;
-        });
+        return JSON.parse(saved);
       } catch {
         return INITIAL_SALONS;
       }
@@ -623,394 +624,67 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return INITIAL_SALONS;
   });
 
-  const [selectedSalon, setSelectedSalon] = useState<Salon | null>(null);
-
   const [services, setServices] = useState<ServiceItem[]>(() => {
     const saved = localStorage.getItem('algosalon_services');
-    return saved ? JSON.parse(saved) : INITIAL_SERVICES;
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return INITIAL_SERVICES;
+      }
+    }
+    return INITIAL_SERVICES;
   });
 
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>(() => {
     const saved = localStorage.getItem('algosalon_staff');
-    return saved ? JSON.parse(saved) : INITIAL_STAFF;
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return INITIAL_STAFF;
+      }
+    }
+    return INITIAL_STAFF;
   });
 
   const [appointments, setAppointments] = useState<Appointment[]>(() => {
     const saved = localStorage.getItem('algosalon_appointments');
-    return saved ? JSON.parse(saved) : INITIAL_APPOINTMENTS;
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return INITIAL_APPOINTMENTS;
+      }
+    }
+    return INITIAL_APPOINTMENTS;
   });
 
   const [reviews, setReviews] = useState<Review[]>(() => {
     const saved = localStorage.getItem('algosalon_reviews');
-    return saved ? JSON.parse(saved) : INITIAL_REVIEWS;
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return INITIAL_REVIEWS;
+      }
+    }
+    return INITIAL_REVIEWS;
   });
 
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
     const saved = localStorage.getItem('algosalon_notifications');
-    return saved ? JSON.parse(saved) : INITIAL_NOTIFICATIONS;
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return INITIAL_NOTIFICATIONS;
+      }
+    }
+    return INITIAL_NOTIFICATIONS;
   });
 
-  // ---------------------------------------------------------------------------
-  // Live Supabase Cloud Sync & Real-time Subscriptions
-  // (Hydrates live database rows when connected; seamlessly preserves local storage otherwise)
-  // ---------------------------------------------------------------------------
-  useEffect(() => {
-    if (!isSupabaseConfigured()) return;
-
-    let isMounted = true;
-
-    // 1. Hydrate published salons, services, and staff
-    fetchSalonsFromDb().then(result => {
-      if (!isMounted || !result) return;
-      if (result.salons && result.salons.length > 0) {
-        setSalons(result.salons);
-        setBusinessUser(prev =>
-          prev.salonId === 'salon-1' || !prev.salonId
-            ? { ...prev, salonId: result.salons[0].id }
-            : prev
-        );
-      }
-      if (result.services && result.services.length > 0) setServices(result.services);
-      if (result.staff && result.staff.length > 0) setStaffMembers(result.staff);
-    });
-
-    // 2. Hydrate appointments
-    fetchAppointmentsFromDb().then(liveApts => {
-      if (!isMounted || !liveApts || liveApts.length === 0) return;
-      setAppointments(prev => {
-        const existingIds = new Set(prev.map(a => a.id));
-        const newOnes = liveApts.filter(a => !existingIds.has(a.id));
-        return [...newOnes, ...prev];
-      });
-    });
-
-    // 3. Hydrate reviews
-    fetchReviewsFromDb().then(liveReviews => {
-      if (!isMounted || !liveReviews || liveReviews.length === 0) return;
-      setReviews(prev => {
-        const existingIds = new Set(prev.map(r => r.id));
-        const newOnes = liveReviews.filter(r => !existingIds.has(r.id));
-        const updatedPrev = prev.map(localRev => {
-          const liveRev = liveReviews.find(r => r.id === localRev.id);
-          if (liveRev) {
-            return {
-              ...localRev,
-              reply: liveRev.reply || localRev.reply,
-              businessReply: liveRev.businessReply || localRev.businessReply,
-            };
-          }
-          return localRev;
-        });
-        return [...newOnes, ...updatedPrev];
-      });
-    });
-
-    // 4. Real-time Reviews subscription
-    const unsubscribeReviews = subscribeToReviews(() => {
-      if (!isMounted) return;
-      fetchReviewsFromDb().then(liveReviews => {
-        if (!isMounted || !liveReviews) return;
-        setReviews(prev => {
-          const existingIds = new Set(prev.map(r => r.id));
-          const newOnes = liveReviews.filter(r => !existingIds.has(r.id));
-          const updatedPrev = prev.map(localRev => {
-            const liveRev = liveReviews.find(r => r.id === localRev.id);
-            if (liveRev) {
-              return {
-                ...localRev,
-                reply: liveRev.reply || localRev.reply,
-                businessReply: liveRev.businessReply || localRev.businessReply,
-              };
-            }
-            return localRev;
-          });
-          return [...newOnes, ...updatedPrev];
-        });
-      });
-    });
-
-    // 5. Real-time updates via Supabase WebSockets
-    const unsubscribeAppointments = subscribeToAppointments(payload => {
-      if (!isMounted) return;
-      if (payload.eventType === 'INSERT' && payload.new) {
-        const row = payload.new;
-        setAppointments(prev => {
-          if (prev.some(a => a.id === row.id)) return prev;
-          const startDate = new Date(row.starts_at);
-          const endDate = row.ends_at ? new Date(row.ends_at) : null;
-          const durationMinutes = (endDate && !isNaN(endDate.getTime()) && !isNaN(startDate.getTime()))
-            ? Math.max(15, Math.round((endDate.getTime() - startDate.getTime()) / 60000))
-            : 45;
-          const dateStr = startDate.toISOString().split('T')[0];
-          const timeSlotStr = `${String(startDate.getHours()).padStart(2, '0')}:${String(startDate.getMinutes()).padStart(2, '0')}`;
-          const newApt: Appointment = {
-            id: row.id,
-            salonId: row.salon_id,
-            salonName: 'ALGO Salon',
-            salonAddress: 'Downtown',
-            salonPhone: '',
-            salonImage: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600',
-            customerId: row.customer_id || 'guest',
-            customerName: row.customer_display_name || 'Client',
-            customerPhone: row.customer_phone_e164 || '',
-            customerEmail: row.customer_email || '',
-            serviceId: row.service_id,
-            serviceName: row.service_name || 'Service',
-            servicePrice: Math.round((row.quoted_price_minor || 0) / 100),
-            durationMinutes,
-            staffId: row.staff_id,
-            staffName: row.staff_name || 'Staff',
-            staffAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-            date: dateStr,
-            timeSlot: timeSlotStr,
-            status: row.status as AppointmentStatus,
-            paymentMethod: row.payment_method || 'pay_at_salon',
-            notes: row.customer_notes,
-            createdAt: row.created_at,
-          };
-          return [newApt, ...prev];
-        });
-      } else if (payload.eventType === 'UPDATE' && payload.new) {
-        const row = payload.new;
-        setAppointments(prev =>
-          prev.map(a => {
-            if (a.id !== row.id) return a;
-            const startDate = new Date(row.starts_at);
-            const dateStr = !isNaN(startDate.getTime()) ? startDate.toISOString().split('T')[0] : a.date;
-            const timeSlotStr = !isNaN(startDate.getTime())
-              ? `${String(startDate.getHours()).padStart(2, '0')}:${String(startDate.getMinutes()).padStart(2, '0')}`
-              : a.timeSlot;
-
-            let suggestedDate: string | undefined;
-            let suggestedTimeSlot: string | undefined;
-            if (row.proposed_starts_at) {
-              const propStart = new Date(row.proposed_starts_at);
-              if (!isNaN(propStart.getTime())) {
-                suggestedDate = propStart.toISOString().split('T')[0];
-                suggestedTimeSlot = `${String(propStart.getHours()).padStart(2, '0')}:${String(propStart.getMinutes()).padStart(2, '0')}`;
-              }
-            }
-
-            return {
-              ...a,
-              date: dateStr,
-              timeSlot: timeSlotStr,
-              status: row.status as AppointmentStatus,
-              declineReason: row.decline_reason,
-              suggestedDate,
-              suggestedTimeSlot,
-              suggestedNote: row.status === 'rescheduled_by_business' ? row.decline_reason : undefined,
-            };
-          })
-        );
-      }
-    });
-
-    // 6. Real-time Supabase Auth state changes (handles Google OAuth redirect & email verification)
-    const { data: authSubscription } = supabaseALGOsalonClient.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!isMounted) return;
-
-        if (event === 'SIGNED_OUT') {
-          setAuthToken(null);
-          localStorage.removeItem('algosalon_auth_token');
-          setCustomerUser(INITIAL_CUSTOMER);
-          setBusinessUser(INITIAL_BUSINESS_USER);
-          return;
-        }
-
-        if ((event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') && session?.user) {
-          const authUser = session.user;
-          const userEmail = authUser.email || '';
-          const userName =
-            authUser.user_metadata?.full_name ||
-            authUser.user_metadata?.name ||
-            userEmail.split('@')[0] ||
-            'Valued Client';
-          // Extract Google OAuth profile picture from avatar_url or standard OpenID picture claim
-          const userAvatar = authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture || '';
-
-          // Role determination: check local registry, pending OAuth intent, and Supabase salon membership
-          const metaRole = authUser.user_metadata?.role;
-          const regAccount = findAccountByEmail(userEmail);
-          const bizProfile = await fetchBusinessProfileFromDb(authUser.id);
-          const pendingOAuthRole = typeof window !== 'undefined' ? localStorage.getItem('algosalon_pending_oauth_role') : null;
-          if (pendingOAuthRole) {
-            localStorage.removeItem('algosalon_pending_oauth_role');
-          }
-
-          const isBusiness =
-            regAccount?.role === 'business' ||
-            (!regAccount && (pendingOAuthRole === 'business' || !!bizProfile || metaRole === 'business'));
-
-          if (isBusiness) {
-            const chosenAvatar = userAvatar || regAccount?.avatar || undefined;
-            const bizData: Partial<BusinessUser> = {
-              id: authUser.id,
-              name: regAccount?.name || userName,
-              email: userEmail,
-              signUpGmail: userEmail,
-              isGmailLinked: true,
-              phone: regAccount?.phone || bizProfile?.phone || authUser.phone || '',
-              businessName: regAccount?.businessName || bizProfile?.businessName || 'ALGO Luxury Salon & Spa - Downtown',
-              salonId: regAccount?.salonId || bizProfile?.salonId || '11111111-1111-1111-1111-111111111111',
-              ownerRole: regAccount?.ownerRole || bizProfile?.ownerRole || 'Owner & Salon Director',
-              appCode: regAccount?.appCode || '1234',
-            };
-            setBusinessUser(prev => ({ ...prev, ...bizData }));
-            localStorage.setItem('algosalon_business_user', JSON.stringify({ ...INITIAL_BUSINESS_USER, ...bizData }));
-            setCurrentRole('business');
-            localStorage.setItem('algosalon_role', 'business');
-
-            // Ensure locked in account registry: 1 Gmail = 1 Account
-            if (!regAccount) {
-              registerNewAccount({
-                id: authUser.id,
-                email: userEmail,
-                role: 'business',
-                name: userName,
-                appCode: '1234',
-                phone: bizProfile?.phone || authUser.phone || '',
-                businessName: bizProfile?.businessName || 'ALGO Luxury Salon & Spa - Downtown',
-                salonId: bizProfile?.salonId || '11111111-1111-1111-1111-111111111111',
-                signUpGmail: userEmail,
-                avatar: chosenAvatar,
-              });
-            } else if (userAvatar && !regAccount.avatar) {
-              updateRegisteredAccount(userEmail, { avatar: userAvatar, signUpGmail: userEmail });
-            }
-          } else {
-            // Customer role: prioritize user's real Google photo or fallback to registered avatar
-            const chosenAvatar = userAvatar || regAccount?.avatar || undefined;
-            const custData: Partial<CustomerUser> = {
-              id: authUser.id,
-              email: userEmail,
-              name: regAccount?.name || userName,
-              phone: regAccount?.phone || authUser.phone || '',
-              avatar: chosenAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
-              gender: regAccount?.gender || 'Male',
-              appCode: regAccount?.appCode || '1234',
-            };
-            setCustomerUser(prev => ({ ...prev, ...custData }));
-            localStorage.setItem('algosalon_customer', JSON.stringify({ ...INITIAL_CUSTOMER, ...custData }));
-            setCurrentRole('customer');
-            localStorage.setItem('algosalon_role', 'customer');
-
-            // Ensure locked in account registry: 1 Gmail = 1 Account
-            if (!regAccount) {
-              registerNewAccount({
-                id: authUser.id,
-                email: userEmail,
-                role: 'customer',
-                name: userName,
-                appCode: '1234',
-                phone: authUser.phone || '',
-                avatar: chosenAvatar,
-                signUpGmail: userEmail,
-              });
-            } else if (userAvatar && (!regAccount.avatar || regAccount.avatar.includes('unsplash.com'))) {
-              // Automatically sync fresh Google photo to user account settings
-              updateRegisteredAccount(userEmail, { avatar: userAvatar, signUpGmail: userEmail });
-            }
-          }
-
-          if (session.access_token) {
-            setAuthToken(session.access_token);
-            localStorage.setItem('algosalon_auth_token', session.access_token);
-
-            const isGoogleOAuth = authUser.app_metadata?.provider === 'google';
-            const storedAuth = typeof window !== 'undefined' ? localStorage.getItem('algosalon_pending_auth') : null;
-            const isPendingEmailVerify = storedAuth && storedAuth.includes('"step":"new_verify_link"');
-
-            if (isGoogleOAuth || !isPendingEmailVerify) {
-              // Google OAuth redirects directly to existing app logic page
-              setShowSplash(false);
-              setAuthModalOpen(false);
-              localStorage.removeItem('algosalon_pending_auth');
-            } else {
-              // Email Magic Link: keep existing "Verify Email & Continue" page open so user can tap the existing icon
-              setShowSplash(false);
-            }
-
-            // Clean OAuth & Magic Link hash or code from URL
-            if (typeof window !== 'undefined') {
-              const hash = window.location.hash || '';
-              const search = window.location.search || '';
-              if (hash.includes('access_token') || hash.includes('error=') || search.includes('code=') || search.includes('error=')) {
-                window.history.replaceState(null, '', window.location.pathname);
-              }
-            }
-          }
-
-          fetchFavoritesFromDb(authUser.id).then(liveFavs => {
-            if (!isMounted || !liveFavs) return;
-            setCustomerUser(prev => ({
-              ...prev,
-              savedSalonIds: Array.from(new Set([...prev.savedSalonIds, ...liveFavs])),
-            }));
-          });
-
-          fetchNotificationsFromDb(authUser.id).then(liveNotifs => {
-            if (!isMounted || !liveNotifs || liveNotifs.length === 0) return;
-            setNotifications(prev => {
-              const existingIds = new Set(prev.map(n => n.id));
-              const newOnes = liveNotifs.filter(n => !existingIds.has(n.id));
-              return [...newOnes, ...prev];
-            });
-          });
-        }
-      }
-    );
-
-    return () => {
-      isMounted = false;
-      unsubscribeAppointments();
-      unsubscribeReviews();
-      authSubscription?.subscription?.unsubscribe();
-    };
-  }, []);
-
-  // Hydrate user-specific favorites & notifications whenever user or role changes
-  useEffect(() => {
-    if (!isSupabaseConfigured()) return;
-    let isMounted = true;
-
-    if (customerUser?.id) {
-      fetchFavoritesFromDb(customerUser.id).then(liveFavs => {
-        if (!isMounted || !liveFavs || liveFavs.length === 0) return;
-        setCustomerUser(prev => ({
-          ...prev,
-          savedSalonIds: Array.from(new Set([...prev.savedSalonIds, ...liveFavs])),
-        }));
-      });
-    }
-
-    const currentUserId = currentRole === 'customer' ? customerUser?.id : businessUser?.id;
-    if (currentUserId) {
-      fetchNotificationsFromDb(currentUserId, currentRole).then(liveNotifs => {
-        if (!isMounted || !liveNotifs || liveNotifs.length === 0) return;
-        setNotifications(prev => {
-          const existingIds = new Set(prev.map(n => n.id));
-          const newOnes = liveNotifs.filter(n => !existingIds.has(n.id));
-          return [...newOnes, ...prev];
-        });
-      });
-
-      const unsubscribeUserNotifs = subscribeToNotifications(currentUserId, notif => {
-        if (!isMounted) return;
-        setNotifications(prev => {
-          if (prev.some(n => n.id === notif.id)) return prev;
-          return [notif, ...prev];
-        });
-      });
-
-      return () => {
-        isMounted = false;
-        unsubscribeUserNotifs();
-      };
-    }
-  }, [customerUser?.id, businessUser?.id, currentRole]);
-
+  const [selectedSalon, setSelectedSalon] = useState<Salon | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [activeCustomerTab, setActiveCustomerTab] = useState<'discover' | 'bookings' | 'saved' | 'profile'>('discover');
@@ -1024,494 +698,170 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [preselectedStaff, setPreselectedStaff] = useState<StaffMember | null>(null);
 
   const [userLocation, setUserLocation] = useState<string>(() => {
-    return localStorage.getItem('algosalon_user_location') || 'Dubai Marina, UAE';
+    return localStorage.getItem('algosalon_user_location') || 'Dubai, Downtown';
   });
 
   const [locationPermissionGranted, setLocationPermissionGranted] = useState<boolean | null>(() => {
     const saved = localStorage.getItem('algosalon_location_permission');
-    return saved !== null ? saved === 'true' : null;
+    if (saved === 'granted') return true;
+    if (saved === 'denied') return false;
+    return null;
   });
 
   const requestLocationPermission = async (): Promise<boolean> => {
-    if (!navigator.geolocation) {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
       setLocationPermissionGranted(false);
-      localStorage.setItem('algosalon_location_permission', 'false');
-      await refreshDeviceTelemetry(false);
+      localStorage.setItem('algosalon_location_permission', 'denied');
       return false;
     }
 
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       navigator.geolocation.getCurrentPosition(
-        async position => {
+        (position) => {
           setLocationPermissionGranted(true);
-          localStorage.setItem('algosalon_location_permission', 'true');
-          localStorage.setItem('algosalon_location_prompted', 'true');
-          const enhanced = await refreshDeviceTelemetry(true);
-          setIsAutoRegionEnabled(true);
-          localStorage.setItem('algosalon_auto_region', 'true');
-          setActiveCountryCodeState(enhanced.countryCode);
-          localStorage.setItem('algosalon_country_code', enhanced.countryCode);
-          setActiveLanguageState(enhanced.language);
-          localStorage.setItem('algosalon_app_language', enhanced.language);
-          setCustomCurrencyState(null);
-          setCustomDialCodeState(null);
-          localStorage.removeItem('algosalon_custom_currency');
-          localStorage.removeItem('algosalon_custom_dial_code');
-          setUserLocation(enhanced.zoneLocation);
-          localStorage.setItem('algosalon_user_location', enhanced.zoneLocation);
-
-          const userLat = position.coords.latitude;
-          const userLng = position.coords.longitude;
-          if (userLat && userLng) {
-            setSalons(prevSalons =>
-              prevSalons.map(s => {
-                if (s.lat && s.lng) {
-                  const dist = calculateDistanceKm(userLat, userLng, s.lat, s.lng);
-                  return { ...s, distanceKm: dist };
-                }
-                return s;
-              })
-            );
-          }
+          localStorage.setItem('algosalon_location_permission', 'granted');
+          refreshDeviceTelemetry(true);
           resolve(true);
         },
-        async error => {
+        (error) => {
+          console.warn('Geolocation error:', error.message);
           setLocationPermissionGranted(false);
-          localStorage.setItem('algosalon_location_permission', 'false');
-          localStorage.setItem('algosalon_location_prompted', 'true');
-          // Graceful non-blocking fallback
-          await refreshDeviceTelemetry(false);
+          localStorage.setItem('algosalon_location_permission', 'denied');
           resolve(false);
         },
-        { timeout: 5000, maximumAge: 60000 }
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
       );
     });
   };
 
-  /**
-   * 1. Clear ALL old local storage data (token, user profile, account type, session state)
-   * before saving a new account's data on signup.
-   */
-  const clearAllSessionData = () => {
-    localStorage.removeItem('algosalon_auth_token');
-    localStorage.removeItem('algosalon_role');
-    localStorage.removeItem('algosalon_customer');
-    localStorage.removeItem('algosalon_business_user');
-    localStorage.removeItem('algosalon_seen_splash');
-    localStorage.removeItem('algosalon_appointments');
-    localStorage.removeItem('algosalon_notifications');
-    localStorage.removeItem('algosalon_pending_auth');
-    localStorage.removeItem('algosalon_location_prompted');
-    localStorage.removeItem('algosalon_location_permission');
-  };
+  // Keep local storage synced for core collections
+  useEffect(() => {
+    localStorage.setItem('algosalon_salons', JSON.stringify(salons));
+  }, [salons]);
 
-  /**
-   * Signup for Customer:
-   * - Clears ALL old local storage data first
-   * - Generates fresh auth token
-   * - Constructs clean fresh profile (no stale cached demo state)
-   * - Resets global Context state fully
-   * - Saves fresh profile to localStorage under new token
-   */
-  const signupCustomer = (userData: Partial<CustomerUser>, token?: string): CustomerUser => {
-    clearAllSessionData();
+  useEffect(() => {
+    localStorage.setItem('algosalon_services', JSON.stringify(services));
+  }, [services]);
 
-    const generatedToken = token || `algosalon_tk_cust_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  useEffect(() => {
+    localStorage.setItem('algosalon_staff', JSON.stringify(staffMembers));
+  }, [staffMembers]);
 
-    const freshCustomer: CustomerUser = {
-      id: userData.id || `cust-${Date.now()}`,
-      name: userData.name?.trim() || 'Valued Client',
-      email: userData.email?.trim() || 'user@example.com',
-      phone: userData.phone?.trim() || '',
-      avatar:
-        userData.avatar ||
-        (userData.gender === 'Female'
-          ? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80'
-          : 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80'),
-      gender: userData.gender || 'Male',
-      dateOfBirth: userData.dateOfBirth || '',
-      nationality: userData.nationality || '',
-      appCode: userData.appCode || '1234',
-      savedSalonIds: userData.savedSalonIds || [],
-      loyaltyPoints: userData.loyaltyPoints ?? 0,
-    };
+  useEffect(() => {
+    localStorage.setItem('algosalon_appointments', JSON.stringify(appointments));
+  }, [appointments]);
 
-    // Ensure account is registered in unique registry
-    const regResult = registerNewAccount({
-      id: freshCustomer.id,
-      email: freshCustomer.email,
-      role: 'customer',
-      name: freshCustomer.name,
-      appCode: freshCustomer.appCode,
-      phone: freshCustomer.phone,
-      avatar: freshCustomer.avatar,
-      gender: freshCustomer.gender,
-      dateOfBirth: freshCustomer.dateOfBirth,
-      nationality: freshCustomer.nationality,
-    });
-    if (!regResult.success && regResult.existingAccount) {
-      updateRegisteredAccount(freshCustomer.email, {
-        name: freshCustomer.name,
-        phone: freshCustomer.phone,
-        avatar: freshCustomer.avatar,
-        gender: freshCustomer.gender,
-        dateOfBirth: freshCustomer.dateOfBirth,
-        nationality: freshCustomer.nationality,
-      });
-    }
+  useEffect(() => {
+    localStorage.setItem('algosalon_reviews', JSON.stringify(reviews));
+  }, [reviews]);
 
-    localStorage.setItem('algosalon_auth_token', generatedToken);
-    localStorage.setItem('algosalon_role', 'customer');
-    localStorage.setItem('algosalon_customer', JSON.stringify(freshCustomer));
-    localStorage.setItem('algosalon_seen_splash', 'true');
-    localStorage.setItem('algosalon_appointments', JSON.stringify([]));
+  useEffect(() => {
+    localStorage.setItem('algosalon_notifications', JSON.stringify(notifications));
+  }, [notifications]);
 
-    const welcomeNotif: NotificationItem = {
-      id: `notif-${Date.now()}`,
-      userId: freshCustomer.id,
-      userType: 'customer',
-      title: `Welcome, ${freshCustomer.name.split(' ')[0]}!`,
-      message: 'Your new client account is active. Explore top-tier salons and book appointments in real time.',
-      date: 'Just now',
-      type: 'system',
-      read: false,
-      timestamp: new Date().toISOString(),
-    };
-    localStorage.setItem('algosalon_notifications', JSON.stringify([welcomeNotif]));
+  useEffect(() => {
+    localStorage.setItem('algosalon_customer', JSON.stringify(customerUser));
+  }, [customerUser]);
 
-    // Fully reset Global Context state
-    setAuthToken(generatedToken);
-    setCurrentRole('customer');
-    setCustomerUser(freshCustomer);
-    setAppointments([]);
-    setNotifications([welcomeNotif]);
-    setAuthModalOpen(false);
+  useEffect(() => {
+    localStorage.setItem('algosalon_business', JSON.stringify(businessUser));
+  }, [businessUser]);
 
-    return freshCustomer;
-  };
+  useEffect(() => {
+    localStorage.setItem('algosalon_role', currentRole);
+  }, [currentRole]);
 
-  /**
-   * Signup for Business:
-   * - Clears ALL old local storage data first
-   * - Generates fresh auth token
-   * - Creates fresh Salon & Business user profiles
-   * - Resets global Context state fully
-   * - Saves fresh profile to localStorage
-   */
-  const signupBusiness = (
-    userData: Partial<BusinessUser>,
-    salonData?: Partial<Salon>,
-    token?: string
-  ): BusinessUser => {
-    clearAllSessionData();
+  // Initial DB Hydration & Realtime Subscriptions
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
 
-    const generatedToken = token || `algosalon_tk_biz_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-
-    const newSalonId = salonData?.id || `salon-${Date.now()}`;
-    const freshSalon: Salon = {
-      id: newSalonId,
-      name: salonData?.name || userData.businessName || 'My Salon Studio',
-      tagline: salonData?.tagline || 'Modern Barbering & Salon Studio',
-      description: salonData?.description || 'Premier grooming and styling destination.',
-      address: salonData?.address || 'Downtown Boulevard',
-      city: salonData?.city || 'Dubai',
-      mapUrl: salonData?.mapUrl || 'https://maps.google.com',
-      distanceKm: 0.5,
-      lat: 25.2048,
-      lng: 55.2708,
-      phone: salonData?.phone || userData.phone || '+971 50 123 4567',
-      rating: 5.0,
-      reviewCount: 0,
-      priceRange: '$$$',
-      logo: salonData?.logo || '',
-      image: salonData?.image || 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=600&auto=format&fit=crop&q=80',
-      coverImage: salonData?.coverImage || 'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=1200&auto=format&fit=crop&q=80',
-      amenities: ['Free High-Speed Wi-Fi', 'Air Conditioned', 'Card & Apple Pay'],
-      isOpenNow: true,
-      isVerified: true,
-      trnNumber: '100492817200003',
-      licenseNumber: 'CN-2894109',
-      categories: userData.category ? [userData.category] : ['Hair & Styling'],
-      documents: [],
-      workingHours: CONTEXT_DEFAULT_WORKING_HOURS,
-    };
-
-    const freshBusiness: BusinessUser = {
-      id: userData.id || `biz-${Date.now()}`,
-      name: userData.name?.trim() || 'Salon Director',
-      email: userData.email?.trim() || 'partner@algosalon.com',
-      phone: userData.phone?.trim() || '+971 50 123 4567',
-      salonId: newSalonId,
-      ownerRole: userData.ownerRole?.trim() || 'Owner & Salon Director',
-      businessName: userData.businessName?.trim() || freshSalon.name,
-      category: userData.category || 'Hair & Styling',
-      location: userData.location || freshSalon.city,
-      appCode: userData.appCode || '1234',
-      signUpGmail: userData.signUpGmail?.trim() || userData.email?.trim() || 'partner@algosalon.com',
-      isGmailLinked: true,
-    };
-
-    // Ensure account is registered in unique registry
-    const regResult = registerNewAccount({
-      id: freshBusiness.id,
-      email: freshBusiness.email,
-      role: 'business',
-      name: freshBusiness.name,
-      appCode: freshBusiness.appCode,
-      phone: freshBusiness.phone,
-      businessName: freshBusiness.businessName,
-      category: freshBusiness.category,
-      location: freshBusiness.location,
-      salonId: freshBusiness.salonId,
-      ownerRole: freshBusiness.ownerRole,
-      signUpGmail: freshBusiness.signUpGmail,
-    });
-    if (!regResult.success && regResult.existingAccount) {
-      updateRegisteredAccount(freshBusiness.email, {
-        name: freshBusiness.name,
-        phone: freshBusiness.phone,
-        businessName: freshBusiness.businessName,
-        category: freshBusiness.category,
-        location: freshBusiness.location,
-        salonId: freshBusiness.salonId,
-        ownerRole: freshBusiness.ownerRole,
-      });
-    }
-
-    localStorage.setItem('algosalon_auth_token', generatedToken);
-    localStorage.setItem('algosalon_role', 'business');
-    localStorage.setItem('algosalon_business_user', JSON.stringify(freshBusiness));
-    localStorage.setItem('algosalon_seen_splash', 'true');
-    localStorage.setItem('algosalon_appointments', JSON.stringify([]));
-
-    setSalons(prev => {
-      const exists = prev.some(s => s.id === newSalonId);
-      const updated = exists ? prev.map(s => (s.id === newSalonId ? freshSalon : s)) : [freshSalon, ...prev];
-      localStorage.setItem('algosalon_salons', JSON.stringify(updated));
-      return updated;
+    // 1. Fetch public salon catalog
+    fetchSalonsFromDb().then(dbData => {
+      if (dbData) {
+        if (dbData.salons && dbData.salons.length > 0) setSalons(dbData.salons);
+        if (dbData.services && dbData.services.length > 0) setServices(dbData.services);
+        if (dbData.staff && dbData.staff.length > 0) setStaffMembers(dbData.staff);
+      }
     });
 
-    setAuthToken(generatedToken);
-    setCurrentRole('business');
-    setBusinessUser(freshBusiness);
-    setAppointments([]);
-    setShowSplash(false);
-    setAuthModalOpen(false);
-
-    return freshBusiness;
-  };
-
-  /**
-   * Fetch fresh user profile from current session storage, ensuring Settings
-   * and components never display stale cached data.
-   */
-  const fetchFreshUserProfile = (tokenOverride?: string) => {
-    const token = tokenOverride || localStorage.getItem('algosalon_auth_token') || authToken;
-    const role = (localStorage.getItem('algosalon_role') as Role) || currentRole || 'customer';
-
-    let freshCustomer = customerUser;
-    let freshBusiness = businessUser;
-
-    const savedCust = localStorage.getItem('algosalon_customer');
-    if (savedCust) {
-      try {
-        freshCustomer = JSON.parse(savedCust);
-        setCustomerUser(freshCustomer);
-      } catch {
-        // ignore JSON parse error
+    // 2. Fetch authenticated data if logged in
+    if (authToken) {
+      if (currentRole === 'customer' && customerUser.id) {
+        fetchAppointmentsFromDb({ customerId: customerUser.id }).then(dbAppts => {
+          if (dbAppts && dbAppts.length > 0) setAppointments(dbAppts);
+        });
+      } else if (currentRole === 'business' && businessUser.salonId) {
+        fetchAppointmentsFromDb({ salonId: businessUser.salonId }).then(dbAppts => {
+          if (dbAppts && dbAppts.length > 0) setAppointments(dbAppts);
+        });
       }
     }
+  }, [authToken, currentRole, customerUser.id, businessUser.salonId]);
 
-    const savedBiz = localStorage.getItem('algosalon_business_user');
-    if (savedBiz) {
-      try {
-        freshBusiness = JSON.parse(savedBiz);
-        setBusinessUser(freshBusiness);
-      } catch {
-        // ignore JSON parse error
-      }
-    }
+  // Realtime subscription setup
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
 
-    return { customer: freshCustomer, business: freshBusiness, role, token };
-  };
-
-  const updateCustomerProfile = (updates: Partial<CustomerUser>) => {
-    setCustomerUser(prev => {
-      const updated = { ...prev, ...updates };
-      localStorage.setItem('algosalon_customer', JSON.stringify(updated));
-      return updated;
-    });
-
-    const activeEmail = customerUser.email || updates.email;
-    if (activeEmail) {
-      updateRegisteredAccount(activeEmail, updates);
-    }
-
-    if (customerUser.id) {
-      updateCustomerProfileInDb(customerUser.id, updates).catch(err => {
-        console.warn('Background sync customer profile error:', err);
-      });
-    }
-  };
-
-  const updateBusinessProfile = (updates: Partial<BusinessUser>) => {
-    setBusinessUser(prev => {
-      const updated = { ...prev, ...updates };
-      localStorage.setItem('algosalon_business_user', JSON.stringify(updated));
-      return updated;
-    });
-
-    const activeEmail = businessUser.email || updates.email;
-    if (activeEmail) {
-      updateRegisteredAccount(activeEmail, updates);
-    }
-  };
-
-  const loginAsCustomer = (userUpdates: Partial<CustomerUser>, token?: string) => {
-    const generatedToken = token || localStorage.getItem('algosalon_auth_token') || `algosalon_tk_cust_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-    setAuthToken(generatedToken);
-    localStorage.setItem('algosalon_auth_token', generatedToken);
-    localStorage.setItem('algosalon_role', 'customer');
-    localStorage.setItem('algosalon_seen_splash', 'true');
-
-    setCustomerUser(prev => {
-      const updated = { ...prev, ...userUpdates };
-      localStorage.setItem('algosalon_customer', JSON.stringify(updated));
-      return updated;
-    });
-    setCurrentRole('customer');
-    setAuthModalOpen(false);
-  };
-
-  const loginAsBusiness = (userUpdates: Partial<BusinessUser>, salonId?: string, token?: string) => {
-    const generatedToken = token || localStorage.getItem('algosalon_auth_token') || `algosalon_tk_biz_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-    setAuthToken(generatedToken);
-    localStorage.setItem('algosalon_auth_token', generatedToken);
-    localStorage.setItem('algosalon_role', 'business');
-    localStorage.setItem('algosalon_seen_splash', 'true');
-
-    setBusinessUser(prev => {
-      const updated = {
-        ...prev,
-        ...userUpdates,
-        salonId: salonId || userUpdates.salonId || prev.salonId || 'salon-1',
-      };
-      localStorage.setItem('algosalon_business_user', JSON.stringify(updated));
-      return updated;
-    });
-    setCurrentRole('business');
-    setShowSplash(false);
-    setAuthModalOpen(false);
-  };
-
-  /**
-   * 2. Logout: clears the auth token AND the saved account type from local storage completely,
-   * checks all storage keys related to session, and navigates to Login/Splash.
-   */
-  const logout = () => {
-    clearAllSessionData();
-    signOutSupabase().catch(() => {});
-
-    setAuthToken(null);
-    setCustomerUser(INITIAL_CUSTOMER);
-    setBusinessUser(INITIAL_BUSINESS_USER);
-    setCurrentRole('customer');
-    setAuthModalOpen(false);
-    setShowSplash(true);
-  };
-
-  const logoutCustomer = () => {
-    logout();
-  };
-
-  const logoutBusiness = () => {
-    logout();
-  };
-
-  /**
-   * Permanently deletes user account, OAuth identities, and database records from Supabase
-   * and local account registry, then clears all session data and redirects to splash.
-   */
-  const deleteAccount = async (): Promise<boolean> => {
-    try {
-      const currentEmail = currentRole === 'customer' 
-        ? customerUser.email 
-        : (businessUser.email || businessUser.signUpGmail);
-      const currentUserId = currentRole === 'customer' 
-        ? customerUser.id 
-        : businessUser.id;
-
-      // 1. Delete from Supabase database tables & auth (including OAuth identities)
-      await deleteAccountInSupabase(currentEmail, currentUserId);
-
-      // If business has separate signup Gmail, clean that up as well
-      if (currentRole === 'business' && businessUser.signUpGmail && businessUser.signUpGmail !== currentEmail) {
-        await deleteAccountInSupabase(businessUser.signUpGmail).catch(() => {});
-      }
-
-      // 2. Delete from registered accounts registry in localStorage
-      if (currentEmail) {
-        deleteAccountByEmail(currentEmail);
-      }
-      if (businessUser.signUpGmail && businessUser.signUpGmail !== currentEmail) {
-        deleteAccountByEmail(businessUser.signUpGmail);
-      }
-
-      // 3. Clean up in-memory context state
-      if (currentRole === 'customer') {
-        if (customerUser.id) {
-          setAppointments(prev => prev.filter(a => a.customerId !== customerUser.id));
-          setNotifications(prev => prev.filter(n => n.userId !== customerUser.id));
+    const unsubAppts = subscribeToAppointments((updatedAppt) => {
+      setAppointments(prev => {
+        const index = prev.findIndex(a => a.id === updatedAppt.id);
+        if (index >= 0) {
+          const next = [...prev];
+          next[index] = { ...next[index], ...updatedAppt };
+          return next;
+        } else {
+          return [updatedAppt, ...prev];
         }
-      } else if (currentRole === 'business') {
-        const salonId = businessUser.salonId;
-        if (salonId) {
-          setSalons(prev => prev.filter(s => s.id !== salonId));
-          setServices(prev => prev.filter(s => s.salonId !== salonId));
-          setStaffMembers(prev => prev.filter(st => st.salonId !== salonId));
-          setAppointments(prev => prev.filter(a => a.salonId !== salonId));
+      });
+    });
+
+    const unsubReviews = subscribeToReviews((updatedReview) => {
+      setReviews(prev => {
+        const index = prev.findIndex(r => r.id === updatedReview.id);
+        if (index >= 0) {
+          const next = [...prev];
+          next[index] = { ...next[index], ...updatedReview };
+          return next;
+        } else {
+          return [updatedReview, ...prev];
         }
-      }
+      });
+    });
 
-      // 4. Clear all session data & sign out
-      clearAllSessionData();
-      await signOutSupabase().catch(() => {});
+    const unsubNotifs = subscribeToNotifications((updatedNotif) => {
+      setNotifications(prev => {
+        const index = prev.findIndex(n => n.id === updatedNotif.id);
+        if (index >= 0) {
+          const next = [...prev];
+          next[index] = { ...next[index], ...updatedNotif };
+          return next;
+        } else {
+          return [updatedNotif, ...prev];
+        }
+      });
+    });
 
-      // 5. Reset state & navigate to Splash
-      setAuthToken(null);
-      setCustomerUser(INITIAL_CUSTOMER);
-      setBusinessUser(INITIAL_BUSINESS_USER);
-      setCurrentRole('customer');
-      setAuthModalOpen(false);
-      setShowSplash(true);
+    return () => {
+      unsubAppts();
+      unsubReviews();
+      unsubNotifs();
+    };
+  }, []);
 
-      return true;
-    } catch (err) {
-      console.error('deleteAccount failed:', err);
-      return false;
-    }
+  // Role switching
+  const switchRole = (targetRole: Role): boolean => {
+    if (targetRole === currentRole) return true;
+    setCurrentRole(targetRole);
+    return true;
   };
 
-  /**
-   * 3. Account switching in profile settings (business/customer):
-   * Enforces user security requirement:
-   * - Checks if the device already has an existing account for targetRole.
-   * - If YES -> prompts for 4-digit App Code (PIN) -> once verified -> routes directly to Home page.
-   * - If NO (new on this device) -> redirects to Auth modal (signup/login) to sign in or create an account.
-   */
   const promptRoleSwitch = (targetRole: Role) => {
-    const registered = getRegisteredAccounts();
-    const existing = registered.find(a => a.role === targetRole);
-
-    if (existing) {
-      setRoleSwitchAccount(existing);
-      setRoleSwitchTarget(targetRole);
-      setRoleSwitchModalOpen(true);
-    } else {
-      setCurrentRole(targetRole);
-      setAuthMode('signup');
-      setAuthModalOpen(true);
-    }
+    if (targetRole === currentRole) return;
+    const currentEmail = currentRole === 'customer' ? customerUser.email : businessUser.email;
+    const acct = findAccountByEmail(currentEmail);
+    setRoleSwitchTarget(targetRole);
+    setRoleSwitchAccount(acct || null);
+    setRoleSwitchModalOpen(true);
   };
 
   const closeRoleSwitchModal = () => {
@@ -1521,168 +871,312 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const confirmRoleSwitch = () => {
-    if (!roleSwitchTarget || !roleSwitchAccount) return;
-
-    if (roleSwitchTarget === 'business') {
-      const bizUser = accountToBusinessUser(roleSwitchAccount);
-      loginAsBusiness(bizUser, roleSwitchAccount.salonId);
-      setActiveBusinessTab('overview');
-    } else {
-      const custUser = accountToCustomerUser(roleSwitchAccount);
-      loginAsCustomer(custUser);
-      setActiveCustomerTab('discover');
+    if (roleSwitchTarget) {
+      setCurrentRole(roleSwitchTarget);
     }
-
     closeRoleSwitchModal();
   };
 
-  const switchRole = (targetRole: Role): boolean => {
-    promptRoleSwitch(targetRole);
-    return true;
+  const clearAllSessionData = () => {
+    localStorage.removeItem('algosalon_auth_token');
+    localStorage.removeItem('algosalon_role');
+    localStorage.removeItem('algosalon_customer');
+    localStorage.removeItem('algosalon_business');
+    setAuthToken(null);
+    setCurrentRole('customer');
+    setCustomerUser(INITIAL_CUSTOMER);
+    setBusinessUser(INITIAL_BUSINESS_USER);
+    setShowSplash(true);
+  };
+
+  const signupCustomer = (user: Partial<CustomerUser>, token?: string): CustomerUser => {
+    const fullUser: CustomerUser = {
+      ...INITIAL_CUSTOMER,
+      ...user,
+      id: user.id || `c-${Date.now()}`,
+    };
+    const finalToken = token || `token-cust-${Date.now()}`;
+    setCustomerUser(fullUser);
+    setAuthToken(finalToken);
+    setCurrentRole('customer');
+    localStorage.setItem('algosalon_auth_token', finalToken);
+    localStorage.setItem('algosalon_role', 'customer');
+    localStorage.setItem('algosalon_customer', JSON.stringify(fullUser));
+    setShowSplash(false);
+    return fullUser;
+  };
+
+  const signupBusiness = (
+    user: Partial<BusinessUser>,
+    salonData?: Partial<Salon>,
+    token?: string
+  ): BusinessUser => {
+    const finalSalonId = salonData?.id || user.salonId || `s-${Date.now()}`;
+    const fullUser: BusinessUser = {
+      ...INITIAL_BUSINESS_USER,
+      ...user,
+      id: user.id || `b-${Date.now()}`,
+      salonId: finalSalonId,
+      salonName: salonData?.name || user.salonName || 'My Salon',
+    };
+
+    if (salonData) {
+      const newSalon: Salon = {
+        id: finalSalonId,
+        name: salonData.name || fullUser.salonName,
+        tagline: salonData.tagline || 'Luxury Salon & Spa',
+        description: salonData.description || 'Welcome to our premium salon experience.',
+        address: salonData.address || 'Dubai, UAE',
+        city: salonData.city || 'Dubai',
+        distanceKm: 0.1,
+        lat: salonData.lat || 25.1972,
+        lng: salonData.lng || 55.2744,
+        phone: salonData.phone || fullUser.phone,
+        rating: 5.0,
+        reviewCount: 0,
+        priceRange: salonData.priceRange || '$$',
+        image: salonData.image || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1200&auto=format&fit=crop&q=80',
+        gallery: salonData.gallery || [
+          'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1200&auto=format&fit=crop&q=80',
+        ],
+        workingHours: salonData.workingHours || CONTEXT_DEFAULT_WORKING_HOURS,
+        amenities: salonData.amenities || ['Free Wi-Fi', 'AC', 'Card Accepted'],
+        categories: salonData.categories || ['Haircut', 'Coloring', 'Styling'],
+        featured: false,
+        isOpenNow: true,
+      };
+
+      setSalons(prev => [newSalon, ...prev]);
+    }
+
+    const finalToken = token || `token-biz-${Date.now()}`;
+    setBusinessUser(fullUser);
+    setAuthToken(finalToken);
+    setCurrentRole('business');
+    localStorage.setItem('algosalon_auth_token', finalToken);
+    localStorage.setItem('algosalon_role', 'business');
+    localStorage.setItem('algosalon_business', JSON.stringify(fullUser));
+    setShowSplash(false);
+    return fullUser;
+  };
+
+  const fetchFreshUserProfile = (tokenOverride?: string) => {
+    const token = tokenOverride || authToken;
+    const role = currentRole;
+    return {
+      customer: customerUser,
+      business: businessUser,
+      role,
+      token,
+    };
+  };
+
+  const updateCustomerProfile = (updates: Partial<CustomerUser>) => {
+    setCustomerUser(prev => {
+      const next = { ...prev, ...updates };
+      localStorage.setItem('algosalon_customer', JSON.stringify(next));
+      return next;
+    });
+
+    if (customerUser.email) {
+      updateRegisteredAccount(customerUser.email, {
+        fullName: updates.name,
+        phone: updates.phone,
+        avatar: updates.avatar,
+      });
+    }
+
+    if (isSupabaseConfigured() && customerUser.id) {
+      updateCustomerProfileInDb(customerUser.id, {
+        full_name: updates.name,
+        phone_e164: updates.phone,
+        avatar_url: updates.avatar,
+      });
+    }
+  };
+
+  const updateBusinessProfile = (updates: Partial<BusinessUser>) => {
+    setBusinessUser(prev => {
+      const next = { ...prev, ...updates };
+      localStorage.setItem('algosalon_business', JSON.stringify(next));
+      return next;
+    });
+
+    if (businessUser.email) {
+      updateRegisteredAccount(businessUser.email, {
+        fullName: updates.name,
+        phone: updates.phone,
+        avatar: updates.avatar,
+        salonName: updates.salonName,
+      });
+    }
+  };
+
+  const loginAsCustomer = (user: Partial<CustomerUser>, token?: string) => {
+    const fullUser: CustomerUser = {
+      ...INITIAL_CUSTOMER,
+      ...user,
+      id: user.id || `c-${Date.now()}`,
+    };
+    const finalToken = token || `token-cust-${Date.now()}`;
+    setCustomerUser(fullUser);
+    setAuthToken(finalToken);
+    setCurrentRole('customer');
+    localStorage.setItem('algosalon_auth_token', finalToken);
+    localStorage.setItem('algosalon_role', 'customer');
+    localStorage.setItem('algosalon_customer', JSON.stringify(fullUser));
+    setShowSplash(false);
+  };
+
+  const loginAsBusiness = (user: Partial<BusinessUser>, salonId?: string, token?: string) => {
+    const finalSalonId = salonId || user.salonId || 'salon-1';
+    const fullUser: BusinessUser = {
+      ...INITIAL_BUSINESS_USER,
+      ...user,
+      id: user.id || `b-${Date.now()}`,
+      salonId: finalSalonId,
+    };
+    const finalToken = token || `token-biz-${Date.now()}`;
+    setBusinessUser(fullUser);
+    setAuthToken(finalToken);
+    setCurrentRole('business');
+    localStorage.setItem('algosalon_auth_token', finalToken);
+    localStorage.setItem('algosalon_role', 'business');
+    localStorage.setItem('algosalon_business', JSON.stringify(fullUser));
+    setShowSplash(false);
+  };
+
+  const logout = () => {
+    clearAllSessionData();
+  };
+
+  const logoutCustomer = () => {
+    clearAllSessionData();
+  };
+
+  const logoutBusiness = () => {
+    clearAllSessionData();
+  };
+
+  const deleteAccount = async (): Promise<boolean> => {
+    try {
+      const emailToDelete = currentRole === 'customer' ? customerUser.email : businessUser.email;
+      if (emailToDelete) {
+        deleteAccountByEmail(emailToDelete);
+      }
+      if (isSupabaseConfigured()) {
+        await deleteAccountInSupabase();
+      }
+      clearAllSessionData();
+      return true;
+    } catch (err) {
+      console.error('Delete account error:', err);
+      clearAllSessionData();
+      return true;
+    }
   };
 
   const updateSalonProfile = (salonId: string, updates: Partial<Salon>) => {
-    setSalons(prev => {
-      const updated = prev.map(s => (s.id === salonId ? { ...s, ...updates } : s));
-      localStorage.setItem('algosalon_salons', JSON.stringify(updated));
-      return updated;
-    });
+    setSalons(prev =>
+      prev.map(s => {
+        if (s.id === salonId) {
+          return { ...s, ...updates };
+        }
+        return s;
+      })
+    );
 
     if (isSupabaseConfigured()) {
-      updateSalonProfileInDb(salonId, updates).catch(err => {
-        console.warn('Background Supabase updateSalonProfile error:', err);
-      });
+      updateSalonProfileInDb(salonId, updates as any);
     }
   };
 
   const toggleFavoriteSalon = (salonId: string) => {
-    const isCurrentlySaved = customerUser.savedSalonIds.includes(salonId);
     setCustomerUser(prev => {
-      const isSaved = prev.savedSalonIds.includes(salonId);
-      const newSaved = isSaved
-        ? prev.savedSalonIds.filter(id => id !== salonId)
-        : [...prev.savedSalonIds, salonId];
-      const updated = { ...prev, savedSalonIds: newSaved };
-      localStorage.setItem('algosalon_customer', JSON.stringify(updated));
-      return updated;
-    });
+      const isFav = prev.savedSalons.includes(salonId);
+      const nextFavs = isFav ? prev.savedSalons.filter(id => id !== salonId) : [...prev.savedSalons, salonId];
+      const updatedUser = { ...prev, savedSalons: nextFavs };
+      localStorage.setItem('algosalon_customer', JSON.stringify(updatedUser));
 
-    if (isSupabaseConfigured() && customerUser?.id) {
-      if (isCurrentlySaved) {
-        removeFavoriteInDb(customerUser.id, salonId).catch(err => {
-          console.warn('Background remove favorite error:', err);
-        });
-      } else {
-        addFavoriteInDb(customerUser.id, salonId).catch(err => {
-          console.warn('Background add favorite error:', err);
-        });
+      if (isSupabaseConfigured() && prev.id) {
+        if (isFav) {
+          removeFavoriteInDb(prev.id, salonId);
+        } else {
+          addFavoriteInDb(prev.id, salonId);
+        }
       }
-    }
+
+      return updatedUser;
+    });
   };
 
-  const addService = (service: Omit<ServiceItem, 'id'>) => {
-    const tempId = `srv-${Date.now()}`;
+  const addService = (srv: Omit<ServiceItem, 'id'>) => {
     const newService: ServiceItem = {
-      ...service,
-      id: tempId,
+      ...srv,
+      id: `srv-${Date.now()}`,
     };
-    setServices(prev => {
-      const updated = [newService, ...prev];
-      localStorage.setItem('algosalon_services', JSON.stringify(updated));
-      return updated;
-    });
+    setServices(prev => [newService, ...prev]);
 
     if (isSupabaseConfigured()) {
-      addServiceInDb(service).then(res => {
-        if (res.success && res.serviceId) {
-          setServices(prev =>
-            prev.map(s => (s.id === tempId ? { ...s, id: res.serviceId! } : s))
-          );
-        }
-      }).catch(err => {
-        console.warn('Background Supabase addService error:', err);
-      });
+      addServiceInDb(srv as any);
     }
   };
 
   const updateService = (serviceId: string, updates: Partial<ServiceItem>) => {
-    setServices(prev => {
-      const updated = prev.map(s => (s.id === serviceId ? { ...s, ...updates } : s));
-      localStorage.setItem('algosalon_services', JSON.stringify(updated));
-      return updated;
-    });
+    setServices(prev =>
+      prev.map(s => {
+        if (s.id === serviceId) {
+          return { ...s, ...updates };
+        }
+        return s;
+      })
+    );
 
     if (isSupabaseConfigured()) {
-      updateServiceInDb(serviceId, updates).catch(err => {
-        console.warn('Background Supabase updateService error:', err);
-      });
+      updateServiceInDb(serviceId, updates as any);
     }
   };
 
   const deleteService = (serviceId: string) => {
-    setServices(prev => {
-      const updated = prev.filter(s => s.id !== serviceId);
-      localStorage.setItem('algosalon_services', JSON.stringify(updated));
-      return updated;
-    });
+    setServices(prev => prev.filter(s => s.id !== serviceId));
 
     if (isSupabaseConfigured()) {
-      deleteServiceInDb(serviceId).catch(err => {
-        console.warn('Background Supabase deleteService error:', err);
-      });
+      deleteServiceInDb(serviceId);
     }
   };
 
   const addStaffMember = (staff: Omit<StaffMember, 'id'>) => {
-    const tempId = `staff-${Date.now()}`;
     const newStaff: StaffMember = {
       ...staff,
-      id: tempId,
+      id: `staff-${Date.now()}`,
     };
-    setStaffMembers(prev => {
-      const updated = [newStaff, ...prev];
-      localStorage.setItem('algosalon_staff', JSON.stringify(updated));
-      return updated;
-    });
+    setStaffMembers(prev => [newStaff, ...prev]);
 
     if (isSupabaseConfigured()) {
-      addStaffInDb(staff).then(res => {
-        if (res.success && res.staffId) {
-          setStaffMembers(prev =>
-            prev.map(st => (st.id === tempId ? { ...st, id: res.staffId! } : st))
-          );
-        }
-      }).catch(err => {
-        console.warn('Background Supabase addStaff error:', err);
-      });
+      addStaffInDb(staff as any);
     }
   };
 
   const updateStaffMember = (staffId: string, updates: Partial<StaffMember>) => {
-    setStaffMembers(prev => {
-      const updated = prev.map(s => (s.id === staffId ? { ...s, ...updates } : s));
-      localStorage.setItem('algosalon_staff', JSON.stringify(updated));
-      return updated;
-    });
+    setStaffMembers(prev =>
+      prev.map(s => {
+        if (s.id === staffId) {
+          return { ...s, ...updates };
+        }
+        return s;
+      })
+    );
 
     if (isSupabaseConfigured()) {
-      updateStaffInDb(staffId, updates).catch(err => {
-        console.warn('Background Supabase updateStaff error:', err);
-      });
+      updateStaffInDb(staffId, updates as any);
     }
   };
 
   const deleteStaffMember = (staffId: string) => {
-    setStaffMembers(prev => {
-      const updated = prev.filter(s => s.id !== staffId);
-      localStorage.setItem('algosalon_staff', JSON.stringify(updated));
-      return updated;
-    });
+    setStaffMembers(prev => prev.filter(s => s.id !== staffId));
 
     if (isSupabaseConfigured()) {
-      deleteStaffInDb(staffId).catch(err => {
-        console.warn('Background Supabase deleteStaff error:', err);
-      });
+      deleteStaffInDb(staffId);
     }
   };
 
@@ -1690,208 +1184,81 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     data: Omit<Appointment, 'id' | 'createdAt' | 'status'>,
     initialStatus: AppointmentStatus = 'pending'
   ): string => {
-    const newId = `apt-${Date.now()}`;
-    const newAppointment: Appointment = {
+    const newId = `appt-${Date.now()}`;
+    const newAppt: Appointment = {
       ...data,
       id: newId,
       status: initialStatus,
       createdAt: new Date().toISOString(),
     };
 
-    setAppointments(prev => {
-      const updated = [newAppointment, ...prev];
-      localStorage.setItem('algosalon_appointments', JSON.stringify(updated));
-      return updated;
-    });
+    setAppointments(prev => [newAppt, ...prev]);
 
-    // Notify salon and customer
-    const newNotifs: NotificationItem[] = [
-      {
-        id: `notif-${Date.now()}-biz`,
-        title: initialStatus === 'pending' ? 'New Booking Request' : 'New Appointment Booked',
-        message: `${data.customerName} requested ${data.serviceName} with ${data.staffName} for ${data.date} at ${data.timeSlot}.`,
-        date: 'Just now',
-        read: false,
-        userType: 'business',
-        linkTab: initialStatus === 'pending' ? 'customers' : 'calendar',
-      },
-      {
-        id: `notif-${Date.now()}-cust`,
-        title: initialStatus === 'pending' ? 'Booking Request Submitted' : 'Booking Confirmed',
-        message: `Your booking for ${data.serviceName} at ${data.salonName} on ${data.date} at ${data.timeSlot} has been placed.`,
-        date: 'Just now',
-        read: false,
-        userType: 'customer',
-        linkTab: 'bookings',
-      },
-    ];
+    // Create notification for salon business user
+    const salon = salons.find(s => s.id === data.salonId);
+    const newNotif: NotificationItem = {
+      id: `notif-${Date.now()}`,
+      recipientRole: 'business',
+      recipientId: data.salonId,
+      title: 'New Booking Request',
+      message: `${data.customerName} requested a ${data.serviceName} appointment on ${data.date} at ${data.time}`,
+      timestamp: new Date().toISOString(),
+      read: false,
+      type: 'booking',
+      appointmentId: newId,
+    };
+    setNotifications(prev => [newNotif, ...prev]);
 
-    setNotifications(prev => {
-      const updated = [...newNotifs, ...prev];
-      localStorage.setItem('algosalon_notifications', JSON.stringify(updated));
-      return updated;
-    });
-
-    // Asynchronously call Supabase RPC create_booking if configured
     if (isSupabaseConfigured()) {
-      if (businessUser?.id) {
-        createNotificationInDb({
-          userId: businessUser.id,
-          userType: 'business',
-          title: newNotifs[0].title,
-          message: newNotifs[0].message,
-          type: 'booking',
-          linkTab: newNotifs[0].linkTab,
-        }).catch(err => console.warn('Background business notification sync error:', err));
-      }
-      if (customerUser?.id) {
-        createNotificationInDb({
-          userId: customerUser.id,
-          userType: 'customer',
-          title: newNotifs[1].title,
-          message: newNotifs[1].message,
-          type: 'booking',
-          linkTab: newNotifs[1].linkTab,
-        }).catch(err => console.warn('Background customer notification sync error:', err));
-      }
-
-      const { hour, minute } = parseTimeSlotHoursMinutes(data.timeSlot || '10:00');
-      const bookingDate = new Date(`${data.date}T00:00:00`);
-      bookingDate.setHours(hour, minute, 0, 0);
-
       createBookingInDb({
-        salonId: data.salonId,
-        serviceId: data.serviceId,
-        staffId: data.staffId,
-        startsAt: bookingDate.toISOString(),
-        customerName: data.customerName,
-        customerPhone: data.customerPhone,
-        customerEmail: data.customerEmail,
-        paymentMethod: data.paymentMethod,
-        notes: data.notes,
-      }).then(res => {
-        if (res.success && res.appointmentId) {
-          setAppointments(prev =>
-            prev.map(a => (a.id === newId ? { ...a, id: res.appointmentId! } : a))
-          );
-        }
-      }).catch(err => {
-        console.warn('Background Supabase booking error:', err);
+        salon_id: data.salonId,
+        customer_id: data.customerId,
+        service_id: data.serviceId,
+        staff_id: data.staffId,
+        appointment_date: data.date,
+        start_time: data.time,
+        total_price: data.price,
+        status: initialStatus,
       });
+      createNotificationInDb(newNotif as any);
     }
 
     return newId;
   };
 
-  const updateAppointmentStatus = (
-    appointmentId: string,
-    status: AppointmentStatus,
-    reason?: string
-  ) => {
-    const targetApt = appointments.find(a => a.id === appointmentId);
-    setAppointments(prev => {
-      const updated = prev.map(a =>
-        a.id === appointmentId
-          ? {
-              ...a,
-              status,
-              ...(reason ? { declineReason: reason } : {}),
-            }
-          : a
-      );
-      localStorage.setItem('algosalon_appointments', JSON.stringify(updated));
-      return updated;
-    });
+  const updateAppointmentStatus = (appointmentId: string, status: AppointmentStatus, reason?: string) => {
+    setAppointments(prev =>
+      prev.map(a => {
+        if (a.id === appointmentId) {
+          return { ...a, status, declineReason: reason || a.declineReason };
+        }
+        return a;
+      })
+    );
 
-    if (targetApt) {
-      // Synchronize status update to Supabase
-      if (isSupabaseConfigured()) {
-        setAppointmentStatusInDb({
-          appointmentId,
-          status,
-          reason,
-        }).catch(err => {
-          console.warn('Background status sync error:', err);
-        });
-      }
-
-      let notifTitle = 'Appointment Update';
-      let notifMsg = `Your appointment for ${targetApt.serviceName} status has been updated to ${status}.`;
-
-      if (status === 'in_progress') {
-        notifTitle = 'Service In Progress ✂️';
-        notifMsg = `Your appointment with ${targetApt.staffName} for ${targetApt.serviceName} is now in progress!`;
-      } else if (status === 'completed') {
-        notifTitle = 'Appointment Completed ✨';
-        notifMsg = `Thank you for visiting ${targetApt.salonName}! Your ${targetApt.serviceName} session is completed. Please consider leaving a review.`;
-      } else if (status === 'cancelled') {
-        notifTitle = 'Appointment Cancelled';
-        notifMsg = `Your appointment for ${targetApt.serviceName} on ${targetApt.date} at ${targetApt.timeSlot} was cancelled.${reason ? ` Reason: ${reason}` : ''}`;
-      } else if (status === 'confirmed') {
-        notifTitle = 'Appointment Confirmed 🎉';
-        notifMsg = `Your appointment for ${targetApt.serviceName} on ${targetApt.date} at ${targetApt.timeSlot} is confirmed.`;
-      }
-
-      const custNotif: NotificationItem = {
-        id: `notif-${Date.now()}-status-${status}`,
-        title: notifTitle,
-        message: notifMsg,
-        date: 'Just now',
-        read: false,
-        userType: 'customer',
-        linkTab: 'bookings',
-      };
-      setNotifications(prev => {
-        const updated = [custNotif, ...prev];
-        localStorage.setItem('algosalon_notifications', JSON.stringify(updated));
-        return updated;
-      });
-
-      if (isSupabaseConfigured() && targetApt.customerId) {
-        createNotificationInDb({
-          userId: targetApt.customerId,
-          userType: 'customer',
-          title: notifTitle,
-          message: notifMsg,
-          type: status === 'completed' ? 'review' : 'reminder',
-          linkTab: 'bookings',
-          appointmentId: targetApt.id,
-        }).catch(err => console.warn('Background Supabase status notif error:', err));
-      }
+    if (isSupabaseConfigured()) {
+      setAppointmentStatusInDb(appointmentId, status, reason);
     }
   };
 
   const acceptAppointment = (appointmentId: string) => {
-    const targetApt = appointments.find(a => a.id === appointmentId);
     updateAppointmentStatus(appointmentId, 'confirmed');
 
-    if (targetApt) {
-      const custNotif: NotificationItem = {
-        id: `notif-${Date.now()}-accept`,
-        title: 'Booking Request Accepted! 🎉',
-        message: `Your appointment for ${targetApt.serviceName} on ${targetApt.date} at ${targetApt.timeSlot} has been accepted by ${targetApt.salonName}.`,
-        date: 'Just now',
+    const appt = appointments.find(a => a.id === appointmentId);
+    if (appt) {
+      const notif: NotificationItem = {
+        id: `notif-${Date.now()}`,
+        recipientRole: 'customer',
+        recipientId: appt.customerId,
+        title: 'Booking Confirmed!',
+        message: `Your appointment for ${appt.serviceName} at ${appt.salonName} on ${appt.date} at ${appt.time} has been confirmed.`,
+        timestamp: new Date().toISOString(),
         read: false,
-        userType: 'customer',
-        linkTab: 'bookings',
+        type: 'booking',
+        appointmentId,
       };
-      setNotifications(prev => {
-        const updated = [custNotif, ...prev];
-        localStorage.setItem('algosalon_notifications', JSON.stringify(updated));
-        return updated;
-      });
-
-      if (isSupabaseConfigured() && targetApt.customerId) {
-        createNotificationInDb({
-          userId: targetApt.customerId,
-          userType: 'customer',
-          title: custNotif.title,
-          message: custNotif.message,
-          type: 'booking',
-          linkTab: 'bookings',
-          appointmentId: targetApt.id,
-        }).catch(err => console.warn('Background Supabase accept notif error:', err));
-      }
+      setNotifications(prev => [notif, ...prev]);
+      if (isSupabaseConfigured()) createNotificationInDb(notif as any);
     }
   };
 
@@ -1901,264 +1268,113 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     newTimeSlot: string,
     note?: string
   ) => {
-    const targetApt = appointments.find(a => a.id === appointmentId);
-    setAppointments(prev => {
-      const updated = prev.map(a =>
-        a.id === appointmentId
-          ? {
-              ...a,
-              status: 'rescheduled_by_business' as AppointmentStatus,
-              suggestedDate: newDate,
-              suggestedTimeSlot: newTimeSlot,
-              suggestedNote: note,
-            }
-          : a
-      );
-      localStorage.setItem('algosalon_appointments', JSON.stringify(updated));
-      return updated;
-    });
+    setAppointments(prev =>
+      prev.map(a => {
+        if (a.id === appointmentId) {
+          return {
+            ...a,
+            status: 'suggested',
+            suggestedDate: newDate,
+            suggestedTime: newTimeSlot,
+            businessNote: note,
+          };
+        }
+        return a;
+      })
+    );
 
-    // Synchronize reschedule proposal to Supabase
-    if (isSupabaseConfigured()) {
-      const { hour, minute } = parseTimeSlotHoursMinutes(newTimeSlot || '10:00');
-      const proposedStart = new Date(`${newDate}T00:00:00`);
-      proposedStart.setHours(hour, minute, 0, 0);
-
-      const durationMin = targetApt?.durationMinutes || 45;
-      const proposedEnd = new Date(proposedStart.getTime() + durationMin * 60000);
-
-      setAppointmentStatusInDb({
-        appointmentId,
-        status: 'rescheduled_by_business',
-        reason: note,
-        proposedStartsAt: proposedStart.toISOString(),
-        proposedEndsAt: proposedEnd.toISOString(),
-      }).catch(err => {
-        console.warn('Background Supabase suggestNewAppointmentTime error:', err);
-      });
-    }
-
-    if (targetApt) {
-      const custNotif: NotificationItem = {
-        id: `notif-${Date.now()}-resched`,
-        title: 'New Time Proposed by Salon',
-        message: `${targetApt.salonName} suggested rescheduling ${targetApt.serviceName} to ${newDate} at ${newTimeSlot}.`,
-        date: 'Just now',
+    const appt = appointments.find(a => a.id === appointmentId);
+    if (appt) {
+      const notif: NotificationItem = {
+        id: `notif-${Date.now()}`,
+        recipientRole: 'customer',
+        recipientId: appt.customerId,
+        title: 'Reschedule Suggested',
+        message: `${appt.salonName} suggested a new time for your ${appt.serviceName} appointment: ${newDate} at ${newTimeSlot}.`,
+        timestamp: new Date().toISOString(),
         read: false,
-        userType: 'customer',
-        linkTab: 'bookings',
+        type: 'booking',
+        appointmentId,
       };
-      setNotifications(prev => {
-        const updated = [custNotif, ...prev];
-        localStorage.setItem('algosalon_notifications', JSON.stringify(updated));
-        return updated;
-      });
-
-      if (isSupabaseConfigured() && targetApt.customerId) {
-        createNotificationInDb({
-          userId: targetApt.customerId,
-          userType: 'customer',
-          title: custNotif.title,
-          message: custNotif.message,
-          type: 'booking',
-          linkTab: 'bookings',
-          appointmentId: targetApt.id,
-        }).catch(err => console.warn('Background Supabase resched notif error:', err));
-      }
+      setNotifications(prev => [notif, ...prev]);
+      if (isSupabaseConfigured()) createNotificationInDb(notif as any);
     }
   };
 
   const declineAppointment = (appointmentId: string, reason: string, apology?: string) => {
-    const targetApt = appointments.find(a => a.id === appointmentId);
-    const combinedReason = apology ? `${reason} (Note: ${apology})` : reason;
-    setAppointments(prev => {
-      const updated = prev.map(a =>
-        a.id === appointmentId
-          ? {
-              ...a,
-              status: 'cancelled' as AppointmentStatus,
-              declineReason: reason,
-              declineApology: apology,
-            }
-          : a
-      );
-      localStorage.setItem('algosalon_appointments', JSON.stringify(updated));
-      return updated;
-    });
+    updateAppointmentStatus(appointmentId, 'declined', reason);
 
-    if (isSupabaseConfigured()) {
-      setAppointmentStatusInDb({
-        appointmentId,
-        status: 'cancelled',
-        reason: combinedReason,
-      }).catch(err => {
-        console.warn('Background Supabase decline appointment error:', err);
-      });
-    }
-
-    if (targetApt) {
-      const custNotif: NotificationItem = {
-        id: `notif-${Date.now()}-decline`,
-        title: 'Booking Request Update',
-        message: `Your booking request for ${targetApt.serviceName} could not be accepted. Reason: ${reason}`,
-        date: 'Just now',
+    const appt = appointments.find(a => a.id === appointmentId);
+    if (appt) {
+      const notif: NotificationItem = {
+        id: `notif-${Date.now()}`,
+        recipientRole: 'customer',
+        recipientId: appt.customerId,
+        title: 'Booking Declined',
+        message: `Your booking for ${appt.serviceName} at ${appt.salonName} could not be accepted. Reason: ${reason}`,
+        timestamp: new Date().toISOString(),
         read: false,
-        userType: 'customer',
-        linkTab: 'bookings',
+        type: 'booking',
+        appointmentId,
       };
-      setNotifications(prev => {
-        const updated = [custNotif, ...prev];
-        localStorage.setItem('algosalon_notifications', JSON.stringify(updated));
-        return updated;
-      });
-
-      if (isSupabaseConfigured() && targetApt.customerId) {
-        createNotificationInDb({
-          userId: targetApt.customerId,
-          userType: 'customer',
-          title: custNotif.title,
-          message: custNotif.message,
-          type: 'booking',
-          linkTab: 'bookings',
-          appointmentId: targetApt.id,
-        }).catch(err => console.warn('Background Supabase decline notif error:', err));
-      }
+      setNotifications(prev => [notif, ...prev]);
+      if (isSupabaseConfigured()) createNotificationInDb(notif as any);
     }
   };
 
   const customerAcceptSuggestedTime = (appointmentId: string) => {
-    const targetApt = appointments.find(a => a.id === appointmentId);
-    const effectiveDate = targetApt?.suggestedDate || targetApt?.date;
-    const effectiveTimeSlot = targetApt?.suggestedTimeSlot || targetApt?.timeSlot;
-
-    setAppointments(prev => {
-      const updated = prev.map(a => {
-        if (a.id === appointmentId) {
+    setAppointments(prev =>
+      prev.map(a => {
+        if (a.id === appointmentId && a.suggestedDate && a.suggestedTime) {
           return {
             ...a,
-            date: a.suggestedDate || a.date,
-            timeSlot: a.suggestedTimeSlot || a.timeSlot,
-            status: 'confirmed' as AppointmentStatus,
+            date: a.suggestedDate,
+            time: a.suggestedTime,
+            status: 'confirmed',
             suggestedDate: undefined,
-            suggestedTimeSlot: undefined,
-            suggestedNote: undefined,
+            suggestedTime: undefined,
           };
         }
         return a;
-      });
-      localStorage.setItem('algosalon_appointments', JSON.stringify(updated));
-      return updated;
-    });
+      })
+    );
 
-    if (isSupabaseConfigured()) {
-      let proposedStartIso: string | undefined;
-      let proposedEndIso: string | undefined;
-
-      if (effectiveDate && effectiveTimeSlot) {
-        const { hour, minute } = parseTimeSlotHoursMinutes(effectiveTimeSlot);
-        const st = new Date(`${effectiveDate}T00:00:00`);
-        st.setHours(hour, minute, 0, 0);
-        proposedStartIso = st.toISOString();
-        const durationMin = targetApt?.durationMinutes || 45;
-        proposedEndIso = new Date(st.getTime() + durationMin * 60000).toISOString();
-      }
-
-      setAppointmentStatusInDb({
-        appointmentId,
-        status: 'confirmed',
-        reason: 'Customer accepted rescheduled time',
-        proposedStartsAt: proposedStartIso,
-        proposedEndsAt: proposedEndIso,
-      }).catch(err => {
-        console.warn('Background Supabase accept suggested time error:', err);
-      });
-    }
-
-    if (targetApt) {
-      const bizNotif: NotificationItem = {
-        id: `notif-${Date.now()}-resched-accepted`,
-        title: 'Rescheduled Booking Confirmed! 🎉',
-        message: `${targetApt.customerName} accepted the proposed time for ${targetApt.serviceName} on ${effectiveDate} at ${effectiveTimeSlot}.`,
-        date: 'Just now',
+    const appt = appointments.find(a => a.id === appointmentId);
+    if (appt) {
+      const notif: NotificationItem = {
+        id: `notif-${Date.now()}`,
+        recipientRole: 'business',
+        recipientId: appt.salonId,
+        title: 'Reschedule Accepted',
+        message: `${appt.customerName} accepted your suggested time for ${appt.serviceName} on ${appt.suggestedDate || appt.date} at ${appt.suggestedTime || appt.time}.`,
+        timestamp: new Date().toISOString(),
         read: false,
-        userType: 'business',
-        linkTab: 'calendar',
+        type: 'booking',
+        appointmentId,
       };
-      setNotifications(prev => {
-        const updated = [bizNotif, ...prev];
-        localStorage.setItem('algosalon_notifications', JSON.stringify(updated));
-        return updated;
-      });
-
-      if (isSupabaseConfigured() && businessUser?.id) {
-        createNotificationInDb({
-          userId: businessUser.id,
-          userType: 'business',
-          title: bizNotif.title,
-          message: bizNotif.message,
-          type: 'booking',
-          linkTab: bizNotif.linkTab,
-          appointmentId: targetApt.id,
-        }).catch(err => console.warn('Background Supabase resched accept biz notif error:', err));
-      }
+      setNotifications(prev => [notif, ...prev]);
+      if (isSupabaseConfigured()) createNotificationInDb(notif as any);
     }
   };
 
   const customerDeclineSuggestedTime = (appointmentId: string, note?: string) => {
-    const targetApt = appointments.find(a => a.id === appointmentId);
-    const declineMsg = note || 'Customer declined suggested rescheduled time';
+    updateAppointmentStatus(appointmentId, 'cancelled', note || 'Customer declined suggested time');
 
-    setAppointments(prev => {
-      const updated = prev.map(a =>
-        a.id === appointmentId
-          ? {
-              ...a,
-              status: 'cancelled' as AppointmentStatus,
-              declineReason: declineMsg,
-            }
-          : a
-      );
-      localStorage.setItem('algosalon_appointments', JSON.stringify(updated));
-      return updated;
-    });
-
-    if (isSupabaseConfigured()) {
-      setAppointmentStatusInDb({
-        appointmentId,
-        status: 'cancelled',
-        reason: declineMsg,
-      }).catch(err => {
-        console.warn('Background Supabase customer decline suggested time error:', err);
-      });
-    }
-
-    if (targetApt) {
-      const bizNotif: NotificationItem = {
-        id: `notif-${Date.now()}-resched-declined`,
-        title: 'Rescheduled Proposal Declined',
-        message: `${targetApt.customerName} declined the proposed time for ${targetApt.serviceName}.`,
-        date: 'Just now',
+    const appt = appointments.find(a => a.id === appointmentId);
+    if (appt) {
+      const notif: NotificationItem = {
+        id: `notif-${Date.now()}`,
+        recipientRole: 'business',
+        recipientId: appt.salonId,
+        title: 'Reschedule Declined',
+        message: `${appt.customerName} declined the suggested time for ${appt.serviceName}.`,
+        timestamp: new Date().toISOString(),
         read: false,
-        userType: 'business',
-        linkTab: 'calendar',
+        type: 'booking',
+        appointmentId,
       };
-      setNotifications(prev => {
-        const updated = [bizNotif, ...prev];
-        localStorage.setItem('algosalon_notifications', JSON.stringify(updated));
-        return updated;
-      });
-
-      if (isSupabaseConfigured() && businessUser?.id) {
-        createNotificationInDb({
-          userId: businessUser.id,
-          userType: 'business',
-          title: bizNotif.title,
-          message: bizNotif.message,
-          type: 'booking',
-          linkTab: bizNotif.linkTab,
-          appointmentId: targetApt.id,
-        }).catch(err => console.warn('Background Supabase resched decline biz notif error:', err));
-      }
+      setNotifications(prev => [notif, ...prev]);
+      if (isSupabaseConfigured()) createNotificationInDb(notif as any);
     }
   };
 
@@ -2166,156 +1382,107 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updateAppointmentStatus(appointmentId, 'cancelled');
   };
 
+  const isCustomerVip = (customerIdOrName: string, salonId?: string): boolean => {
+    const count = getCustomerCompletedCount(customerIdOrName, salonId);
+    return count >= 3;
+  };
+
   const getCustomerCompletedCount = (customerIdOrName: string, salonId?: string): number => {
     return appointments.filter(
       a =>
         (a.customerId === customerIdOrName || a.customerName === customerIdOrName) &&
-        (!salonId || a.salonId === salonId) &&
+        (salonId ? a.salonId === salonId : true) &&
         a.status === 'completed'
     ).length;
   };
 
-  const isCustomerVip = (customerIdOrName: string, salonId?: string): boolean => {
-    if (!customerIdOrName) return false;
-    const completedCount = getCustomerCompletedCount(customerIdOrName, salonId);
-    if (completedCount >= 2) return true;
-
-    // Check if customer has any VIP appointment or high tier booking
-    return appointments.some(
-      a =>
-        (a.customerId === customerIdOrName || a.customerName === customerIdOrName) &&
-        (!salonId || a.salonId === salonId) &&
-        (a.serviceName?.toLowerCase().includes('vip') || a.servicePrice >= 60)
-    );
-  };
-
-  const addReview = (reviewData: Omit<Review, 'id' | 'date'>) => {
-    const tempId = `rev-${Date.now()}`;
+  const addReview = (review: Omit<Review, 'id' | 'date'>) => {
     const newRev: Review = {
-      ...reviewData,
-      id: tempId,
-      date: new Date().toISOString().split('T')[0],
+      ...review,
+      id: `rev-${Date.now()}`,
+      date: getLocalDateString(new Date()),
     };
-    setReviews(prev => {
-      const updated = [newRev, ...prev];
-      localStorage.setItem('algosalon_reviews', JSON.stringify(updated));
-      return updated;
+    setReviews(prev => [newRev, ...prev]);
+
+    // Recalculate salon rating
+    const salonReviews = [...reviews.filter(r => r.salonId === review.salonId), newRev];
+    const avg = salonReviews.reduce((sum, r) => sum + r.rating, 0) / salonReviews.length;
+    updateSalonProfile(review.salonId, {
+      rating: Number(avg.toFixed(1)),
+      reviewCount: salonReviews.length,
     });
 
     if (isSupabaseConfigured()) {
-      createReviewInDb({
-        appointmentId: reviewData.appointmentId,
-        salonId: reviewData.salonId,
-        customerId: reviewData.customerId,
-        customerName: reviewData.customerName,
-        customerAvatar: reviewData.customerAvatar,
-        rating: reviewData.rating,
-        comment: reviewData.comment,
-        serviceName: reviewData.serviceName,
-        staffName: reviewData.staffName,
-      }).then(res => {
-        if (res.success && res.reviewId) {
-          setReviews(prev =>
-            prev.map(r => (r.id === tempId ? { ...r, id: res.reviewId! } : r))
-          );
-        }
-      }).catch(err => {
-        console.warn('Background Supabase review error:', err);
-      });
+      createReviewInDb(review as any);
     }
   };
 
   const replyToReview = (reviewId: string, replyMessage: string) => {
-    setReviews(prev => {
-      const updated = prev.map(r =>
-        r.id === reviewId
-          ? {
-              ...r,
-              reply: replyMessage,
-              businessReply: {
-                date: new Date().toISOString().split('T')[0],
-                message: replyMessage,
-              },
-            }
-          : r
-      );
-      localStorage.setItem('algosalon_reviews', JSON.stringify(updated));
-      return updated;
-    });
+    setReviews(prev =>
+      prev.map(r => {
+        if (r.id === reviewId) {
+          return {
+            ...r,
+            reply: {
+              id: `reply-${Date.now()}`,
+              authorName: businessUser.name || 'Salon Manager',
+              date: getLocalDateString(new Date()),
+              comment: replyMessage,
+            },
+          };
+        }
+        return r;
+      })
+    );
 
     if (isSupabaseConfigured()) {
-      replyToReviewInDb(reviewId, replyMessage).catch(err => {
-        console.warn('Background Supabase review reply error:', err);
-      });
+      replyToReviewInDb(reviewId, replyMessage);
     }
   };
 
   const markNotificationRead = (id: string) => {
-    setNotifications(prev => {
-      const updated = prev.map(n => (n.id === id ? { ...n, read: true } : n));
-      localStorage.setItem('algosalon_notifications', JSON.stringify(updated));
-      return updated;
-    });
+    setNotifications(prev =>
+      prev.map(n => {
+        if (n.id === id) return { ...n, read: true };
+        return n;
+      })
+    );
 
     if (isSupabaseConfigured()) {
-      markNotificationReadInDb(id).catch(err => {
-        console.warn('Background Supabase mark notification read error:', err);
-      });
+      markNotificationReadInDb(id);
     }
   };
 
   const markAllNotificationsRead = (role?: Role) => {
-    setNotifications(prev => {
-      const updated = prev.map(n => {
-        if (!role || typeof role !== 'string' || n.userType === role) {
+    const filterRole = role || currentRole;
+    setNotifications(prev =>
+      prev.map(n => {
+        if (n.recipientRole === filterRole) {
           return { ...n, read: true };
         }
         return n;
-      });
-      localStorage.setItem('algosalon_notifications', JSON.stringify(updated));
-      return updated;
-    });
+      })
+    );
 
     if (isSupabaseConfigured()) {
-      const targetUserId = role === 'business' ? businessUser?.id : customerUser?.id;
-      if (targetUserId) {
-        markAllNotificationsReadInDb(targetUserId, role).catch(err => {
-          console.warn('Background Supabase mark all read error:', err);
-        });
-      }
+      markAllNotificationsReadInDb(filterRole);
     }
   };
 
   const deleteNotification = (id: string) => {
-    setNotifications(prev => {
-      const updated = prev.filter(n => n.id !== id);
-      localStorage.setItem('algosalon_notifications', JSON.stringify(updated));
-      return updated;
-    });
+    setNotifications(prev => prev.filter(n => n.id !== id));
 
     if (isSupabaseConfigured()) {
-      deleteNotificationInDb(id).catch(err => {
-        console.warn('Background Supabase delete notification error:', err);
-      });
+      deleteNotificationInDb(id);
     }
   };
 
   const clearAllNotifications = (role?: Role) => {
-    setNotifications(prev => {
-      const updated = (role && typeof role === 'string')
-        ? prev.filter(n => n.userType !== role)
-        : [];
-      localStorage.setItem('algosalon_notifications', JSON.stringify(updated));
-      return updated;
-    });
+    const filterRole = role || currentRole;
+    setNotifications(prev => prev.filter(n => n.recipientRole !== filterRole));
 
     if (isSupabaseConfigured()) {
-      const targetUserId = role === 'business' ? businessUser?.id : customerUser?.id;
-      if (targetUserId) {
-        clearAllNotificationsInDb(targetUserId, role).catch(err => {
-          console.warn('Background Supabase clear notifications error:', err);
-        });
-      }
+      clearAllNotificationsInDb(filterRole);
     }
   };
 
