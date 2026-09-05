@@ -211,6 +211,7 @@ export async function setAppointmentStatusInDb(params: {
   reason?: string;
   proposedStartsAt?: string;
   proposedEndsAt?: string;
+  activeSalon?: Salon;
 }): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseConfigured()) return { success: false, error: 'Supabase unconfigured' };
 
@@ -224,41 +225,11 @@ export async function setAppointmentStatusInDb(params: {
     });
 
     if (error) {
-      console.warn('set_appointment_status RPC error, attempting fallback update:', error.message);
-      const updatePayload: any = {
-        status: params.status,
-        updated_at: new Date().toISOString(),
-      };
-      if (params.reason) updatePayload.decline_reason = params.reason;
-      if (params.status === 'rescheduled_by_business') {
-        if (params.proposedStartsAt) updatePayload.proposed_starts_at = params.proposedStartsAt;
-        if (params.proposedEndsAt) updatePayload.proposed_ends_at = params.proposedEndsAt;
-      } else if (params.status === 'confirmed') {
-        if (params.proposedStartsAt) {
-          updatePayload.starts_at = params.proposedStartsAt;
-          updatePayload.proposed_starts_at = null;
-        }
-        if (params.proposedEndsAt) {
-          updatePayload.ends_at = params.proposedEndsAt;
-          updatePayload.proposed_ends_at = null;
-        }
-      } else if (params.status === 'cancelled') {
-        updatePayload.cancelled_at = new Date().toISOString();
-      }
-
-      const { error: directErr } = await supabaseALGOsalonClient
-        .from('appointments')
-        .update(updatePayload)
-        .eq('id', params.appointmentId);
-
-      if (directErr) {
-        return { success: false, error: error.message || directErr.message };
-      }
-      return { success: true };
+      console.warn('set_appointment_status RPC rejected:', error.message);
+      return { success: false, error: error.message };
     }
 
-    // Defensive update for confirmed appointments with proposed time:
-    // Ensures starts_at and ends_at are applied even if the remote database is still running the unpatched RPC
+    // Ensure starts_at and ends_at are applied for confirmed appointments with proposed time
     if (params.status === 'confirmed' && params.proposedStartsAt) {
       await supabaseALGOsalonClient
         .from('appointments')
@@ -601,9 +572,50 @@ export async function createReviewInDb(review: {
       return { success: false, error: error.message };
     }
 
+    if (review.appointmentId && isValidUuid(review.appointmentId)) {
+      await supabaseALGOsalonClient
+        .from('appointments')
+        .update({ reviewed: true, updated_at: new Date().toISOString() })
+        .eq('id', review.appointmentId);
+    }
+
     return { success: true, reviewId: data?.id };
   } catch (err: any) {
     console.error('Error executing createReviewInDb:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Updates salon rating and review count in Supabase
+ */
+export async function updateSalonRatingInDb(
+  salonId: string,
+  rating: number,
+  reviewCount: number
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured() || !isValidUuid(salonId)) {
+    return { success: false, error: 'Supabase unconfigured or local salon ID' };
+  }
+
+  try {
+    const { error } = await supabaseALGOsalonClient
+      .from('salons')
+      .update({
+        rating: Number(rating.toFixed(1)),
+        reviews_count: reviewCount,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', salonId);
+
+    if (error) {
+      console.warn('updateSalonRatingInDb error:', error.message);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('Error executing updateSalonRatingInDb:', err);
     return { success: false, error: err.message };
   }
 }
@@ -1990,5 +2002,3 @@ export async function deleteAccountInSupabase(
     return { success: false, error: err.message || 'Database error during account deletion' };
   }
 }
-
-
