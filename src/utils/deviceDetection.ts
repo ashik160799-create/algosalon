@@ -1,108 +1,439 @@
-import { ALL_COUNTRY_LOCALES, CountryLocaleData, DEFAULT_COUNTRY_LOCALE } from './localeConfig';
+/**
+ * Automatic Device Data Detection & Synchronization Engine
+ * Conforming to global privacy and legal guidelines:
+ * - Collects system appearance (light/dark)
+ * - Language (Locale / navigator.language)
+ * - Country & Timezone (Intl / GPS / fallback)
+ * - Dial Code & Phone Mapping
+ * - Zone Location (GPS city if permitted, otherwise timezone/locale fallback)
+ * - Currency mapping
+ * - Local-first privacy compliance (no third-party behavioral tracking)
+ */
 
-export interface DetectedDeviceContext {
+import { COUNTRY_LOCALE_REGISTRY, CountryLocaleData, SupportedLanguage, TRANSLATIONS } from './localeConfig';
+
+export interface DeviceTelemetryProfile {
+  appearance: 'light' | 'dark';
+  language: SupportedLanguage;
+  rawLocale: string;
   countryCode: string;
-  dialCode: string;
-  currency: string;
-  language: string;
-  isRtl: boolean;
-  timeZone: string;
-  detectionSource: 'gps' | 'timezone' | 'browser_language' | 'default';
-  isAutoDetected: boolean;
+  countryName: string;
+  countryFlag: string;
+  countryPhoneCode: string;
+  zoneLocation: string;
+  timezone: string;
+  currencyCode: string;
+  currencySymbol: string;
+  currencySymbolNative: string;
+  exchangeRateFromAED: number;
+  locationPermissionStatus: 'granted' | 'denied' | 'prompt' | 'unsupported';
+  locationSource: 'gps' | 'sim' | 'ip' | 'timezone' | 'manual' | 'default';
+  isGpsAccurate: boolean;
+  latitude?: number;
+  longitude?: number;
+  timestamp: string;
 }
 
-const TIMEZONE_ZONE_MAP: Record<string, string> = {
-  'Asia/Dubai': 'AE',
-  'Asia/Riyadh': 'SA',
-  'Asia/Qatar': 'QA',
-  'Asia/Kuwait': 'KW',
-  'Asia/Bahrain': 'BH',
-  'Asia/Muscat': 'OM',
-  'Europe/London': 'GB',
-  'Europe/Paris': 'FR',
-  'Europe/Berlin': 'DE',
-  'Europe/Zurich': 'CH',
-  'Europe/Amsterdam': 'NL',
-  'Asia/Tokyo': 'JP',
-  'Asia/Seoul': 'KR',
-  'Asia/Kolkata': 'IN',
-  'Asia/Calcutta': 'IN',
-  'Asia/Karachi': 'PK',
-  'Asia/Dhaka': 'BD',
-  'Asia/Singapore': 'SG',
-  'Asia/Kuala_Lumpur': 'MY',
-  'Asia/Manila': 'PH',
-  'Asia/Amman': 'JO',
-  'Africa/Cairo': 'EG',
-  'America/New_York': 'US',
-  'America/Chicago': 'US',
-  'America/Denver': 'US',
-  'America/Los_Angeles': 'US',
-  'America/Toronto': 'CA',
-  'America/Vancouver': 'CA',
-  'Australia/Sydney': 'AU',
-  'Australia/Melbourne': 'AU',
+// Timezone to city/country mapping dictionary for accurate resolution without GPS
+const TIMEZONE_ZONE_MAP: Record<string, { countryCode: string; zone: string }> = {
+  'Asia/Dubai': { countryCode: 'AE', zone: 'Dubai, UAE' },
+  'Asia/Abu_Dhabi': { countryCode: 'AE', zone: 'Abu Dhabi, UAE' },
+  'Asia/Muscat': { countryCode: 'OM', zone: 'Muscat, Oman' },
+  'Asia/Riyadh': { countryCode: 'SA', zone: 'Riyadh, Saudi Arabia' },
+  'Asia/Qatar': { countryCode: 'QA', zone: 'Doha, Qatar' },
+  'Asia/Kuwait': { countryCode: 'KW', zone: 'Kuwait City, Kuwait' },
+  'Asia/Bahrain': { countryCode: 'BH', zone: 'Manama, Bahrain' },
+  'Asia/Amman': { countryCode: 'JO', zone: 'Amman, Jordan' },
+  'Asia/Kolkata': { countryCode: 'IN', zone: 'Mumbai, India' },
+  'Asia/Calcutta': { countryCode: 'IN', zone: 'New Delhi, India' },
+  'Asia/Dhaka': { countryCode: 'BD', zone: 'Dhaka, Bangladesh' },
+  'Asia/Karachi': { countryCode: 'PK', zone: 'Karachi, Pakistan' },
+  'Asia/Islamabad': { countryCode: 'PK', zone: 'Islamabad, Pakistan' },
+  'Asia/Lahore': { countryCode: 'PK', zone: 'Lahore, Pakistan' },
+  'Asia/Singapore': { countryCode: 'SG', zone: 'Singapore' },
+  'Asia/Kuala_Lumpur': { countryCode: 'MY', zone: 'Kuala Lumpur, Malaysia' },
+  'Asia/Kuching': { countryCode: 'MY', zone: 'Kuching, Malaysia' },
+  'Asia/Manila': { countryCode: 'PH', zone: 'Manila, Philippines' },
+  'Asia/Tokyo': { countryCode: 'JP', zone: 'Tokyo, Japan' },
+  'Asia/Seoul': { countryCode: 'KR', zone: 'Seoul, South Korea' },
+  'Europe/Zurich': { countryCode: 'CH', zone: 'Zurich, Switzerland' },
+  'Europe/Amsterdam': { countryCode: 'NL', zone: 'Amsterdam, Netherlands' },
+  'Europe/London': { countryCode: 'GB', zone: 'London, UK' },
+  'Europe/Paris': { countryCode: 'FR', zone: 'Paris, France' },
+  'Europe/Berlin': { countryCode: 'DE', zone: 'Berlin, Germany' },
+  'Europe/Rome': { countryCode: 'IT', zone: 'Rome, Italy' },
+  'Europe/Madrid': { countryCode: 'ES', zone: 'Madrid, Spain' },
+  'Europe/Istanbul': { countryCode: 'TR', zone: 'Istanbul, Turkey' },
+  'America/New_York': { countryCode: 'US', zone: 'New York, USA' },
+  'America/Los_Angeles': { countryCode: 'US', zone: 'Los Angeles, USA' },
+  'America/Chicago': { countryCode: 'US', zone: 'Chicago, USA' },
+  'America/Denver': { countryCode: 'US', zone: 'Denver, USA' },
+  'America/Phoenix': { countryCode: 'US', zone: 'Phoenix, USA' },
+  'America/Toronto': { countryCode: 'CA', zone: 'Toronto, Canada' },
+  'America/Vancouver': { countryCode: 'CA', zone: 'Vancouver, Canada' },
+  'America/Montreal': { countryCode: 'CA', zone: 'Montreal, Canada' },
+  'Australia/Sydney': { countryCode: 'AU', zone: 'Sydney, Australia' },
+  'Australia/Melbourne': { countryCode: 'AU', zone: 'Melbourne, Australia' },
+  'Australia/Brisbane': { countryCode: 'AU', zone: 'Brisbane, Australia' },
+  'Australia/Perth': { countryCode: 'AU', zone: 'Perth, Australia' },
+  'Africa/Cairo': { countryCode: 'EG', zone: 'Cairo, Egypt' },
 };
 
-export const detectCountryFromGps = (lat: number, lon: number): string | null => {
-  // Check smaller GCC territories before Saudi Arabia
-  if (lat >= 25.5 && lat <= 26.5 && lon >= 50.3 && lon <= 50.9) return 'BH'; // Bahrain
-  if (lat >= 24.5 && lat <= 26.3 && lon >= 50.7 && lon <= 51.7) return 'QA'; // Qatar
-  if (lat >= 28.5 && lat <= 30.1 && lon >= 46.5 && lon <= 48.5) return 'KW'; // Kuwait
-  if (lat >= 22.5 && lat <= 26.1 && lon >= 51.5 && lon <= 56.4) return 'AE'; // UAE
-  if (lat >= 16.5 && lat <= 26.4 && lon >= 51.8 && lon <= 59.9) return 'OM'; // Oman
-  if (lat >= 16.0 && lat <= 32.2 && lon >= 34.5 && lon <= 55.7) return 'SA'; // Saudi Arabia
+/**
+ * Detects system appearance (defaults strictly to 'light' for ALGO Salon Light Boutique)
+ */
+export function detectSystemAppearance(): 'light' | 'dark' {
+  // ALGO Salon standard default is strictly 'light' (Light Boutique White/Green)
+  return 'light';
+}
 
-  // South Asia
-  if (lat >= 23.5 && lat <= 37.1 && lon >= 60.8 && lon <= 77.9) return 'PK'; // Pakistan
-  if (lat >= 20.5 && lat <= 26.7 && lon >= 88.0 && lon <= 92.7) return 'BD'; // Bangladesh
-  if (lat >= 8.0 && lat <= 35.5 && lon >= 68.0 && lon <= 97.5) return 'IN';  // India
-
-  // East Asia
-  if (lat >= 24.0 && lat <= 45.6 && lon >= 122.9 && lon <= 153.9) return 'JP'; // Japan
-  if (lat >= 33.0 && lat <= 38.7 && lon >= 124.5 && lon <= 131.0) return 'KR'; // South Korea
-
-  // Europe
-  if (lat >= 49.8 && lat <= 60.9 && lon >= -8.2 && lon <= 1.8) return 'GB'; // UK
-  if (lat >= 41.3 && lat <= 51.1 && lon >= -5.2 && lon <= 9.6) return 'FR'; // France
-  if (lat >= 47.2 && lat <= 55.1 && lon >= 5.8 && lon <= 15.1) return 'DE'; // Germany
-  if (lat >= 45.8 && lat <= 47.8 && lon >= 5.9 && lon <= 10.5) return 'CH'; // Switzerland
-  if (lat >= 50.7 && lat <= 53.6 && lon >= 3.3 && lon <= 7.3) return 'NL';  // Netherlands
-
-  // North America
-  if (lat >= 24.4 && lat <= 49.4 && lon >= -125.0 && lon <= -66.9) return 'US';
-  if (lat >= 41.7 && lat <= 83.1 && lon >= -141.0 && lon <= -52.6) return 'CA';
-
-  // Australia
-  if (lat >= -44.0 && lat <= -10.0 && lon >= 113.0 && lon <= 154.0) return 'AU';
-
-  return null;
-};
-
-export const getSystemLocaleContext = (): DetectedDeviceContext => {
-  let detectedCountryCode = 'AE';
-  let detectionSource: 'gps' | 'timezone' | 'browser_language' | 'default' = 'default';
-
+/**
+ * Detects system language preference for UI translations ONLY
+ * Never used to deduce Country, Currency, or Dial Code
+ */
+export function detectSystemLanguage(): { language: SupportedLanguage; rawLocale: string } {
+  let rawLocale = 'en-AE';
   try {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (tz && TIMEZONE_ZONE_MAP[tz]) {
-      detectedCountryCode = TIMEZONE_ZONE_MAP[tz];
-      detectionSource = 'timezone';
+    if (typeof navigator !== 'undefined') {
+      rawLocale = navigator.language || (navigator.languages && navigator.languages[0]) || 'en-AE';
     }
   } catch {
     // ignore
   }
 
-  const country = ALL_COUNTRY_LOCALES.find(c => c.code === detectedCountryCode) || DEFAULT_COUNTRY_LOCALE;
+  const cleanLang = rawLocale.split(/[-_]/)[0].toLowerCase();
+  const supported: SupportedLanguage = (cleanLang in TRANSLATIONS) ? (cleanLang as SupportedLanguage) : 'en';
 
   return {
-    countryCode: country.code,
-    dialCode: country.dialCode,
-    currency: country.currency,
-    language: country.defaultLanguage,
-    isRtl: country.defaultLanguage === 'ar',
-    timeZone: country.timeZone,
-    detectionSource,
-    isAutoDetected: true,
+    language: supported,
+    rawLocale,
   };
-};
+}
+
+/**
+ * Detects default Timezone ("TimeZone.getDefault()")
+ */
+export function detectSystemTimezone(): string {
+  try {
+    if (typeof Intl !== 'undefined' && Intl.DateTimeFormat) {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Dubai';
+    }
+  } catch {
+    // ignore
+  }
+  return 'Asia/Dubai';
+}
+
+/**
+ * Synchronous local device data probe (Instant 0-millisecond execution for Splash initialization)
+ * Strictly prioritizes Timezone Geo-Resolution over locale string to prevent language mismatch bugs.
+ */
+export function probeInitialDeviceData(): DeviceTelemetryProfile {
+  const appearance = detectSystemAppearance();
+  const { language, rawLocale } = detectSystemLanguage();
+  const timezone = detectSystemTimezone();
+
+  let detectedCountryCode = '';
+  let zoneLocation = '';
+  let locationSource: DeviceTelemetryProfile['locationSource'] = 'default';
+
+  // 1. Direct Timezone Match
+  if (TIMEZONE_ZONE_MAP[timezone]) {
+    detectedCountryCode = TIMEZONE_ZONE_MAP[timezone].countryCode;
+    zoneLocation = TIMEZONE_ZONE_MAP[timezone].zone;
+    locationSource = 'timezone';
+  } else {
+    // Fuzzy timezone match
+    if (timezone.includes('Dubai') || timezone.includes('Abu_Dhabi')) {
+      detectedCountryCode = 'AE';
+      zoneLocation = 'Dubai, UAE';
+      locationSource = 'timezone';
+    } else if (timezone.includes('Muscat')) {
+      detectedCountryCode = 'OM';
+      zoneLocation = 'Muscat, Oman';
+      locationSource = 'timezone';
+    } else if (timezone.includes('Riyadh')) {
+      detectedCountryCode = 'SA';
+      zoneLocation = 'Riyadh, Saudi Arabia';
+      locationSource = 'timezone';
+    } else if (timezone.includes('Kolkata') || timezone.includes('Calcutta')) {
+      detectedCountryCode = 'IN';
+      zoneLocation = 'Mumbai, India';
+      locationSource = 'timezone';
+    } else if (timezone.includes('London')) {
+      detectedCountryCode = 'GB';
+      zoneLocation = 'London, UK';
+      locationSource = 'timezone';
+    } else if (timezone.includes('New_York') || timezone.includes('Los_Angeles') || timezone.includes('Chicago')) {
+      detectedCountryCode = 'US';
+      zoneLocation = 'New York, USA';
+      locationSource = 'timezone';
+    } else if (timezone.includes('Toronto') || timezone.includes('Vancouver')) {
+      detectedCountryCode = 'CA';
+      zoneLocation = 'Toronto, Canada';
+      locationSource = 'timezone';
+    } else if (timezone.includes('Sydney') || timezone.includes('Melbourne')) {
+      detectedCountryCode = 'AU';
+      zoneLocation = 'Sydney, Australia';
+      locationSource = 'timezone';
+    } else if (timezone.includes('Qatar') || timezone.includes('Doha')) {
+      detectedCountryCode = 'QA';
+      zoneLocation = 'Doha, Qatar';
+      locationSource = 'timezone';
+    } else if (timezone.includes('Kuwait')) {
+      detectedCountryCode = 'KW';
+      zoneLocation = 'Kuwait City, Kuwait';
+      locationSource = 'timezone';
+    } else if (timezone.includes('Bahrain')) {
+      detectedCountryCode = 'BH';
+      zoneLocation = 'Manama, Bahrain';
+      locationSource = 'timezone';
+    }
+  }
+
+  // Fallback to default AE if completely unknown
+  if (!detectedCountryCode || !COUNTRY_LOCALE_REGISTRY[detectedCountryCode]) {
+    detectedCountryCode = 'AE';
+    zoneLocation = 'Dubai Marina, UAE';
+    locationSource = 'default';
+  }
+
+  const countryInfo: CountryLocaleData = COUNTRY_LOCALE_REGISTRY[detectedCountryCode] || COUNTRY_LOCALE_REGISTRY.AE;
+
+  if (!zoneLocation) {
+    zoneLocation = countryInfo.defaultCity || 'Dubai Marina, UAE';
+  }
+
+  return {
+    appearance,
+    language,
+    rawLocale,
+    countryCode: countryInfo.code,
+    countryName: countryInfo.name,
+    countryFlag: countryInfo.flag,
+    countryPhoneCode: countryInfo.dialCode,
+    zoneLocation,
+    timezone,
+    currencyCode: countryInfo.currency,
+    currencySymbol: countryInfo.symbol,
+    currencySymbolNative: countryInfo.symbolNative,
+    exchangeRateFromAED: countryInfo.exchangeRateFromAED,
+    locationPermissionStatus: 'prompt',
+    locationSource,
+    isGpsAccurate: false,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+/**
+ * Enhanced asynchronous GPS location detection with immediate graceful fallback
+ */
+export async function attemptGpsEnhancement(
+  baseProfile: DeviceTelemetryProfile,
+  timeoutMs: number = 3500
+): Promise<DeviceTelemetryProfile> {
+  if (typeof navigator === 'undefined' || !navigator.geolocation) {
+    return {
+      ...baseProfile,
+      locationPermissionStatus: 'unsupported',
+    };
+  }
+
+  return new Promise((resolve) => {
+    let hasResolved = false;
+
+    const timer = setTimeout(() => {
+      if (!hasResolved) {
+        hasResolved = true;
+        resolve({
+          ...baseProfile,
+          locationPermissionStatus: 'denied',
+        });
+      }
+    }, timeoutMs);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (hasResolved) return;
+        hasResolved = true;
+        clearTimeout(timer);
+
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        let resolvedZone = baseProfile.zoneLocation;
+        let resolvedCountry = baseProfile.countryCode;
+
+        // GPS bounding box detection for physical precision
+        // Specific small Gulf states first to prevent false matching with Saudi Arabia
+        if (lat >= 25.5 && lat <= 26.5 && lng >= 50.3 && lng <= 50.8) {
+          resolvedCountry = 'BH';
+          resolvedZone = 'Manama, Bahrain';
+        } else if (lat >= 24.0 && lat <= 27.0 && lng >= 50.5 && lng <= 51.7) {
+          resolvedCountry = 'QA';
+          resolvedZone = 'Doha, Qatar';
+        } else if (lat >= 28.5 && lat <= 30.5 && lng >= 46.5 && lng <= 48.5) {
+          resolvedCountry = 'KW';
+          resolvedZone = 'Kuwait City, Kuwait';
+        } else if (lat >= 22.5 && lat <= 26.5 && lng >= 51.5 && lng <= 56.5) {
+          resolvedCountry = 'AE';
+          resolvedZone = 'Dubai Marina, UAE';
+        } else if (lat >= 16.5 && lat <= 26.5 && lng >= 51.8 && lng <= 60.0) {
+          resolvedCountry = 'OM';
+          resolvedZone = 'Muscat, Oman';
+        } else if (lat >= 16.0 && lat <= 32.5 && lng >= 34.0 && lng <= 55.8) {
+          resolvedCountry = 'SA';
+          resolvedZone = 'Riyadh, Saudi Arabia';
+        } else if (lat >= 23.5 && lat <= 37.1 && lng >= 60.8 && lng <= 75.5) {
+          // Pakistan (checked before India to avoid bounding box overlap)
+          resolvedCountry = 'PK';
+          resolvedZone = 'Karachi, Pakistan';
+        } else if (lat >= 20.5 && lat <= 26.7 && lng >= 88.0 && lng <= 92.7) {
+          // Bangladesh (checked before India)
+          resolvedCountry = 'BD';
+          resolvedZone = 'Dhaka, Bangladesh';
+        } else if (lat >= 8.0 && lat <= 35.5 && lng >= 68.0 && lng <= 97.4) {
+          resolvedCountry = 'IN';
+          resolvedZone = 'Mumbai, India';
+        } else if (lat >= 1.15 && lat <= 1.48 && lng >= 103.6 && lng <= 104.1) {
+          resolvedCountry = 'SG';
+          resolvedZone = 'Singapore';
+        } else if (lat >= 0.8 && lat <= 7.4 && lng >= 99.5 && lng <= 119.3) {
+          resolvedCountry = 'MY';
+          resolvedZone = 'Kuala Lumpur, Malaysia';
+        } else if (lat >= 4.5 && lat <= 21.2 && lng >= 116.5 && lng <= 126.6) {
+          resolvedCountry = 'PH';
+          resolvedZone = 'Manila, Philippines';
+        } else if (lat >= 29.1 && lat <= 33.4 && lng >= 34.9 && lng <= 39.3) {
+          resolvedCountry = 'JO';
+          resolvedZone = 'Amman, Jordan';
+        } else if (lat >= 22.0 && lat <= 31.7 && lng >= 24.7 && lng <= 36.9) {
+          resolvedCountry = 'EG';
+          resolvedZone = 'Cairo, Egypt';
+        } else if (lat >= 45.8 && lat <= 47.9 && lng >= 5.9 && lng <= 10.5) {
+          resolvedCountry = 'CH';
+          resolvedZone = 'Zurich, Switzerland';
+        } else if (lat >= 50.7 && lat <= 53.6 && lng >= 3.3 && lng <= 7.3) {
+          resolvedCountry = 'NL';
+          resolvedZone = 'Amsterdam, Netherlands';
+        } else if (lat >= 33.1 && lat <= 38.7 && lng >= 124.6 && lng <= 129.6) {
+          resolvedCountry = 'KR';
+          resolvedZone = 'Seoul, South Korea';
+        } else if (lat >= 24.0 && lat <= 45.6 && lng >= 122.9 && lng <= 154.0) {
+          resolvedCountry = 'JP';
+          resolvedZone = 'Tokyo, Japan';
+        } else if (lat >= 50 && lat <= 59 && lng >= -8 && lng <= 2) {
+          resolvedCountry = 'GB';
+          resolvedZone = 'London, UK';
+        } else if (lat >= 41 && lat <= 51 && lng >= -5 && lng <= 9.5) {
+          resolvedCountry = 'FR';
+          resolvedZone = 'Paris, France';
+        } else if (lat >= 47 && lat <= 55 && lng >= 5.8 && lng <= 15) {
+          resolvedCountry = 'DE';
+          resolvedZone = 'Berlin, Germany';
+        } else if (lat >= 36.6 && lat <= 47.1 && lng >= 6.6 && lng <= 18.6) {
+          resolvedCountry = 'IT';
+          resolvedZone = 'Rome, Italy';
+        } else if (lat >= 35.9 && lat <= 43.8 && lng >= -9.3 && lng <= 3.4) {
+          resolvedCountry = 'ES';
+          resolvedZone = 'Madrid, Spain';
+        } else if (lat >= 25 && lat <= 49 && lng >= -125 && lng <= -66) {
+          resolvedCountry = 'US';
+          resolvedZone = 'New York, USA';
+        } else if (lat >= 43 && lat <= 70 && lng >= -141 && lng <= -52) {
+          resolvedCountry = 'CA';
+          resolvedZone = 'Toronto, Canada';
+        } else if (lat >= -44 && lat <= -10 && lng >= 113 && lng <= 154) {
+          resolvedCountry = 'AU';
+          resolvedZone = 'Sydney, Australia';
+        }
+
+        const countryInfo =
+          COUNTRY_LOCALE_REGISTRY[resolvedCountry] ||
+          COUNTRY_LOCALE_REGISTRY[baseProfile.countryCode] ||
+          COUNTRY_LOCALE_REGISTRY.AE;
+
+        resolve({
+          ...baseProfile,
+          countryCode: countryInfo.code,
+          countryName: countryInfo.name,
+          countryFlag: countryInfo.flag,
+          countryPhoneCode: countryInfo.dialCode,
+          zoneLocation: resolvedZone,
+          currencyCode: countryInfo.currency,
+          currencySymbol: countryInfo.symbol,
+          currencySymbolNative: countryInfo.symbolNative,
+          exchangeRateFromAED: countryInfo.exchangeRateFromAED,
+          locationPermissionStatus: 'granted',
+          locationSource: 'gps',
+          isGpsAccurate: true,
+          latitude: lat,
+          longitude: lng,
+          timestamp: new Date().toISOString(),
+        });
+      },
+      () => {
+        if (hasResolved) return;
+        hasResolved = true;
+        clearTimeout(timer);
+        resolve({
+          ...baseProfile,
+          locationPermissionStatus: 'denied',
+        });
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: timeoutMs,
+        maximumAge: 60000,
+      }
+    );
+  });
+}
+
+/**
+ * Persists and synchronizes the detected telemetry to local storage
+ */
+export function persistDeviceTelemetry(profile: DeviceTelemetryProfile): void {
+  try {
+    localStorage.setItem('algosalon_device_profile', JSON.stringify(profile));
+    localStorage.setItem('algosalon_country_code', profile.countryCode);
+    localStorage.setItem('algosalon_app_language', profile.language);
+    localStorage.setItem('algosalon_user_location', profile.zoneLocation);
+    localStorage.setItem('algosalon_theme_mode', profile.appearance);
+    localStorage.setItem('algosalon_location_permission', profile.locationPermissionStatus === 'granted' ? 'true' : 'false');
+    localStorage.setItem('algosalon_last_device_sync', profile.timestamp);
+  } catch {
+    // Storage access might be restricted in some sandboxes
+  }
+}
+
+/**
+ * Automatically syncs and updates device data profile with fresh system readings.
+ * Preserves accurate GPS data if previously obtained.
+ */
+export function syncDeviceData(previousProfile?: DeviceTelemetryProfile | null): DeviceTelemetryProfile {
+  const fresh = probeInitialDeviceData();
+
+  if (previousProfile && previousProfile.isGpsAccurate && previousProfile.latitude && previousProfile.longitude) {
+    return {
+      ...fresh,
+      latitude: previousProfile.latitude,
+      longitude: previousProfile.longitude,
+      zoneLocation: previousProfile.zoneLocation || fresh.zoneLocation,
+      countryCode: previousProfile.countryCode || fresh.countryCode,
+      countryName: previousProfile.countryName || fresh.countryName,
+      countryFlag: previousProfile.countryFlag || fresh.countryFlag,
+      countryPhoneCode: previousProfile.countryPhoneCode || fresh.countryPhoneCode,
+      currencyCode: previousProfile.currencyCode || fresh.currencyCode,
+      currencySymbol: previousProfile.currencySymbol || fresh.currencySymbol,
+      currencySymbolNative: previousProfile.currencySymbolNative || fresh.currencySymbolNative,
+      exchangeRateFromAED: previousProfile.exchangeRateFromAED || fresh.exchangeRateFromAED,
+      locationPermissionStatus: previousProfile.locationPermissionStatus,
+      locationSource: previousProfile.locationSource,
+      isGpsAccurate: true,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  return fresh;
+}
