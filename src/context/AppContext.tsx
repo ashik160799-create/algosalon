@@ -92,6 +92,7 @@ import {
   deleteAccountInSupabase,
   signOutSupabase,
 } from '../services/supabaseService';
+import { calculateDistanceKm } from '../utils/salonUtils';
 
 interface AppContextType {
   activeColorTheme: ColorThemeId;
@@ -1046,8 +1047,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           localStorage.setItem('algosalon_location_permission', 'true');
           localStorage.setItem('algosalon_location_prompted', 'true');
           const enhanced = await refreshDeviceTelemetry(true);
+          setIsAutoRegionEnabled(true);
+          localStorage.setItem('algosalon_auto_region', 'true');
+          setActiveCountryCodeState(enhanced.countryCode);
+          localStorage.setItem('algosalon_country_code', enhanced.countryCode);
+          setActiveLanguageState(enhanced.language);
+          localStorage.setItem('algosalon_app_language', enhanced.language);
+          setCustomCurrencyState(null);
+          setCustomDialCodeState(null);
+          localStorage.removeItem('algosalon_custom_currency');
+          localStorage.removeItem('algosalon_custom_dial_code');
           setUserLocation(enhanced.zoneLocation);
           localStorage.setItem('algosalon_user_location', enhanced.zoneLocation);
+
+          const userLat = position.coords.latitude;
+          const userLng = position.coords.longitude;
+          if (userLat && userLng) {
+            setSalons(prevSalons =>
+              prevSalons.map(s => {
+                if (s.lat && s.lng) {
+                  const dist = calculateDistanceKm(userLat, userLng, s.lat, s.lng);
+                  return { ...s, distanceKm: dist };
+                }
+                return s;
+              })
+            );
+          }
           resolve(true);
         },
         async error => {

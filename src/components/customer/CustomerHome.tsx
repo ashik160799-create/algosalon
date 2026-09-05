@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Salon, StaffMember, ServiceItem, Appointment } from '../../types';
 import { StaffAvatar } from '../common/StaffAvatar';
@@ -52,6 +52,7 @@ export const CustomerHome: React.FC = () => {
     colorThemeMode,
     userLocation,
     locationPermissionGranted,
+    requestLocationPermission,
     formatPrice,
   } = useApp();
 
@@ -59,6 +60,29 @@ export const CustomerHome: React.FC = () => {
   const [themeModalOpen, setThemeModalOpen] = useState(false);
 
   const isLight = colorThemeMode === 'light';
+
+  // Automatically detect location if browser permission changes to granted
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !('permissions' in navigator)) return;
+    let mounted = true;
+    navigator.permissions
+      .query({ name: 'geolocation' })
+      .then(status => {
+        if (!mounted) return;
+        if (status.state === 'granted' && !locationPermissionGranted) {
+          requestLocationPermission();
+        }
+        status.onchange = () => {
+          if (mounted && status.state === 'granted') {
+            requestLocationPermission();
+          }
+        };
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, [locationPermissionGranted, requestLocationPermission]);
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -240,20 +264,25 @@ export const CustomerHome: React.FC = () => {
           >
             {greeting}, {firstName}
           </h1>
-          <div className="flex items-center gap-1.5 mt-1">
+          <button
+            type="button"
+            onClick={() => requestLocationPermission()}
+            className="flex items-center gap-1.5 mt-1 cursor-pointer text-left group"
+            title="Click to detect your location and show nearest salons"
+          >
             <span
-              className="w-2 h-2 rounded-full animate-pulse"
+              className="w-2 h-2 rounded-full animate-pulse shrink-0"
               style={{ backgroundColor: currentThemeConfig.primaryHex }}
             />
             <span
               className={`text-xs font-semibold flex items-center gap-1 ${
-                isLight ? 'text-slate-500' : 'text-slate-400'
+                isLight ? 'text-slate-500 group-hover:text-slate-700' : 'text-slate-400 group-hover:text-slate-200'
               }`}
             >
               <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
               <span>{userLocation || 'Dubai Marina, UAE'}</span>
             </span>
-          </div>
+          </button>
         </div>
       </header>
 
