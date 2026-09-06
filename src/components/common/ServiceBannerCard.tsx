@@ -54,7 +54,7 @@ export const ServiceBannerCard: React.FC<ServiceBannerCardProps> = ({
     service.genderTarget || 'Unisex'
   ).imageUrl;
 
-  const bannerImage = service.image || fallbackImg;
+  const bannerImage = (service.image && service.image.trim()) || fallbackImg;
   const [confirmingDelete, setConfirmingDelete] = React.useState(false);
 
   return (

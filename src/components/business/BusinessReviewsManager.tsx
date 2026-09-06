@@ -76,7 +76,7 @@ export const BusinessReviewsManager: React.FC = () => {
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <img
-                    src={rev.customerAvatar}
+                    src={(rev.customerAvatar && rev.customerAvatar.trim()) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
                     alt={rev.customerName}
                     className="w-10 h-10 rounded-2xl object-cover ring-2 ring-slate-200 dark:ring-slate-700 shrink-0"
                     referrerPolicy="no-referrer"

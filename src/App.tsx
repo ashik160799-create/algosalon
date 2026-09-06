@@ -64,7 +64,7 @@ const MainAppContent: React.FC = () => {
     const isPrompted =
       localStorage.getItem('algosalon_location_prompted') === 'true' ||
       localStorage.getItem('algosalon_location_permission') !== null;
-    setLocationPrompted(isPrompted);
+    setLocationPrompted(prev => (prev === isPrompted ? prev : isPrompted));
   }, [currentRole, showSplash]);
 
   if (showSplash) {

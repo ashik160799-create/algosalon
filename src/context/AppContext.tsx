@@ -13,6 +13,8 @@ import {
   ColorThemeId,
   ColorThemeMode,
   ThemeConfig,
+  EMPTY_CUSTOMER,
+  EMPTY_BUSINESS,
 } from '../types';
 import { THEME_PRESETS, getContrastTextColor } from '../utils/themeConfig';
 import { getRecommendedAiBanner } from '../utils/aiBannerGenerator';
@@ -34,16 +36,6 @@ import {
   persistDeviceTelemetry,
   syncDeviceData,
 } from '../utils/deviceDetection';
-import {
-  INITIAL_CUSTOMER,
-  INITIAL_BUSINESS_USER,
-  INITIAL_SALONS,
-  INITIAL_SERVICES,
-  INITIAL_STAFF,
-  INITIAL_APPOINTMENTS,
-  INITIAL_REVIEWS,
-  INITIAL_NOTIFICATIONS,
-} from '../data/mockData';
 import {
   RegisteredAccount,
   getRegisteredAccounts,
@@ -410,7 +402,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved !== null ? saved === 'true' : true;
   });
 
-  const refreshDeviceTelemetry = async (allowGpsPrompt: boolean = false): Promise<DeviceTelemetryProfile> => {
+  const refreshDeviceTelemetry = React.useCallback(async (allowGpsPrompt: boolean = false): Promise<DeviceTelemetryProfile> => {
     const base = probeInitialDeviceData();
     let enhanced = base;
 
@@ -434,7 +426,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     return enhanced;
-  };
+  }, [isAutoRegionEnabled]);
 
   /**
    * Automatically synchronizes device data with local system state.
@@ -445,18 +437,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setDeviceTelemetry(prev => {
       syncedProfile = syncDeviceData(prev);
-      persistDeviceTelemetry(syncedProfile);
       return syncedProfile;
     });
+    persistDeviceTelemetry(syncedProfile);
 
     const nowIso = new Date().toISOString();
-    setLastDeviceSyncTime(nowIso);
+    setLastDeviceSyncTime(prev => (prev === nowIso ? prev : nowIso));
 
     // If auto region is enabled, align active country/language seamlessly
     if (isAutoRegionEnabled && syncedProfile.countryCode) {
-      setActiveCountryCodeState(syncedProfile.countryCode);
-      setActiveLanguageState(syncedProfile.language);
-      setUserLocation(syncedProfile.zoneLocation);
+      setActiveCountryCodeState(prev => (prev === syncedProfile.countryCode ? prev : syncedProfile.countryCode));
+      setActiveLanguageState(prev => (prev === syncedProfile.language ? prev : syncedProfile.language));
+      setUserLocation(prev => (prev === syncedProfile.zoneLocation ? prev : syncedProfile.zoneLocation));
       localStorage.setItem('algosalon_user_location', syncedProfile.zoneLocation);
       localStorage.setItem('algosalon_country_code', syncedProfile.countryCode);
       localStorage.setItem('algosalon_app_language', syncedProfile.language);
@@ -648,12 +640,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem('algosalon_customer');
     if (saved) {
       try {
-        return JSON.parse(saved);
-      } catch {
-        return INITIAL_CUSTOMER;
-      }
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.id && parsed.name && parsed.name !== 'Client' && parsed.name !== 'Valued Client') {
+          return parsed;
+        }
+      } catch {}
     }
-    return INITIAL_CUSTOMER;
+    return EMPTY_CUSTOMER;
   });
 
   const [businessUser, setBusinessUser] = useState<BusinessUser>(() => {
@@ -661,107 +654,81 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (parsed.email && ['marcus@algosalon.com', 'partner@algosalon.com'].includes(parsed.email.toLowerCase())) {
-          return INITIAL_BUSINESS_USER;
+        if (
+          parsed &&
+          parsed.id &&
+          parsed.name &&
+          parsed.name !== 'Salon Owner' &&
+          !['marcus@algosalon.com', 'partner@algosalon.com'].includes(parsed.email?.toLowerCase())
+        ) {
+          return parsed;
         }
-        return parsed;
-      } catch {
-        return INITIAL_BUSINESS_USER;
-      }
+      } catch {}
     }
-    return INITIAL_BUSINESS_USER;
+    return EMPTY_BUSINESS;
   });
 
-  const [salons, setSalons] = useState<Salon[]>(() => {
-    const saved = localStorage.getItem('algosalon_salons');
-    if (saved) {
-      try {
-        const parsed: Salon[] = JSON.parse(saved);
-        // Clear out deprecated unsplash stock logo presets if still in storage
-        return parsed.map(s => {
-          if (
-            s.logo &&
-            (s.logo.includes('photo-1599305445671-ac291c95aaa9') ||
-              s.logo.includes('photo-1522337360788-8b13dee7a37e') ||
-              s.logo.includes('photo-1503951914875-452162b0f3f1') ||
-              s.logo.includes('photo-1585747860715-2ba37e788b70'))
-          ) {
-            return { ...s, logo: '' };
-          }
-          return s;
-        });
-      } catch {
-        return isSupabaseConfigured() ? [] : INITIAL_SALONS;
-      }
-    }
-    return isSupabaseConfigured() ? [] : INITIAL_SALONS;
-  });
-
+  const [salons, setSalons] = useState<Salon[]>([]);
   const [selectedSalon, setSelectedSalon] = useState<Salon | null>(null);
+  const [services, setServices] = useState<ServiceItem[]>([]);
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
-  const [services, setServices] = useState<ServiceItem[]>(() => {
-    const saved = localStorage.getItem('algosalon_services');
-    if (saved) {
+  // Purge legacy mock data cache from local storage
+  useEffect(() => {
+    const legacyKeys = [
+      'algosalon_salons',
+      'algosalon_services',
+      'algosalon_staff',
+      'algosalon_appointments',
+      'algosalon_reviews',
+      'algosalon_notifications',
+      'algosalon_registered_accounts',
+    ];
+    legacyKeys.forEach(k => {
       try {
-        return JSON.parse(saved);
+        localStorage.removeItem(k);
+      } catch {}
+    });
+
+    const custRaw = localStorage.getItem('algosalon_customer');
+    if (custRaw) {
+      try {
+        const c = JSON.parse(custRaw);
+        if (!c?.id || c.name === 'Client' || c.name === 'Valued Client' || c.email?.includes('example.com')) {
+          localStorage.removeItem('algosalon_customer');
+          setCustomerUser(EMPTY_CUSTOMER);
+        }
       } catch {
-        return isSupabaseConfigured() ? [] : INITIAL_SERVICES;
+        localStorage.removeItem('algosalon_customer');
+        setCustomerUser(EMPTY_CUSTOMER);
       }
     }
-    return isSupabaseConfigured() ? [] : INITIAL_SERVICES;
-  });
 
-  const [staffMembers, setStaffMembers] = useState<StaffMember[]>(() => {
-    const saved = localStorage.getItem('algosalon_staff');
-    if (saved) {
+    const bizRaw = localStorage.getItem('algosalon_business_user');
+    if (bizRaw) {
       try {
-        return JSON.parse(saved);
+        const b = JSON.parse(bizRaw);
+        if (
+          !b?.id ||
+          b.name === 'Salon Owner' ||
+          ['marcus@algosalon.com', 'partner@algosalon.com'].includes(b.email?.toLowerCase())
+        ) {
+          localStorage.removeItem('algosalon_business_user');
+          setBusinessUser(EMPTY_BUSINESS);
+        }
       } catch {
-        return isSupabaseConfigured() ? [] : INITIAL_STAFF;
+        localStorage.removeItem('algosalon_business_user');
+        setBusinessUser(EMPTY_BUSINESS);
       }
     }
-    return isSupabaseConfigured() ? [] : INITIAL_STAFF;
-  });
-
-  const [appointments, setAppointments] = useState<Appointment[]>(() => {
-    const saved = localStorage.getItem('algosalon_appointments');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return isSupabaseConfigured() ? [] : INITIAL_APPOINTMENTS;
-      }
-    }
-    return isSupabaseConfigured() ? [] : INITIAL_APPOINTMENTS;
-  });
-
-  const [reviews, setReviews] = useState<Review[]>(() => {
-    const saved = localStorage.getItem('algosalon_reviews');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return isSupabaseConfigured() ? [] : INITIAL_REVIEWS;
-      }
-    }
-    return isSupabaseConfigured() ? [] : INITIAL_REVIEWS;
-  });
-
-  const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
-    const saved = localStorage.getItem('algosalon_notifications');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return isSupabaseConfigured() ? [] : INITIAL_NOTIFICATIONS;
-      }
-    }
-    return isSupabaseConfigured() ? [] : INITIAL_NOTIFICATIONS;
-  });
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Live Supabase Cloud Sync & Real-time Subscriptions
-  // (Hydrates live database rows when connected; seamlessly preserves local storage otherwise)
+  // (Hydrates live database rows directly from Supabase backend)
   // ---------------------------------------------------------------------------
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
@@ -771,46 +738,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // 1. Hydrate published salons, services, and staff
     fetchSalonsFromDb().then(result => {
       if (!isMounted || !result) return;
-      if (result.salons && result.salons.length > 0) {
+      if (Array.isArray(result.salons)) {
         setSalons(result.salons);
-        setBusinessUser(prev =>
-          prev.salonId === 'salon-1' || !prev.salonId
-            ? { ...prev, salonId: result.salons[0].id }
-            : prev
-        );
+        if (result.salons.length > 0) {
+          setSelectedSalon(prev => prev || result.salons[0]);
+          setBusinessUser(prev =>
+            (prev.salonId === 'salon-1' || !prev.salonId) && prev.salonId !== result.salons[0].id
+              ? { ...prev, salonId: result.salons[0].id }
+              : prev
+          );
+        }
+      } else {
+        setSalons([]);
       }
-      if (result.services && result.services.length > 0) setServices(result.services);
-      if (result.staff && result.staff.length > 0) setStaffMembers(result.staff);
+      if (Array.isArray(result.services)) setServices(result.services);
+      if (Array.isArray(result.staff)) setStaffMembers(result.staff);
     }).catch(err => {
       console.warn('[AppContext] Failed to hydrate salons from db:', err);
     });
 
-    // 2. Hydrate appointments (replace initial mock data with live database appointments)
+    // 2. Hydrate appointments (from live database appointments)
     fetchAppointmentsFromDb().then(liveApts => {
-      if (!isMounted || !liveApts) return;
-      setAppointments(prev => {
-        const nonMock = prev.filter(a => !a.id.startsWith('apt-'));
-        const liveIds = new Set(liveApts.map(a => a.id));
-        const unsynced = nonMock.filter(a => !liveIds.has(a.id));
-        const combined = [...liveApts, ...unsynced];
-        localStorage.setItem('algosalon_appointments', JSON.stringify(combined));
-        return combined;
-      });
+      if (!isMounted) return;
+      setAppointments(liveApts || []);
     }).catch(err => {
       console.warn('[AppContext] Failed to hydrate appointments from db:', err);
     });
 
-    // 3. Hydrate reviews (replace initial mock reviews with live database reviews)
+    // 3. Hydrate reviews (from live database reviews)
     fetchReviewsFromDb().then(liveReviews => {
-      if (!isMounted || !liveReviews) return;
-      setReviews(prev => {
-        const nonMock = prev.filter(r => !r.id.startsWith('rev-'));
-        const liveIds = new Set(liveReviews.map(r => r.id));
-        const unsynced = nonMock.filter(r => !liveIds.has(r.id));
-        const combined = [...liveReviews, ...unsynced];
-        localStorage.setItem('algosalon_reviews', JSON.stringify(combined));
-        return combined;
-      });
+      if (!isMounted) return;
+      setReviews(liveReviews || []);
     }).catch(err => {
       console.warn('[AppContext] Failed to hydrate reviews from db:', err);
     });
@@ -819,15 +777,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const unsubscribeReviews = subscribeToReviews(() => {
       if (!isMounted) return;
       fetchReviewsFromDb().then(liveReviews => {
-        if (!isMounted || !liveReviews) return;
-        setReviews(prev => {
-          const nonMock = prev.filter(r => !r.id.startsWith('rev-'));
-          const liveIds = new Set(liveReviews.map(r => r.id));
-          const unsynced = nonMock.filter(r => !liveIds.has(r.id));
-          const combined = [...liveReviews, ...unsynced];
-          localStorage.setItem('algosalon_reviews', JSON.stringify(combined));
-          return combined;
-        });
+        if (!isMounted) return;
+        setReviews(liveReviews || []);
       }).catch(err => {
         console.warn('[AppContext] Failed to refresh reviews on realtime update:', err);
       });
@@ -918,8 +869,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (event === 'SIGNED_OUT') {
           setAuthToken(null);
           localStorage.removeItem('algosalon_auth_token');
-          setCustomerUser(INITIAL_CUSTOMER);
-          setBusinessUser(INITIAL_BUSINESS_USER);
+          localStorage.removeItem('algosalon_customer');
+          localStorage.removeItem('algosalon_business_user');
+          setCustomerUser(EMPTY_CUSTOMER);
+          setBusinessUser(EMPTY_BUSINESS);
           return;
         }
 
@@ -930,7 +883,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             authUser.user_metadata?.full_name ||
             authUser.user_metadata?.name ||
             userEmail.split('@')[0] ||
-            'Valued Client';
+            '';
           // Extract Google OAuth profile picture from avatar_url or standard OpenID picture claim
           const userAvatar = authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture || '';
 
@@ -961,18 +914,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               regAccount?.businessName ||
               bizProfile?.businessName ||
               authUser.user_metadata?.business_name ||
-              'My Salon Studio';
+              '';
             const resolvedOwnerName =
               regAccount?.name ||
               authUser.user_metadata?.full_name ||
               authUser.user_metadata?.name ||
-              (userName !== userEmail.split('@')[0] ? userName : 'Salon Director');
+              userName;
             const resolvedBizAppCode =
               authUser.user_metadata?.app_code ||
               regAccount?.appCode ||
               '';
 
-            const bizData: Partial<BusinessUser> = {
+            const bizData: BusinessUser = {
               id: authUser.id,
               name: resolvedOwnerName,
               email: userEmail,
@@ -980,13 +933,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               isGmailLinked: true,
               phone: resolvedBizPhone,
               businessName: resolvedBizName,
-              salonId: regAccount?.salonId || bizProfile?.salonId || salons[0]?.id || 'salon-1',
-              ownerRole: regAccount?.ownerRole || bizProfile?.ownerRole || 'Owner & Salon Director',
+              salonId: regAccount?.salonId || bizProfile?.salonId || '',
+              ownerRole: regAccount?.ownerRole || bizProfile?.ownerRole || 'Salon Owner',
+              category: regAccount?.category || 'Hair & Styling',
+              location: regAccount?.location || '',
               appCode: resolvedBizAppCode,
             };
 
-            setBusinessUser(prev => ({ ...prev, ...bizData }));
-            localStorage.setItem('algosalon_business_user', JSON.stringify({ ...INITIAL_BUSINESS_USER, ...bizData }));
+            setBusinessUser(bizData);
+            localStorage.setItem('algosalon_business_user', JSON.stringify(bizData));
             setCurrentRole('business');
             localStorage.setItem('algosalon_role', 'business');
 
@@ -1023,7 +978,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               authUser.user_metadata?.full_name ||
               authUser.user_metadata?.name ||
               regAccount?.name ||
-              (userName !== userEmail.split('@')[0] ? userName : 'Valued Client');
+              userName;
             const resolvedPhone =
               custProfile?.phone ||
               authUser.phone ||
@@ -1135,15 +1090,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           });
 
           fetchNotificationsFromDb(authUser.id).then(liveNotifs => {
-            if (!isMounted || !liveNotifs) return;
-            setNotifications(prev => {
-              const nonMock = prev.filter(n => n.id !== 'notif-1' && n.id !== 'notif-2');
-              const liveIds = new Set(liveNotifs.map(n => n.id));
-              const unsynced = nonMock.filter(n => !liveIds.has(n.id));
-              const combined = [...liveNotifs, ...unsynced];
-              localStorage.setItem('algosalon_notifications', JSON.stringify(combined));
-              return combined;
-            });
+            if (!isMounted) return;
+            setNotifications(liveNotifs || []);
           }).catch(err => {
             console.warn('[AppContext] Failed to fetch notifications for authUser:', err);
           });
@@ -1167,10 +1115,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (customerUser?.id) {
       fetchFavoritesFromDb(customerUser.id).then(liveFavs => {
         if (!isMounted || !liveFavs || liveFavs.length === 0) return;
-        setCustomerUser(prev => ({
-          ...prev,
-          savedSalonIds: Array.from(new Set([...prev.savedSalonIds, ...liveFavs])),
-        }));
+        setCustomerUser(prev => {
+          const merged = Array.from(new Set([...prev.savedSalonIds, ...liveFavs]));
+          if (merged.length === prev.savedSalonIds.length && merged.every((id, i) => id === prev.savedSalonIds[i])) {
+            return prev;
+          }
+          return {
+            ...prev,
+            savedSalonIds: merged,
+          };
+        });
       }).catch(err => {
         console.warn('[AppContext] Failed to fetch favorites for customerUser:', err);
       });
@@ -1179,14 +1133,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const currentUserId = currentRole === 'customer' ? customerUser?.id : businessUser?.id;
     if (currentUserId) {
       fetchNotificationsFromDb(currentUserId, currentRole).then(liveNotifs => {
-        if (!isMounted || !liveNotifs) return;
+        if (!isMounted) return;
         setNotifications(prev => {
-          const nonMock = prev.filter(n => n.id !== 'notif-1' && n.id !== 'notif-2');
-          const liveIds = new Set(liveNotifs.map(n => n.id));
-          const unsynced = nonMock.filter(n => !liveIds.has(n.id));
-          const combined = [...liveNotifs, ...unsynced];
-          localStorage.setItem('algosalon_notifications', JSON.stringify(combined));
-          return combined;
+          if (liveNotifs && prev.length === liveNotifs.length && prev.every((n, i) => n.id === liveNotifs[i].id)) {
+            return prev;
+          }
+          return liveNotifs || [];
         });
       }).catch(err => {
         console.warn('[AppContext] Failed to fetch notifications for user/role:', err);
@@ -1228,7 +1180,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved !== null ? saved === 'true' : null;
   });
 
-  const requestLocationPermission = async (): Promise<boolean> => {
+  const requestLocationPermission = React.useCallback(async (): Promise<boolean> => {
     if (!navigator.geolocation) {
       setLocationPermissionGranted(false);
       localStorage.setItem('algosalon_location_permission', 'false');
@@ -1272,6 +1224,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           resolve(true);
         },
         async error => {
+          console.warn('[Location] Permission denied or unavailable:', error?.message);
           setLocationPermissionGranted(false);
           localStorage.setItem('algosalon_location_permission', 'false');
           localStorage.setItem('algosalon_location_prompted', 'true');
@@ -1282,7 +1235,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         { timeout: 5000, maximumAge: 60000 }
       );
     });
-  };
+  }, [refreshDeviceTelemetry]);
 
   /**
    * 1. Clear ALL old local storage data (token, user profile, account type, session state)
@@ -1377,20 +1330,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('algosalon_role', 'customer');
     localStorage.setItem('algosalon_customer', JSON.stringify(freshCustomer));
     localStorage.setItem('algosalon_seen_splash', 'true');
-    localStorage.setItem('algosalon_appointments', JSON.stringify([]));
 
     const welcomeNotif: NotificationItem = {
       id: `notif-${Date.now()}`,
       userId: freshCustomer.id,
       userType: 'customer',
-      title: `Welcome, ${freshCustomer.name.split(' ')[0] || 'Client'}!`,
+      title: `Welcome, ${freshCustomer.name.split(' ')[0] || ''}!`,
       message: 'Your client account is active. Explore top-tier salons and book appointments in real time.',
       date: new Date().toISOString(),
       type: 'system',
       read: false,
       timestamp: new Date().toISOString(),
     };
-    localStorage.setItem('algosalon_notifications', JSON.stringify([welcomeNotif]));
 
     // Fully reset Global Context state
     setCurrentRole('customer');
@@ -1509,12 +1460,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('algosalon_role', 'business');
     localStorage.setItem('algosalon_business_user', JSON.stringify(freshBusiness));
     localStorage.setItem('algosalon_seen_splash', 'true');
-    localStorage.setItem('algosalon_appointments', JSON.stringify([]));
 
     setSalons(prev => {
       const exists = prev.some(s => s.id === newSalonId);
       const updated = exists ? prev.map(s => (s.id === newSalonId ? freshSalon : s)) : [freshSalon, ...prev];
-      localStorage.setItem('algosalon_salons', JSON.stringify(updated));
       return updated;
     });
 
@@ -1561,8 +1510,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const savedCust = localStorage.getItem('algosalon_customer');
     if (savedCust) {
       try {
-        freshCustomer = JSON.parse(savedCust);
-        setCustomerUser(freshCustomer);
+        const parsed = JSON.parse(savedCust);
+        if (parsed && typeof parsed === 'object') {
+          freshCustomer = parsed;
+          setCustomerUser(prev => {
+            if (JSON.stringify(prev) === JSON.stringify(parsed)) {
+              return prev;
+            }
+            return parsed;
+          });
+        }
       } catch {
         // ignore JSON parse error
       }
@@ -1571,8 +1528,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const savedBiz = localStorage.getItem('algosalon_business_user');
     if (savedBiz) {
       try {
-        freshBusiness = JSON.parse(savedBiz);
-        setBusinessUser(freshBusiness);
+        const parsed = JSON.parse(savedBiz);
+        if (parsed && typeof parsed === 'object') {
+          freshBusiness = parsed;
+          setBusinessUser(prev => {
+            if (JSON.stringify(prev) === JSON.stringify(parsed)) {
+              return prev;
+            }
+            return parsed;
+          });
+        }
       } catch {
         // ignore JSON parse error
       }
@@ -1688,7 +1653,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const updated = {
         ...prev,
         ...userUpdates,
-        salonId: salonId || userUpdates.salonId || prev.salonId || 'salon-1',
+        salonId: salonId || userUpdates.salonId || prev.salonId || '',
       };
       localStorage.setItem('algosalon_business_user', JSON.stringify(updated));
       return updated;
@@ -1716,8 +1681,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     signOutSupabase().catch(() => {});
 
     setAuthToken(null);
-    setCustomerUser(INITIAL_CUSTOMER);
-    setBusinessUser(INITIAL_BUSINESS_USER);
+    setCustomerUser(EMPTY_CUSTOMER);
+    setBusinessUser(EMPTY_BUSINESS);
     setCurrentRole('customer');
     setAuthModalOpen(false);
     setShowSplash(true);
@@ -1782,8 +1747,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // 5. Reset state & navigate to Splash
       setAuthToken(null);
-      setCustomerUser(INITIAL_CUSTOMER);
-      setBusinessUser(INITIAL_BUSINESS_USER);
+      setCustomerUser(EMPTY_CUSTOMER);
+      setBusinessUser(EMPTY_BUSINESS);
       setCurrentRole('customer');
       setAuthModalOpen(false);
       setShowSplash(true);
@@ -1847,7 +1812,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateSalonProfile = (salonId: string, updates: Partial<Salon>) => {
     setSalons(prev => {
       const updated = prev.map(s => (s.id === salonId ? { ...s, ...updates } : s));
-      localStorage.setItem('algosalon_salons', JSON.stringify(updated));
       return updated;
     });
 
@@ -1891,7 +1855,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setServices(prev => {
       const updated = [newService, ...prev];
-      localStorage.setItem('algosalon_services', JSON.stringify(updated));
       return updated;
     });
 
@@ -1911,7 +1874,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateService = (serviceId: string, updates: Partial<ServiceItem>) => {
     setServices(prev => {
       const updated = prev.map(s => (s.id === serviceId ? { ...s, ...updates } : s));
-      localStorage.setItem('algosalon_services', JSON.stringify(updated));
       return updated;
     });
 
@@ -1925,7 +1887,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteService = (serviceId: string) => {
     setServices(prev => {
       const updated = prev.filter(s => s.id !== serviceId);
-      localStorage.setItem('algosalon_services', JSON.stringify(updated));
       return updated;
     });
 
@@ -1944,7 +1905,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setStaffMembers(prev => {
       const updated = [newStaff, ...prev];
-      localStorage.setItem('algosalon_staff', JSON.stringify(updated));
       return updated;
     });
 
@@ -1964,7 +1924,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateStaffMember = (staffId: string, updates: Partial<StaffMember>) => {
     setStaffMembers(prev => {
       const updated = prev.map(s => (s.id === staffId ? { ...s, ...updates } : s));
-      localStorage.setItem('algosalon_staff', JSON.stringify(updated));
       return updated;
     });
 
@@ -1978,7 +1937,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteStaffMember = (staffId: string) => {
     setStaffMembers(prev => {
       const updated = prev.filter(s => s.id !== staffId);
-      localStorage.setItem('algosalon_staff', JSON.stringify(updated));
       return updated;
     });
 
@@ -2042,7 +2000,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setAppointments(prev => {
       const updated = [newAppointment, ...prev];
-      localStorage.setItem('algosalon_appointments', JSON.stringify(updated));
       return updated;
     });
 
@@ -2072,7 +2029,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setNotifications(prev => {
       const updated = [...newNotifs, ...prev];
-      localStorage.setItem('algosalon_notifications', JSON.stringify(updated));
       return updated;
     });
 
@@ -2098,7 +2054,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
           : a
       );
-      localStorage.setItem('algosalon_appointments', JSON.stringify(updated));
       return updated;
     });
 
@@ -2120,7 +2075,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 const reverted = prev.map(a =>
                   a.id === appointmentId ? { ...a, status: previousStatus } : a
                 );
-                localStorage.setItem('algosalon_appointments', JSON.stringify(reverted));
                 return reverted;
               });
             }
@@ -2133,7 +2087,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               const reverted = prev.map(a =>
                 a.id === appointmentId ? { ...a, status: previousStatus } : a
               );
-              localStorage.setItem('algosalon_appointments', JSON.stringify(reverted));
               return reverted;
             });
           }
@@ -2170,7 +2123,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       setNotifications(prev => {
         const updated = [custNotif, ...prev];
-        localStorage.setItem('algosalon_notifications', JSON.stringify(updated));
         return updated;
       });
     }
@@ -2195,7 +2147,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       setNotifications(prev => {
         const updated = [custNotif, ...prev];
-        localStorage.setItem('algosalon_notifications', JSON.stringify(updated));
         return updated;
       });
     }
@@ -2220,7 +2171,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
           : a
       );
-      localStorage.setItem('algosalon_appointments', JSON.stringify(updated));
       return updated;
     });
 
@@ -2257,7 +2207,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       setNotifications(prev => {
         const updated = [custNotif, ...prev];
-        localStorage.setItem('algosalon_notifications', JSON.stringify(updated));
         return updated;
       });
 
@@ -2289,7 +2238,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
           : a
       );
-      localStorage.setItem('algosalon_appointments', JSON.stringify(updated));
       return updated;
     });
 
@@ -2316,7 +2264,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       setNotifications(prev => {
         const updated = [custNotif, ...prev];
-        localStorage.setItem('algosalon_notifications', JSON.stringify(updated));
         return updated;
       });
 
@@ -2354,7 +2301,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         return a;
       });
-      localStorage.setItem('algosalon_appointments', JSON.stringify(updated));
       return updated;
     });
 
@@ -2395,7 +2341,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       setNotifications(prev => {
         const updated = [bizNotif, ...prev];
-        localStorage.setItem('algosalon_notifications', JSON.stringify(updated));
         return updated;
       });
 
@@ -2427,7 +2372,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
           : a
       );
-      localStorage.setItem('algosalon_appointments', JSON.stringify(updated));
       return updated;
     });
 
@@ -2454,7 +2398,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       setNotifications(prev => {
         const updated = [bizNotif, ...prev];
-        localStorage.setItem('algosalon_notifications', JSON.stringify(updated));
         return updated;
       });
 
@@ -2517,17 +2460,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Optimistically update reviews list
     setReviews(prev => {
       const updated = [newRev, ...prev];
-      localStorage.setItem('algosalon_reviews', JSON.stringify(updated));
       return updated;
     });
 
-    // Mark appointment as reviewed in local state and localStorage
+    // Mark appointment as reviewed in local state
     if (reviewData.appointmentId) {
       setAppointments(prev => {
         const updated = prev.map(a =>
           a.id === reviewData.appointmentId ? { ...a, reviewed: true } : a
         );
-        localStorage.setItem('algosalon_appointments', JSON.stringify(updated));
         return updated;
       });
     }
@@ -2546,7 +2487,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ? { ...s, rating: newAvgRating, reviewCount: newReviewCount }
           : s
       );
-      localStorage.setItem('algosalon_salons', JSON.stringify(updated));
       return updated;
     });
 
@@ -2563,7 +2503,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
           return st;
         });
-        localStorage.setItem('algosalon_staff', JSON.stringify(updated));
         return updated;
       });
     }
@@ -2600,7 +2539,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           console.warn('Review creation in DB failed:', res.error);
           setReviews(prev => {
             const reverted = prev.filter(r => r.id !== tempId);
-            localStorage.setItem('algosalon_reviews', JSON.stringify(reverted));
             return reverted;
           });
           if (reviewData.appointmentId) {
@@ -2608,7 +2546,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               const reverted = prev.map(a =>
                 a.id === reviewData.appointmentId ? { ...a, reviewed: false } : a
               );
-              localStorage.setItem('algosalon_appointments', JSON.stringify(reverted));
               return reverted;
             });
           }
@@ -2619,7 +2556,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.warn('Background Supabase review error:', err);
         setReviews(prev => {
           const reverted = prev.filter(r => r.id !== tempId);
-          localStorage.setItem('algosalon_reviews', JSON.stringify(reverted));
           return reverted;
         });
         if (reviewData.appointmentId) {
@@ -2627,7 +2563,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const reverted = prev.map(a =>
               a.id === reviewData.appointmentId ? { ...a, reviewed: false } : a
             );
-            localStorage.setItem('algosalon_appointments', JSON.stringify(reverted));
             return reverted;
           });
         }
@@ -2653,7 +2588,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
           : r
       );
-      localStorage.setItem('algosalon_reviews', JSON.stringify(updated));
       return updated;
     });
 
@@ -2681,7 +2615,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const markNotificationRead = (id: string) => {
     setNotifications(prev => {
       const updated = prev.map(n => (n.id === id ? { ...n, read: true } : n));
-      localStorage.setItem('algosalon_notifications', JSON.stringify(updated));
       return updated;
     });
 
@@ -2700,7 +2633,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         return n;
       });
-      localStorage.setItem('algosalon_notifications', JSON.stringify(updated));
       return updated;
     });
 
@@ -2717,7 +2649,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteNotification = (id: string) => {
     setNotifications(prev => {
       const updated = prev.filter(n => n.id !== id);
-      localStorage.setItem('algosalon_notifications', JSON.stringify(updated));
       return updated;
     });
 
@@ -2733,7 +2664,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const updated = (role && typeof role === 'string')
         ? prev.filter(n => n.userType !== role)
         : [];
-      localStorage.setItem('algosalon_notifications', JSON.stringify(updated));
       return updated;
     });
 

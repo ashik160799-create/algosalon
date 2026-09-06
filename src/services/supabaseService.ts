@@ -78,9 +78,13 @@ export async function fetchSalonsFromDb(): Promise<{
         .select('*'),
     ]);
 
-    if (salonsRes.error || !salonsRes.data || salonsRes.data.length === 0) {
-      console.warn('Salons fetch note:', salonsRes.error?.message || 'No published salons yet');
-      return null;
+    if (salonsRes.error) {
+      console.warn('Salons fetch note:', salonsRes.error.message);
+      return { salons: [], services: [], staff: [] };
+    }
+
+    if (!salonsRes.data || salonsRes.data.length === 0) {
+      return { salons: [], services: [], staff: [] };
     }
 
     const dbSalons = salonsRes.data;
@@ -342,19 +346,19 @@ export async function fetchAppointmentsFromDb(options?: {
         salonName: apt.salons?.name || 'ALGO Salon',
         salonAddress: apt.salons?.address_line1 || 'Downtown',
         salonPhone: apt.salons?.phone_e164 || '',
-        salonImage: apt.salons?.cover_image || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600',
+        salonImage: (apt.salons?.cover_image && apt.salons.cover_image.trim()) || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600',
         customerId: apt.customer_id || 'guest',
         customerName: apt.customer_display_name,
         customerPhone: apt.customer_phone_e164 || '',
         customerEmail: apt.customer_email || '',
-        customerAvatar: apt.customer_avatar_path,
+        customerAvatar: (apt.customer_avatar_path && apt.customer_avatar_path.trim()) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
         serviceId: apt.service_id,
         serviceName: apt.service_name,
         servicePrice: Math.round((apt.quoted_price_minor || 0) / 100),
         durationMinutes,
         staffId: apt.staff_id,
         staffName: apt.staff_name,
-        staffAvatar: apt.staff_profiles?.avatar_path || '',
+        staffAvatar: (apt.staff_profiles?.avatar_path && apt.staff_profiles.avatar_path.trim()) || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
         date: dateStr,
         timeSlot: timeSlotStr,
         status: apt.status as AppointmentStatus,

@@ -222,9 +222,14 @@ export const SplashScreen: React.FC = () => {
     // Resolve any custom background URL without blocking splash boot
     getBackgroundImage()
       .then((source) => {
-        if (mounted && source && source !== screen2BgUrl && !localStorage.getItem('algosalon_screen2_bg_url')) {
-          setScreen2BgUrl(source);
-          preloadImage(source);
+        if (mounted && source && !localStorage.getItem('algosalon_screen2_bg_url')) {
+          setScreen2BgUrl(prev => {
+            if (prev !== source) {
+              preloadImage(source);
+              return source;
+            }
+            return prev;
+          });
         }
       })
       .catch(() => {});
@@ -242,7 +247,7 @@ export const SplashScreen: React.FC = () => {
       mounted = false;
       window.removeEventListener('algosalon_bg_changed', handleBgChange);
     };
-  }, [screen2BgUrl]);
+  }, []);
 
   const isLight = colorThemeMode === 'light';
   const primaryColor = currentThemeConfig?.primaryHex || '#0EA36F';
@@ -462,15 +467,17 @@ export const SplashScreen: React.FC = () => {
       />
 
       {/* Invisible eager image element ensuring browser preheats texture decoding before Screen 2 appears */}
-      <img
-        src={screen2BgUrl}
-        alt=""
-        aria-hidden="true"
-        loading="eager"
-        decoding="async"
-        fetchPriority="high"
-        className="sr-only pointer-events-none opacity-0 fixed -top-[9999px] -left-[9999px] w-1 h-1"
-      />
+      {screen2BgUrl && screen2BgUrl.trim() ? (
+        <img
+          src={screen2BgUrl.trim()}
+          alt=""
+          aria-hidden="true"
+          loading="eager"
+          decoding="async"
+          fetchPriority="high"
+          className="sr-only pointer-events-none opacity-0 fixed -top-[9999px] -left-[9999px] w-1 h-1"
+        />
+      ) : null}
 
       {/* Desktop/Tablet Ambient Lighting Aura */}
       {isWideDesktop && (
@@ -879,7 +886,7 @@ export const SplashScreen: React.FC = () => {
               <div className="absolute inset-0 z-0 overflow-hidden transform-gpu">
                 {/* Haircut Photography - Crisp, deliberate, and clearly visible */}
                 <img
-                  src={screen2BgUrl}
+                  src={(screen2BgUrl && screen2BgUrl.trim()) || SALON_HAIRCUT_IMAGE}
                   alt="Professional stylist cutting client hair with scissors and comb in salon"
                   referrerPolicy="no-referrer"
                   loading="eager"
@@ -1038,7 +1045,7 @@ export const SplashScreen: React.FC = () => {
               <div className="relative z-20 flex-1 w-full pointer-events-none" />
 
               {/* Bottom Footer Area */}
-              <footer className="relative z-20 w-full max-w-md mx-auto text-center pt-2 pb-4 sm:pb-6 px-4 flex flex-col items-center gap-3.5">
+              <footer className="relative z-20 w-full max-w-md mx-auto text-center pt-2 pb-6 sm:pb-8 px-4 flex flex-col items-center gap-4 sm:gap-5">
                 {/* 3. Position Alignment: 'Get Started' CTA Button directly above '100% Verified Salons' */}
                 <motion.div
                   initial={{ opacity: 0, y: 15 }}
@@ -1098,7 +1105,7 @@ export const SplashScreen: React.FC = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.25, duration: 0.4 }}
-                  className="w-full flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold relative px-2 -mt-1"
+                  className="w-full flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold relative px-2 mt-2.5 sm:mt-3.5"
                 >
                   <span
                     className="text-zinc-900 font-extrabold tracking-tight"
@@ -1124,7 +1131,7 @@ export const SplashScreen: React.FC = () => {
                 </motion.div>
 
                 {/* '100% Verified Salons' Security & Copyright */}
-                <div className="w-full flex flex-col items-center justify-center gap-1.5 relative px-2">
+                <div className="w-full flex flex-col items-center justify-center gap-2.5 sm:gap-3 relative px-2 pt-2.5 sm:pt-3.5">
                   {/* Soft White Glow behind Security & Copyright text: 90% center, 60% mid-diffusion */}
                   <div
                     className="absolute inset-0 -inset-x-4 rounded-full blur-[20px] pointer-events-none -z-10"

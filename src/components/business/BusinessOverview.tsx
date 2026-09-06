@@ -160,9 +160,9 @@ export const BusinessOverview: React.FC = () => {
                 backgroundColor: isLight ? '#f8fafc' : '#0f172a',
               }}
             >
-              {salon.logo ? (
+              {salon.logo && salon.logo.trim() ? (
                 <img
-                  src={salon.logo}
+                  src={salon.logo.trim()}
                   alt={salon.name}
                   className="w-full h-full object-cover"
                 />

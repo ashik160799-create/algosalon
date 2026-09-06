@@ -1,5 +1,4 @@
-import { CustomerUser, BusinessUser, Role } from '../types';
-import { INITIAL_CUSTOMER, INITIAL_BUSINESS_USER } from '../data/mockData';
+import { CustomerUser, BusinessUser, Role, EMPTY_CUSTOMER, EMPTY_BUSINESS } from '../types';
 import { sanitizeEmail } from './authErrorHandling';
 
 export interface RegisteredAccount {
@@ -224,10 +223,10 @@ export const cleanupDuplicateAccounts = (): void => {
 
           if (trueRole === 'customer') {
             // Reset conflicting business profile
-            localStorage.setItem('algosalon_business_user', JSON.stringify(INITIAL_BUSINESS_USER));
+            localStorage.removeItem('algosalon_business_user');
           } else {
             // Reset conflicting customer profile
-            localStorage.setItem('algosalon_customer', JSON.stringify(INITIAL_CUSTOMER));
+            localStorage.removeItem('algosalon_customer');
           }
         }
       } catch (err) {
@@ -554,12 +553,12 @@ export const accountToBusinessUser = (account: RegisteredAccount): BusinessUser 
     id: account.id,
     name: account.name,
     email: account.email,
-    phone: account.phone || '+971 50 123 4567',
-    salonId: account.salonId || 'salon-1',
-    ownerRole: account.ownerRole || 'Owner & Salon Director',
-    businessName: account.businessName || 'My Salon Studio',
-    category: account.category || 'Hair & Styling',
-    location: account.location || 'Downtown Metro',
+    phone: account.phone || '',
+    salonId: account.salonId || '',
+    ownerRole: account.ownerRole || 'Salon Owner',
+    businessName: account.businessName || '',
+    category: account.category || '',
+    location: account.location || '',
     appCode: account.appCode || '',
     signUpGmail: account.signUpGmail || account.email,
     isGmailLinked: true,

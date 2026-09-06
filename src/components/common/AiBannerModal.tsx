@@ -157,7 +157,7 @@ export const AiBannerModal: React.FC<AiBannerModalProps> = ({
           </label>
           <div className="relative rounded-2xl overflow-hidden border border-slate-800 h-44 shadow-lg">
             <img
-              src={selectedImage}
+              src={(selectedImage && selectedImage.trim()) || AI_BANNER_PRESETS[0].imageUrl}
               alt="AI Preview"
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
@@ -300,7 +300,7 @@ export const AiBannerModal: React.FC<AiBannerModalProps> = ({
                   }`}
                 >
                   <img
-                    src={preset.imageUrl}
+                    src={(preset.imageUrl && preset.imageUrl.trim()) || AI_BANNER_PRESETS[0].imageUrl}
                     alt={preset.title}
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"

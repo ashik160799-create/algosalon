@@ -88,7 +88,7 @@ export const CallContactModal: React.FC<CallContactModalProps> = ({
 
         <div className="flex items-center gap-3.5 pr-8">
           <img
-            src={salon.image}
+            src={(salon.image && salon.image.trim()) || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600'}
             alt={salon.name}
             className="w-14 h-14 rounded-2xl object-cover ring-2 ring-slate-200 dark:ring-slate-700 shrink-0"
             referrerPolicy="no-referrer"

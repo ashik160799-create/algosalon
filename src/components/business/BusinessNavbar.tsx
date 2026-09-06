@@ -94,9 +94,9 @@ export const BusinessNavbar: React.FC = () => {
                 isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900 border-slate-800'
               }`}
             >
-              {activeSalon.logo ? (
+              {activeSalon.logo && activeSalon.logo.trim() ? (
                 <img
-                  src={activeSalon.logo}
+                  src={activeSalon.logo.trim()}
                   alt={activeSalon.name}
                   className="w-4 h-4 rounded-full object-cover shrink-0"
                 />
@@ -379,9 +379,9 @@ export const BusinessNavbar: React.FC = () => {
                   className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-xs shadow-xs overflow-hidden"
                   style={{ backgroundColor: currentThemeConfig.primaryHex }}
                 >
-                  {activeSalon.logo ? (
+                  {activeSalon.logo && activeSalon.logo.trim() ? (
                     <img
-                      src={activeSalon.logo}
+                      src={activeSalon.logo.trim()}
                       alt={activeSalon.name}
                       className="w-full h-full object-cover"
                     />
@@ -413,9 +413,9 @@ export const BusinessNavbar: React.FC = () => {
                         className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-sm shrink-0 overflow-hidden shadow-xs"
                         style={{ backgroundColor: currentThemeConfig.primaryHex }}
                       >
-                        {activeSalon.logo ? (
+                        {activeSalon.logo && activeSalon.logo.trim() ? (
                           <img
-                            src={activeSalon.logo}
+                            src={activeSalon.logo.trim()}
                             alt={activeSalon.name}
                             className="w-full h-full object-cover"
                           />

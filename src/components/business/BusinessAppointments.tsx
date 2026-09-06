@@ -1058,7 +1058,7 @@ export const BusinessAppointments: React.FC = () => {
                       <div className="relative shrink-0">
                         <img
                           src={
-                            apt.customerAvatar ||
+                            (apt.customerAvatar && apt.customerAvatar.trim()) ||
                             'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
                           }
                           alt={apt.customerName}
@@ -1103,7 +1103,7 @@ export const BusinessAppointments: React.FC = () => {
                       </div>
                       <img
                         src={
-                          apt.staffAvatar ||
+                          (apt.staffAvatar && apt.staffAvatar.trim()) ||
                           'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80'
                         }
                         alt={apt.staffName}

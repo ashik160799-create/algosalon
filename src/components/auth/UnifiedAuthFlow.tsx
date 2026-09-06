@@ -603,14 +603,14 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
     const regResult = registerNewAccount({
       email,
       role: selectedRole,
-      name: fullName.trim() || (selectedRole === 'customer' ? 'New Customer' : 'Salon Owner'),
+      name: fullName.trim() || email.split('@')[0],
       appCode: newAppCode,
-      phone: phone.trim() || '+971 50 000 0000',
+      phone: phone.trim(),
       gender: selectedRole === 'customer' ? gender : undefined,
       businessName: selectedRole === 'business' ? businessName : undefined,
       category: selectedRole === 'business' ? businessCategory : undefined,
       location: selectedRole === 'business' ? businessLocation : undefined,
-      salonId: selectedRole === 'business' ? salons[0]?.id || 'salon-1' : undefined,
+      salonId: selectedRole === 'business' ? salons[0]?.id || '' : undefined,
     });
 
     if (!regResult.success) {

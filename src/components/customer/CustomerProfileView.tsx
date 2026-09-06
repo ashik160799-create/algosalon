@@ -115,19 +115,23 @@ export const CustomerProfileView: React.FC = () => {
     }).catch(() => {});
   }, []);
 
-  // Sync state whenever customerUser or current session changes
+  // Sync state whenever customerUser fields change
   useEffect(() => {
-    // Always fetch fresh profile on mount or session update
-    const fresh = fetchFreshUserProfile();
-    const active = fresh?.customer || customerUser;
-    setNameVal(active.name || '');
-    setPhoneVal(active.phone || '');
-    setEmailVal(active.email || '');
-    setPinVal(active.appCode || '');
-    setConfirmPinVal(active.appCode || '');
-    setGenderVal(active.gender || 'Male');
-    setAvatarVal(active.avatar || '');
-  }, [customerUser]);
+    setNameVal(customerUser.name || '');
+    setPhoneVal(customerUser.phone || '');
+    setEmailVal(customerUser.email || '');
+    setPinVal(customerUser.appCode || '');
+    setConfirmPinVal(customerUser.appCode || '');
+    setGenderVal(customerUser.gender || 'Male');
+    setAvatarVal(customerUser.avatar || '');
+  }, [
+    customerUser.name,
+    customerUser.phone,
+    customerUser.email,
+    customerUser.appCode,
+    customerUser.gender,
+    customerUser.avatar,
+  ]);
 
   const [smsAlerts, setSmsAlerts] = useState(true);
   const [whatsappAlerts, setWhatsappAlerts] = useState(true);

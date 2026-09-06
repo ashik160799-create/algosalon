@@ -432,16 +432,20 @@ export const BusinessProfileManager: React.FC = () => {
   const [confirmingDeleteDocId, setConfirmingDeleteDocId] = useState<string | null>(null);
   const [confirmingDeleteSpecialId, setConfirmingDeleteSpecialId] = useState<string | null>(null);
 
-  // Sync state on session updates or fresh profile retrieval
+  // Sync state on session updates or profile changes
   useEffect(() => {
-    const fresh = fetchFreshUserProfile();
-    const active = fresh?.business || businessUser;
-    setOwnerName(active.name || 'Salon Director');
-    setOwnerRole(active.ownerRole || 'Owner & Salon Director');
-    setOwnerEmail(active.email || '');
-    setSignUpGmail(active.signUpGmail || active.email || '');
-    setAppCode(active.appCode || '');
-  }, [businessUser]);
+    setOwnerName(businessUser.name || 'Salon Director');
+    setOwnerRole(businessUser.ownerRole || 'Owner & Salon Director');
+    setOwnerEmail(businessUser.email || '');
+    setSignUpGmail(businessUser.signUpGmail || businessUser.email || '');
+    setAppCode(businessUser.appCode || '');
+  }, [
+    businessUser.name,
+    businessUser.ownerRole,
+    businessUser.email,
+    businessUser.signUpGmail,
+    businessUser.appCode,
+  ]);
 
   const [savedSuccess, setSavedSuccess] = useState(false);
   const heroImageInputRef = useRef<HTMLInputElement>(null);
@@ -1142,9 +1146,9 @@ export const BusinessProfileManager: React.FC = () => {
                       backgroundColor: isLight ? '#f8fafc' : '#0f172a',
                     }}
                   >
-                    {logo ? (
+                    {logo && logo.trim() ? (
                       <img
-                        src={logo}
+                        src={logo.trim()}
                         alt={name || 'Shop Brand Logo'}
                         className="w-full h-full object-cover"
                       />
@@ -1368,9 +1372,9 @@ export const BusinessProfileManager: React.FC = () => {
 
             {/* Banner Media Container */}
             <div className="relative aspect-[16/9] sm:aspect-[21/8] w-full overflow-hidden bg-slate-950 group">
-              {image ? (
+              {image && image.trim() ? (
                 <img
-                  src={image}
+                  src={image.trim()}
                   alt={name || 'Shop Storefront Banner'}
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
@@ -3090,11 +3094,13 @@ export const BusinessProfileManager: React.FC = () => {
                   }`}
                 >
                   <div className="relative aspect-[16/9] w-full overflow-hidden bg-slate-950">
-                    <img
-                      src={preset.url}
-                      alt={preset.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
+                    {preset.url && preset.url.trim() ? (
+                      <img
+                        src={preset.url.trim()}
+                        alt={preset.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : null}
                     <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-black/70 text-amber-400 backdrop-blur-md">
                       {preset.category}
                     </div>

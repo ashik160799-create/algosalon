@@ -946,13 +946,13 @@ export const BusinessServicesManager: React.FC = () => {
                       isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900 border-slate-800'
                     }`}
                   />
-                  {image && (
+                  {image && image.trim() ? (
                     <img
-                      src={image}
+                      src={image.trim()}
                       alt="preview"
                       className="w-12 h-10 rounded-xl object-cover border border-slate-700"
                     />
-                  )}
+                  ) : null}
                 </div>
               </div>
 

@@ -101,7 +101,7 @@ export const SalonCard: React.FC<SalonCardProps> = ({
     >
       <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-slate-950">
         <img
-          src={salon.image}
+          src={(salon.image && salon.image.trim()) || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600'}
           alt={salon.name}
           onLoad={() => setImageLoaded(true)}
           className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ${

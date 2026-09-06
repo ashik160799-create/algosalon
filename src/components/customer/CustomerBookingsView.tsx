@@ -304,7 +304,7 @@ export const CustomerBookingsView: React.FC = () => {
               <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b ${isLight ? 'border-slate-100' : 'border-slate-800'}`}>
                 <div className="flex items-center gap-3.5">
                   <img
-                    src={apt.salonImage}
+                    src={(apt.salonImage && apt.salonImage.trim()) || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300'}
                     alt={apt.salonName}
                     onClick={() => handleViewSalon(apt.salonId)}
                     className="w-13 h-13 rounded-2xl object-cover ring-2 ring-slate-200 dark:ring-slate-700 cursor-pointer transition-transform hover:scale-105"
@@ -495,7 +495,7 @@ export const CustomerBookingsView: React.FC = () => {
                   </span>
                   <div className="flex items-center gap-2 pt-0.5">
                     <img
-                      src={apt.staffAvatar}
+                      src={(apt.staffAvatar && apt.staffAvatar.trim()) || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150'}
                       alt={apt.staffName}
                       className="w-7 h-7 rounded-full object-cover ring-1 ring-slate-300 dark:ring-slate-700"
                     />

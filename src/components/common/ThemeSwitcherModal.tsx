@@ -446,7 +446,9 @@ export const ThemeSwitcherModal: React.FC<ThemeSwitcherModalProps> = ({ isOpen, 
                         : 'border-slate-800 hover:border-slate-700'
                     }`}
                   >
-                    <img src={preset.url} alt={preset.label} className="w-full h-full object-cover" />
+                    {preset.url && preset.url.trim() ? (
+                      <img src={preset.url.trim()} alt={preset.label} className="w-full h-full object-cover" />
+                    ) : null}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-1.5 flex flex-col justify-end">
                       <span className="text-[10px] font-bold text-white line-clamp-1 leading-tight">
                         {preset.label}

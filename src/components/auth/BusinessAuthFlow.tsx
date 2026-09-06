@@ -82,13 +82,6 @@ export const BusinessAuthFlow: React.FC<BusinessAuthFlowProps> = ({
   const [confirmResetCode, setConfirmResetCode] = useState('');
   const [resetCodeError, setResetCodeError] = useState<string | null>(null);
 
-  const mockExistingSalon = salons[0] || {
-    id: 'salon-1',
-    name: 'Spot-Pro Signature Studio',
-    city: 'Downtown Metro',
-    image: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=600&auto=format&fit=crop&q=80',
-  };
-
   const handleGoogleContinue = async () => {
     setEntryError(null);
     try {
@@ -182,11 +175,11 @@ export const BusinessAuthFlow: React.FC<BusinessAuthFlowProps> = ({
       role: 'business',
       name: ownerName.trim(),
       appCode: createAppCode,
-      phone: phone.trim() || '+971 50 123 4567',
+      phone: phone.trim(),
       businessName: businessName.trim(),
       category,
       location,
-      salonId: salons[0]?.id || 'salon-1',
+      salonId: salons[0]?.id || '',
     });
 
     if (!regResult.success) {

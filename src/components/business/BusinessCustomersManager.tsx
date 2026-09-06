@@ -626,7 +626,7 @@ export const BusinessCustomersManager: React.FC<BusinessCustomersManagerProps> =
                   <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
                     <img
                       src={
-                        apt.customerAvatar ||
+                        (apt.customerAvatar && apt.customerAvatar.trim()) ||
                         'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'
                       }
                       alt={apt.customerName}
@@ -671,7 +671,7 @@ export const BusinessCustomersManager: React.FC<BusinessCustomersManagerProps> =
                     </div>
                     <img
                       src={
-                        apt.staffAvatar ||
+                        (apt.staffAvatar && apt.staffAvatar.trim()) ||
                         'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80'
                       }
                       alt={apt.staffName}
@@ -868,7 +868,7 @@ export const BusinessCustomersManager: React.FC<BusinessCustomersManagerProps> =
             {/* Profile Header */}
             <div className="flex items-center gap-3.5 pr-8">
               <img
-                src={callModalApt.customerAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'}
+                src={(callModalApt.customerAvatar && callModalApt.customerAvatar.trim()) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'}
                 alt={callModalApt.customerName}
                 className="w-14 h-14 rounded-2xl object-cover ring-2 ring-slate-200 dark:ring-slate-700 shrink-0 shadow-sm"
                 referrerPolicy="no-referrer"
@@ -1025,7 +1025,7 @@ export const BusinessCustomersManager: React.FC<BusinessCustomersManagerProps> =
                 }`}
               >
                 <img
-                  src={suggestModalApt.customerAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'}
+                  src={(suggestModalApt.customerAvatar && suggestModalApt.customerAvatar.trim()) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'}
                   alt={suggestModalApt.customerName}
                   className="w-10 h-10 rounded-full object-cover shrink-0"
                   referrerPolicy="no-referrer"
@@ -1181,7 +1181,7 @@ export const BusinessCustomersManager: React.FC<BusinessCustomersManagerProps> =
                 }`}
               >
                 <img
-                  src={declineModalApt.customerAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'}
+                  src={(declineModalApt.customerAvatar && declineModalApt.customerAvatar.trim()) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'}
                   alt={declineModalApt.customerName}
                   className="w-10 h-10 rounded-full object-cover shrink-0"
                   referrerPolicy="no-referrer"

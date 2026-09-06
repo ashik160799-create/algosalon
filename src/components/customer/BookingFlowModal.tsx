@@ -75,7 +75,7 @@ export const BookingFlowModal: React.FC = () => {
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [anyStaff, setAnyStaff] = useState(false);
 
-  const today = new Date();
+  const todayDateStr = useMemo(() => getLocalDateString(new Date()), []);
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     return getLocalDateString(new Date());
   });
@@ -228,9 +228,10 @@ export const BookingFlowModal: React.FC = () => {
   const selectedDaySchedule = currentDaySlotsResult.schedule;
 
   const days = useMemo(() => {
+    const base = new Date();
     return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date();
-      d.setDate(today.getDate() + i);
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
       const dateStr = getLocalDateString(d);
       const dayName = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-US', { weekday: 'short' });
       const formattedDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -256,7 +257,7 @@ export const BookingFlowModal: React.FC = () => {
           : 'Closed',
       };
     });
-  }, [today, salon?.workingHours, salon?.specialSchedules, salon?.isOpenNow, selectedService?.durationMinutes]);
+  }, [todayDateStr, salon?.id, salon?.workingHours, salon?.specialSchedules, salon?.isOpenNow, selectedService?.durationMinutes]);
 
   // If today has no future slots when opening booking modal, default to next available open day
   useEffect(() => {
@@ -272,19 +273,16 @@ export const BookingFlowModal: React.FC = () => {
     );
     if (!todayResult.hasAnyFutureSlots) {
       const nextOpenDay = days.find(d => d.hasAnyFutureSlots);
-      if (nextOpenDay) {
-        setSelectedDate(nextOpenDay.dateStr);
-      } else {
-        setSelectedDate(todayStr);
-      }
+      const targetDate = nextOpenDay ? nextOpenDay.dateStr : todayStr;
+      setSelectedDate(prev => (prev === targetDate ? prev : targetDate));
     } else {
-      setSelectedDate(todayStr);
+      setSelectedDate(prev => (prev === todayStr ? prev : todayStr));
     }
-  }, [bookingModalOpen, salon?.workingHours, salon?.specialSchedules, salon?.isOpenNow, days]);
+  }, [bookingModalOpen, salon?.id, selectedService?.durationMinutes]);
 
   // Keep selectedTimeSlot aligned with valid future slots whenever date changes
   useEffect(() => {
-    if (!selectedDate) return;
+    if (!bookingModalOpen || !selectedDate) return;
     if (allAvailableSlotsForDate.length > 0) {
       const isSlotValidAndFree = (s: string) => {
         if (!s || isSlotInPast(selectedDate, s, salonTimezone) || !allAvailableSlotsForDate.includes(s)) return false;
@@ -294,12 +292,13 @@ export const BookingFlowModal: React.FC = () => {
 
       if (!isSlotValidAndFree(selectedTimeSlot)) {
         const firstFreeSlot = allAvailableSlotsForDate.find(s => isSlotValidAndFree(s));
-        setSelectedTimeSlot(firstFreeSlot || allAvailableSlotsForDate[0]);
+        const targetSlot = firstFreeSlot || allAvailableSlotsForDate[0];
+        setSelectedTimeSlot(prev => (prev === targetSlot ? prev : targetSlot));
       }
     } else {
-      setSelectedTimeSlot('');
+      setSelectedTimeSlot(prev => (prev === '' ? prev : ''));
     }
-  }, [selectedDate, allAvailableSlotsForDate, selectedStaff, selectedService, salonTimezone]);
+  }, [bookingModalOpen, selectedDate, allAvailableSlotsForDate, selectedStaff?.id, selectedService?.durationMinutes, salonTimezone]);
 
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
 
@@ -707,7 +706,7 @@ export const BookingFlowModal: React.FC = () => {
                       <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden shrink-0 bg-slate-900 border border-slate-200 dark:border-slate-800">
                         {(() => {
                           const fallback = getRecommendedAiBanner(srv.name, srv.category, srv.genderTarget || 'Unisex').imageUrl;
-                          const imgUrl = srv.image || (srv as any).bannerImage || fallback;
+                          const imgUrl = (srv.image && srv.image.trim()) || ((srv as any).bannerImage && (srv as any).bannerImage.trim()) || fallback;
                           return (
                             <img
                               src={imgUrl}

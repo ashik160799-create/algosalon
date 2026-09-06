@@ -131,7 +131,7 @@ export const SalonDetailModal: React.FC<SalonDetailModalProps> = ({ salon, onClo
       >
         <div className="relative h-52 sm:h-64 w-full shrink-0">
           <img
-            src={salon.coverImage || salon.image}
+            src={(salon.coverImage && salon.coverImage.trim()) || (salon.image && salon.image.trim()) || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1200'}
             alt={salon.name}
             className="w-full h-full object-cover"
           />
@@ -448,7 +448,7 @@ export const SalonDetailModal: React.FC<SalonDetailModalProps> = ({ salon, onClo
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
                         <img
-                          src={rev.customerAvatar}
+                          src={(rev.customerAvatar && rev.customerAvatar.trim()) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
                           alt={rev.customerName}
                           className="w-8 h-8 rounded-full object-cover"
                         />

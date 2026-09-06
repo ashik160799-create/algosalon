@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Salon, StaffMember, ServiceItem, Appointment } from '../../types';
 import { StaffAvatar } from '../common/StaffAvatar';
@@ -60,6 +60,7 @@ export const CustomerHome: React.FC = () => {
   const [themeModalOpen, setThemeModalOpen] = useState(false);
 
   const isLight = colorThemeMode === 'light';
+  const hasRequestedLocationRef = useRef(false);
 
   // Automatically detect location if browser permission changes to granted
   useEffect(() => {
@@ -69,11 +70,13 @@ export const CustomerHome: React.FC = () => {
       .query({ name: 'geolocation' })
       .then(status => {
         if (!mounted) return;
-        if (status.state === 'granted' && !locationPermissionGranted) {
+        if (status.state === 'granted' && !locationPermissionGranted && !hasRequestedLocationRef.current) {
+          hasRequestedLocationRef.current = true;
           requestLocationPermission();
         }
         status.onchange = () => {
-          if (mounted && status.state === 'granted') {
+          if (mounted && status.state === 'granted' && !hasRequestedLocationRef.current) {
+            hasRequestedLocationRef.current = true;
             requestLocationPermission();
           }
         };
@@ -338,10 +341,11 @@ export const CustomerHome: React.FC = () => {
           >
             <div className="flex items-center gap-3.5">
               <div className="relative">
-                <img
-                  src={lastVisit.staffAvatar}
-                  alt={lastVisit.staffName}
-                  className="w-12 h-12 rounded-full object-cover ring-2 ring-slate-200 dark:ring-slate-700"
+                <StaffAvatar
+                  name={lastVisit.staffName}
+                  avatar={lastVisit.staffAvatar || null}
+                  size="md"
+                  className="ring-2 ring-slate-200 dark:ring-slate-700 rounded-full"
                 />
                 <span
                   className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full ring-2 ring-white dark:ring-slate-900"
@@ -561,7 +565,7 @@ export const CustomerHome: React.FC = () => {
                 >
                   <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-200 dark:bg-slate-950">
                     <img
-                      src={salon.image}
+                      src={(salon.image && salon.image.trim()) || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600'}
                       alt={salon.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />

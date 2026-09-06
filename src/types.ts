@@ -274,3 +274,32 @@ export interface ThemeConfig {
   contrastText?: string;
   primaryTextColor?: string;
 }
+
+export const EMPTY_CUSTOMER: CustomerUser = {
+  id: '',
+  name: '',
+  email: '',
+  phone: '',
+  avatar: '',
+  gender: 'Prefer not to say',
+  dateOfBirth: '',
+  nationality: '',
+  appCode: '',
+  savedSalonIds: [],
+  loyaltyPoints: 0,
+};
+
+export const EMPTY_BUSINESS: BusinessUser = {
+  id: '',
+  name: '',
+  email: '',
+  phone: '',
+  salonId: '',
+  ownerRole: '',
+  businessName: '',
+  category: '',
+  location: '',
+  appCode: '',
+  signUpGmail: '',
+  isGmailLinked: false,
+};
