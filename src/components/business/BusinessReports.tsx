@@ -957,7 +957,7 @@ export const BusinessReports: React.FC = () => {
                     }`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <StaffAvatar name={staff.name} photoUrl={staff.photoUrl} size="md" />
+                      <StaffAvatar name={staff.name} avatar={staff.photoUrl || (staff as any).avatar} size="md" />
                       <div>
                         <h3 className={`text-sm font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
                           {staff.name}

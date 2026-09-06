@@ -326,7 +326,7 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
 
       // Dispatch real Supabase OTP / Magic link to this email in background
       try {
-        const { error } = await resendSupabaseVerification(sanitized);
+        const { error } = await resendSupabaseVerification(sanitized, selectedRole);
         if (error) {
           console.warn('Supabase OTP dispatch note:', error);
           const parsed = parseAuthError(error);
@@ -611,10 +611,7 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
         phone: createdAccount.phone || '',
         gender: createdAccount.gender,
         appCode: newAppCode,
-        avatar:
-          gender === 'Male'
-            ? 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80'
-            : 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+        avatar: createdAccount.avatar || '',
         savedSalonIds: [],
         loyaltyPoints: 0,
       });
@@ -643,6 +640,7 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
 
     syncAccountIdentityToSupabase(createdAccount.email, selectedRole, {
       full_name: createdAccount.name,
+      name: createdAccount.name,
       phone: createdAccount.phone,
       business_name: createdAccount.businessName,
     });

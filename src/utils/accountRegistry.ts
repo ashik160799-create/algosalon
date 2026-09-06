@@ -517,11 +517,7 @@ export const accountToCustomerUser = (account: RegisteredAccount): CustomerUser 
     name: account.name,
     email: account.email,
     phone: account.phone || '',
-    avatar:
-      account.avatar ||
-      (account.gender === 'Female'
-        ? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80'
-        : 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80'),
+    avatar: account.avatar || '',
     gender: account.gender || 'Male',
     dateOfBirth: account.dateOfBirth || '',
     nationality: account.nationality || '',

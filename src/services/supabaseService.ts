@@ -159,7 +159,7 @@ export async function fetchSalonsFromDb(): Promise<{
       salonId: st.salon_id,
       name: st.display_name,
       roleTitle: st.role_title,
-      avatar: st.avatar_path || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+      avatar: st.avatar_path || '',
       rating: Number(st.rating) || 5.0,
       reviewsCount: st.reviews_count || 0,
       specialties: st.specialties || [],
@@ -333,7 +333,7 @@ export async function fetchAppointmentsFromDb(options?: {
         durationMinutes,
         staffId: apt.staff_id,
         staffName: apt.staff_name,
-        staffAvatar: apt.staff_profiles?.avatar_path || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+        staffAvatar: apt.staff_profiles?.avatar_path || '',
         date: dateStr,
         timeSlot: timeSlotStr,
         status: apt.status as AppointmentStatus,
@@ -1206,7 +1206,11 @@ export async function signInWithSupabaseGoogle(): Promise<{
 /**
  * Sends a real Supabase 6-digit OTP code or Magic Link to the customer's Gmail / Email.
  */
-export async function sendSupabaseOtp(email: string): Promise<{
+export async function sendSupabaseOtp(
+  email: string,
+  role?: 'customer' | 'business',
+  name?: string
+): Promise<{
   data: any;
   error: any;
 }> {
@@ -1217,11 +1221,23 @@ export async function sendSupabaseOtp(email: string): Promise<{
   try {
     const cleanEmail = sanitizeEmail(email);
     const redirectTo = `${window.location.origin}/`;
+    const accountType = role === 'business' ? 'Business' : 'Customer';
+    const metadata: Record<string, any> = {
+      role: role || 'customer',
+      account_type: accountType,
+      type: accountType,
+    };
+    if (name && name.trim()) {
+      metadata.full_name = name.trim();
+      metadata.name = name.trim();
+    }
+
     const response = await supabaseALGOsalonClient.auth.signInWithOtp({
       email: cleanEmail,
       options: {
         emailRedirectTo: redirectTo,
         shouldCreateUser: true,
+        data: metadata,
       },
     });
     return response;
@@ -1234,7 +1250,11 @@ export async function sendSupabaseOtp(email: string): Promise<{
  * Resends a verification email or Magic Link to the customer's Gmail / Email.
  * Handles both signInWithOtp and auth.resend fallback with Supabase rate limit handling.
  */
-export async function resendSupabaseVerification(email: string): Promise<{
+export async function resendSupabaseVerification(
+  email: string,
+  role?: 'customer' | 'business',
+  name?: string
+): Promise<{
   data: any;
   error: any;
 }> {
@@ -1244,6 +1264,16 @@ export async function resendSupabaseVerification(email: string): Promise<{
 
   const cleanEmail = sanitizeEmail(email);
   const redirectTo = `${window.location.origin}/`;
+  const accountType = role === 'business' ? 'Business' : 'Customer';
+  const metadata: Record<string, any> = {
+    role: role || 'customer',
+    account_type: accountType,
+    type: accountType,
+  };
+  if (name && name.trim()) {
+    metadata.full_name = name.trim();
+    metadata.name = name.trim();
+  }
 
   try {
     const response = await supabaseALGOsalonClient.auth.signInWithOtp({
@@ -1251,6 +1281,7 @@ export async function resendSupabaseVerification(email: string): Promise<{
       options: {
         emailRedirectTo: redirectTo,
         shouldCreateUser: true,
+        data: metadata,
       },
     });
 
@@ -1471,18 +1502,38 @@ export async function syncAccountIdentityToSupabase(
 
   try {
     const { data: { session } } = await supabaseALGOsalonClient.auth.getSession();
+    const accountType: 'Customer' | 'Business' = role === 'business' ? 'Business' : 'Customer';
+    const fullName = extraMetadata?.full_name || extraMetadata?.name || session?.user?.user_metadata?.full_name || '';
+
     if (session?.user && session.user.email?.toLowerCase() === normEmail) {
-      const accountType: 'Customer' | 'Business' = role === 'business' ? 'Business' : 'Customer';
       await supabaseALGOsalonClient.auth.updateUser({
         data: {
           role,
           account_type: accountType,
           type: accountType,
+          full_name: fullName,
+          name: fullName,
           ...extraMetadata,
         },
       });
-      console.log(`[Supabase Auth] Identity synchronized: Type: ${accountType}, User: ${normEmail}`);
+      console.log(`[Supabase Auth] Identity synchronized: Type: ${accountType}, User: ${normEmail}, Name: ${fullName}`);
     }
+
+    // Also update public.profiles table
+    const profileUpdates: Record<string, any> = {
+      role,
+      updated_at: new Date().toISOString(),
+    };
+    if (fullName) {
+      profileUpdates.full_name = fullName.trim();
+    }
+    if (extraMetadata?.phone) {
+      profileUpdates.phone_e164 = extraMetadata.phone.trim();
+    }
+    await supabaseALGOsalonClient
+      .from('profiles')
+      .update(profileUpdates)
+      .eq('email', normEmail);
   } catch (err) {
     console.warn('Failed to sync Supabase user identity:', err);
   }

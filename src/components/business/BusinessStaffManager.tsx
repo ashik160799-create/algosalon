@@ -15,15 +15,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 
-const AVATAR_PRESETS = [
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80',
-];
-
 export const BusinessStaffManager: React.FC = () => {
   const {
     businessUser,
@@ -53,7 +44,7 @@ export const BusinessStaffManager: React.FC = () => {
   const [gender, setGender] = useState<'Male' | 'Female'>('Male');
   const [roleTitle, setRoleTitle] = useState('Senior Barber & Stylist');
   const [phone, setPhone] = useState('+971 54 429 8306');
-  const [avatar, setAvatar] = useState(AVATAR_PRESETS[0]);
+  const [avatar, setAvatar] = useState('');
   const [specialtiesText, setSpecialtiesText] = useState('Skin Fades, Beard Sculpting, Hot Towel Shave');
   const [shiftHours, setShiftHours] = useState('09:00 AM - 07:00 PM');
   const [experienceYears, setExperienceYears] = useState(5);
@@ -75,7 +66,7 @@ export const BusinessStaffManager: React.FC = () => {
     setGender('Male');
     setRoleTitle('Master Barber & Stylist');
     setPhone('+971 54 429 8306');
-    setAvatar(AVATAR_PRESETS[0]);
+    setAvatar('');
     setSpecialtiesText('Skin Fades, Beard Sculpting, Hot Towel Shave');
     setShiftHours('09:00 AM - 07:00 PM');
     setExperienceYears(5);
@@ -90,7 +81,7 @@ export const BusinessStaffManager: React.FC = () => {
     setGender(st.gender || 'Male');
     setRoleTitle(st.roleTitle);
     setPhone(st.phone || '+971 54 429 8306');
-    setAvatar(st.avatar || AVATAR_PRESETS[0]);
+    setAvatar(st.avatar || '');
     setSpecialtiesText(st.specialties.join(', '));
     setShiftHours(st.shiftHours || '09:00 AM - 07:00 PM');
     setExperienceYears(st.experienceYears || 5);
@@ -114,7 +105,7 @@ export const BusinessStaffManager: React.FC = () => {
       gender,
       roleTitle: roleTitle.trim() || 'Stylist',
       phone: phone.trim() || '+971 54 429 8306',
-      avatar: avatar.trim() || AVATAR_PRESETS[0],
+      avatar: avatar.trim() || '',
       rating: 5.0,
       reviewsCount: 1,
       experienceYears: Number(experienceYears),
@@ -606,25 +597,35 @@ export const BusinessStaffManager: React.FC = () => {
                 </div>
               </div>
 
-              {/* Avatar Presets */}
+              {/* Profile Avatar */}
               <div>
                 <label className="text-xs font-bold text-slate-400 block mb-2">
-                  Select Profile Avatar
+                  Stylist Profile Photo
                 </label>
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
-                  {AVATAR_PRESETS.map((p, idx) => (
-                    <img
-                      key={idx}
-                      src={p}
-                      alt={`preset-${idx}`}
-                      onClick={() => setAvatar(p)}
-                      className={`w-12 h-12 rounded-2xl object-cover cursor-pointer transition-transform hover:scale-105 border-2 ${
-                        avatar === p
-                          ? 'border-indigo-500 ring-2 ring-indigo-500/40 scale-105'
-                          : 'border-transparent opacity-75 hover:opacity-100'
+                <div className="flex items-center gap-3">
+                  <StaffAvatar name={name || 'Stylist'} avatar={avatar} size="lg" />
+                  <div className="flex-1 space-y-1.5">
+                    <input
+                      type="url"
+                      value={avatar}
+                      onChange={e => setAvatar(e.target.value)}
+                      placeholder="Optional: Paste photo URL (or leave empty for Letter Avatar)"
+                      className={`w-full px-3.5 py-2 rounded-xl border text-xs outline-none transition-all ${
+                        isLight
+                          ? 'bg-slate-50 border-slate-200 text-slate-900 focus:border-slate-400'
+                          : 'bg-slate-900 border-slate-800 text-white focus:border-slate-600'
                       }`}
                     />
-                  ))}
+                    {avatar && (
+                      <button
+                        type="button"
+                        onClick={() => setAvatar('')}
+                        className="text-[11px] font-bold text-rose-500 hover:underline cursor-pointer"
+                      >
+                        Remove photo (Use Letter Initial "{name ? name.trim().charAt(0).toUpperCase() : 'S'}")
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -692,10 +693,10 @@ export const BusinessStaffManager: React.FC = () => {
 
             <div className={`p-4 rounded-2xl border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950 border-slate-800'}`}>
               <div className="flex items-center gap-3">
-                <img
-                  src={staffToDelete.avatar || AVATAR_PRESETS[0]}
-                  alt={staffToDelete.name}
-                  className="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-800"
+                <StaffAvatar
+                  name={staffToDelete.name}
+                  avatar={staffToDelete.avatar}
+                  size="sm"
                 />
                 <div className="min-w-0">
                   <h4 className="text-xs font-black truncate">{staffToDelete.name}</h4>

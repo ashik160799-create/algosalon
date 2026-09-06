@@ -4,6 +4,7 @@ import { AlgoLogo } from '../common/AlgoLogo';
 import { ThemeSwitcherModal } from '../common/ThemeSwitcherModal';
 import { LocaleRegionSwitcherModal } from '../common/LocaleRegionSwitcherModal';
 import { formatTimeAgo } from '../../utils/dateTimeUtils';
+import { UserAvatar } from '../common/UserAvatar';
 import {
   Home,
   Calendar,
@@ -339,10 +340,12 @@ export const CustomerNavbar: React.FC = () => {
                     : 'bg-slate-900 border-slate-800 hover:border-slate-700'
                 }`}
               >
-                <img
-                  src={customerUser.avatar}
-                  alt={customerUser.name}
-                  className={`w-7 h-7 rounded-full object-cover ring-1 ${isLight ? 'ring-slate-300' : 'ring-slate-700'}`}
+                <UserAvatar
+                  name={customerUser.name}
+                  avatar={customerUser.avatar}
+                  size="xs"
+                  shape="circle"
+                  className="w-7 h-7"
                 />
                 <span className={`hidden sm:inline font-semibold max-w-[90px] truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>
                   {customerUser.name.split(' ')[0]}

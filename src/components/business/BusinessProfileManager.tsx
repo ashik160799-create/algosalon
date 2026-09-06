@@ -7,7 +7,7 @@ import { getSalonMapUrl, format12Hour } from '../../utils/salonUtils';
 import { ALL_COUNTRY_LOCALES } from '../../utils/localeConfig';
 import { getLocalDateString } from '../../utils/dateTimeUtils';
 import { SalonDocument, WorkingDayHour, SpecialDateSchedule } from '../../types';
-import { uploadAvatarToSupabase, deleteAvatarFromSupabase } from '../../services/supabaseService';
+import { uploadAvatarToSupabase, deleteAvatarFromSupabase, syncAccountIdentityToSupabase } from '../../services/supabaseService';
 import {
   Store,
   MapPin,
@@ -891,6 +891,16 @@ export const BusinessProfileManager: React.FC = () => {
       },
       salon.id
     );
+
+    const targetEmail = signUpGmail.trim() || ownerEmail.trim();
+    if (targetEmail) {
+      syncAccountIdentityToSupabase(targetEmail, 'business', {
+        full_name: ownerName.trim(),
+        name: ownerName.trim(),
+        business_name: name.trim(),
+        phone: phone.trim(),
+      }).catch(err => console.warn('Supabase sync background error:', err));
+    }
 
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);

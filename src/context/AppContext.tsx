@@ -938,72 +938,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             (!regAccount && (pendingOAuthRole === 'business' || !!bizProfile || metaRole === 'business'));
 
           if (isBusiness) {
-            const chosenAvatar = userAvatar || regAccount?.avatar || undefined;
+            const chosenAvatar = userAvatar || regAccount?.avatar || '';
             const bizData: Partial<BusinessUser> = {
               id: authUser.id,
-              name: regAccount?.name || bizProfile?.businessName || userName,
+              name: regAccount?.name || bizProfile?.businessName || (userName !== userEmail.split('@')[0] ? userName : ''),
               email: userEmail,
               signUpGmail: userEmail,
               isGmailLinked: true,
               phone: regAccount?.phone || bizProfile?.phone || authUser.phone || '',
-              businessName: regAccount?.businessName || bizProfile?.businessName || 'ALGO Luxury Salon & Spa - Downtown',
-              salonId: regAccount?.salonId || bizProfile?.salonId || '11111111-1111-1111-1111-111111111111',
+              businessName: regAccount?.businessName || bizProfile?.businessName || '',
+              salonId: regAccount?.salonId || bizProfile?.salonId || '',
               ownerRole: regAccount?.ownerRole || bizProfile?.ownerRole || 'Owner & Salon Director',
-              appCode: regAccount?.appCode || generateSecurePin(),
+              appCode: regAccount?.appCode || '',
             };
-            setBusinessUser(prev => ({ ...prev, ...bizData }));
-            localStorage.setItem('algosalon_business_user', JSON.stringify({ ...INITIAL_BUSINESS_USER, ...bizData }));
-            setCurrentRole('business');
-            localStorage.setItem('algosalon_role', 'business');
-
-            // Ensure locked in account registry: 1 Gmail = 1 Account
-            if (!regAccount) {
-              registerNewAccount({
-                id: authUser.id,
-                email: userEmail,
-                role: 'business',
-                name: userName,
-                appCode: bizData.appCode,
-                phone: bizProfile?.phone || authUser.phone || '',
-                businessName: bizProfile?.businessName || 'ALGO Luxury Salon & Spa - Downtown',
-                salonId: bizProfile?.salonId || '11111111-1111-1111-1111-111111111111',
-                signUpGmail: userEmail,
-                avatar: chosenAvatar,
-              });
-            } else if (userAvatar && !regAccount.avatar) {
+            if (regAccount && regAccount.appCode) {
+              setBusinessUser(prev => ({ ...prev, ...bizData }));
+              localStorage.setItem('algosalon_business_user', JSON.stringify({ ...INITIAL_BUSINESS_USER, ...bizData }));
+              setCurrentRole('business');
+              localStorage.setItem('algosalon_role', 'business');
+            } else if (userAvatar && regAccount && !regAccount.avatar) {
               updateRegisteredAccount(userEmail, { avatar: userAvatar, signUpGmail: userEmail });
             }
           } else {
             // Customer role: prioritize user's real Google photo or fallback to registered avatar
-            const chosenAvatar = userAvatar || regAccount?.avatar || undefined;
+            const chosenAvatar = userAvatar || regAccount?.avatar || '';
             const custData: Partial<CustomerUser> = {
               id: authUser.id,
               email: userEmail,
-              name: regAccount?.name || userName,
+              name: regAccount?.name || (userName !== userEmail.split('@')[0] ? userName : ''),
               phone: regAccount?.phone || authUser.phone || '',
-              avatar: chosenAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
-              gender: regAccount?.gender || 'Male',
-              appCode: regAccount?.appCode || generateSecurePin(),
+              avatar: chosenAvatar,
+              gender: regAccount?.gender || 'Prefer not to say',
+              appCode: regAccount?.appCode || '',
             };
-            setCustomerUser(prev => ({ ...prev, ...custData }));
-            localStorage.setItem('algosalon_customer', JSON.stringify({ ...INITIAL_CUSTOMER, ...custData }));
-            setCurrentRole('customer');
-            localStorage.setItem('algosalon_role', 'customer');
 
-            // Ensure locked in account registry: 1 Gmail = 1 Account
-            if (!regAccount) {
-              registerNewAccount({
-                id: authUser.id,
-                email: userEmail,
-                role: 'customer',
-                name: userName,
-                appCode: custData.appCode,
-                phone: authUser.phone || '',
-                avatar: chosenAvatar,
-                signUpGmail: userEmail,
-              });
-            } else if (userAvatar && (!regAccount.avatar || regAccount.avatar.includes('unsplash.com'))) {
-              // Automatically sync fresh Google photo to user account settings
+            if (regAccount && regAccount.appCode) {
+              setCustomerUser(prev => ({ ...prev, ...custData }));
+              localStorage.setItem('algosalon_customer', JSON.stringify({ ...INITIAL_CUSTOMER, ...custData }));
+              setCurrentRole('customer');
+              localStorage.setItem('algosalon_role', 'customer');
+            } else if (userAvatar && regAccount && (!regAccount.avatar || regAccount.avatar.includes('unsplash.com'))) {
               updateRegisteredAccount(userEmail, { avatar: userAvatar, signUpGmail: userEmail });
             }
           }
@@ -1013,17 +987,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             localStorage.setItem('algosalon_auth_token', session.access_token);
 
             const isGoogleOAuth = authUser.app_metadata?.provider === 'google';
-            const storedAuth = typeof window !== 'undefined' ? localStorage.getItem('algosalon_pending_auth') : null;
-            const isPendingEmailVerify = storedAuth && storedAuth.includes('"step":"new_verify_link"');
+            const hasCompleteProfile = regAccount && !!regAccount.appCode;
 
-            if (isGoogleOAuth || !isPendingEmailVerify) {
-              // Google OAuth redirects directly to existing app logic page
+            if (isGoogleOAuth && hasCompleteProfile) {
               setShowSplash(false);
               setAuthModalOpen(false);
               localStorage.removeItem('algosalon_pending_auth');
-            } else {
-              // Email Magic Link: keep existing "Verify Email & Continue" page open so user can tap the existing icon
+            } else if (!hasCompleteProfile) {
+              // Incomplete profile (e.g. newly verified magic link): guide user to complete profile & PIN
+              const targetRole = isBusiness ? 'business' : 'customer';
+              setAuthTargetRole(targetRole);
+              setAuthMode('signup');
+              setAuthModalOpen(true);
               setShowSplash(false);
+            } else {
+              setShowSplash(false);
+              setAuthModalOpen(false);
+              localStorage.removeItem('algosalon_pending_auth');
             }
 
             // Clean OAuth & Magic Link hash or code from URL
@@ -1233,11 +1213,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       name: userData.name?.trim() || 'Valued Client',
       email: userData.email?.trim() || '',
       phone: userData.phone?.trim() || '',
-      avatar:
-        userData.avatar ||
-        (userData.gender === 'Female'
-          ? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80'
-          : 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80'),
+      avatar: userData.avatar || '',
       gender: userData.gender || 'Prefer not to say',
       dateOfBirth: userData.dateOfBirth || '',
       nationality: userData.nationality || '',

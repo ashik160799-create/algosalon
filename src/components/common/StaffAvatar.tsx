@@ -29,8 +29,16 @@ export const StaffAvatar: React.FC<StaffAvatarProps> = ({
     xl: 'w-20 h-20 text-2xl rounded-3xl',
   };
 
+  const isLegacyStockImage =
+    typeof avatar === 'string' &&
+    (avatar.includes('photo-1534528741775-53994a69daeb') ||
+      avatar.includes('photo-1507003211169-0a1dd7228f2d') ||
+      avatar.includes('photo-1500648767791-00dcc994a43e') ||
+      avatar.includes('photo-1494790108377-be9c29b29330') ||
+      avatar.includes('photo-1580489944761-15a19d654956'));
+
+  const hasValidImage = !!avatar && avatar.trim() !== '' && !isLegacyStockImage && !imageError;
   const initial = (name || 'S').trim().charAt(0).toUpperCase() || 'S';
-  const hasValidImage = !!avatar && avatar.trim() !== '' && !imageError;
 
   return (
     <div className={`relative inline-flex shrink-0 ${className}`}>

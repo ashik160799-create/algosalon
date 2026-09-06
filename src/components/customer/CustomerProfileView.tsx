@@ -7,6 +7,8 @@ import { parsePhoneNumber } from '../../utils/countryCodes';
 import { SUPPORTED_LANGUAGES } from '../../utils/localeConfig';
 import { isValidEmail } from '../../utils/authErrorHandling';
 import { uploadAvatarToSupabase, deleteAvatarFromSupabase } from '../../services/supabaseService';
+import { UserAvatar } from '../common/UserAvatar';
+import { supabaseALGOsalonClient } from '../../supabaseALGOsalonClient';
 import {
   ArrowLeft,
   ArrowRight,
@@ -37,15 +39,6 @@ import {
   X,
   Check,
 } from 'lucide-react';
-
-const AVATAR_PRESETS = [
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=400&q=80',
-];
 
 type ActiveEditField = 'name' | 'phone' | 'email' | 'pin' | 'gender' | 'avatar' | null;
 
@@ -94,9 +87,18 @@ export const CustomerProfileView: React.FC = () => {
   const [genderVal, setGenderVal] = useState<'Male' | 'Female' | 'Other' | 'Prefer not to say'>(
     customerUser.gender || 'Male'
   );
-  const [avatarVal, setAvatarVal] = useState(customerUser.avatar || AVATAR_PRESETS[0]);
+  const [avatarVal, setAvatarVal] = useState(customerUser.avatar || '');
   const [customAvatarUrl, setCustomAvatarUrl] = useState('');
+  const [googlePhotoUrl, setGooglePhotoUrl] = useState<string | null>(null);
   const [savedToast, setSavedToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabaseALGOsalonClient.auth.getSession().then(({ data }) => {
+      const u = data?.session?.user;
+      const photo = u?.user_metadata?.avatar_url || u?.user_metadata?.picture;
+      if (photo) setGooglePhotoUrl(photo);
+    }).catch(() => {});
+  }, []);
 
   // Sync state whenever customerUser or current session changes
   useEffect(() => {
@@ -109,7 +111,7 @@ export const CustomerProfileView: React.FC = () => {
     setPinVal(active.appCode || '');
     setConfirmPinVal(active.appCode || '');
     setGenderVal(active.gender || 'Male');
-    setAvatarVal(active.avatar || AVATAR_PRESETS[0]);
+    setAvatarVal(active.avatar || '');
   }, [customerUser]);
 
   const [smsAlerts, setSmsAlerts] = useState(true);
@@ -142,7 +144,7 @@ export const CustomerProfileView: React.FC = () => {
         setGenderVal(customerUser.gender || 'Male');
         break;
       case 'avatar':
-        setAvatarVal(customerUser.avatar || AVATAR_PRESETS[0]);
+        setAvatarVal(customerUser.avatar || '');
         setCustomAvatarUrl('');
         break;
     }
@@ -238,13 +240,12 @@ export const CustomerProfileView: React.FC = () => {
   const handleDeleteAvatar = async () => {
     try {
       if (customerUser.avatar && customerUser.avatar.startsWith('http')) {
-        await deleteAvatarFromSupabase(customerUser.avatar);
+        await deleteAvatarFromSupabase(customerUser.avatar).catch(() => {});
       }
-      const defaultAvatar = customerUser.gender === 'Female' ? AVATAR_PRESETS[3] : AVATAR_PRESETS[2];
-      setAvatarVal(defaultAvatar);
+      setAvatarVal('');
       setCustomAvatarUrl('');
-      updateCustomerProfile({ avatar: defaultAvatar });
-      showToast('Profile photo removed. Default photo set.');
+      updateCustomerProfile({ avatar: '' });
+      showToast('Profile photo removed. Initial avatar set.');
     } catch (err) {
       console.error('Failed to delete avatar:', err);
       showToast('Error removing avatar');
@@ -331,15 +332,15 @@ export const CustomerProfileView: React.FC = () => {
               className="hidden"
               onChange={handleAvatarFileUpload}
             />
-            <img
-              src={customerUser.avatar || AVATAR_PRESETS[0]}
-              alt={customerUser.name}
-              className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl object-cover ring-2 ring-offset-2 transition-transform group-hover:scale-105"
+            <UserAvatar
+              name={customerUser.name}
+              avatar={customerUser.avatar}
+              size="xl"
+              className="w-18 h-18 sm:w-20 sm:h-20 ring-2 ring-offset-2 transition-transform group-hover:scale-105"
               style={{
                 borderColor: currentThemeConfig.primaryHex,
                 boxShadow: `0 4px 14px ${currentThemeConfig.glowHex}`,
               }}
-              referrerPolicy="no-referrer"
             />
             <button
               type="button"
@@ -1151,10 +1152,11 @@ export const CustomerProfileView: React.FC = () => {
               <div className="space-y-4">
                 <div className="flex flex-col items-center justify-center gap-3">
                   <div className="relative">
-                    <img
-                      src={customAvatarUrl.trim() || avatarVal}
-                      alt="Avatar Preview"
-                      className="w-24 h-24 rounded-3xl object-cover ring-4 ring-offset-2"
+                    <UserAvatar
+                      name={customerUser.name}
+                      avatar={customAvatarUrl.trim() || avatarVal}
+                      size="2xl"
+                      className="ring-4 ring-offset-2"
                       style={{ borderColor: currentThemeConfig.primaryHex }}
                     />
                     {isUploadingAvatar && (
@@ -1177,6 +1179,23 @@ export const CustomerProfileView: React.FC = () => {
                       <span>{isUploadingAvatar ? 'Uploading...' : 'Upload New Photo'}</span>
                     </button>
 
+                    {googlePhotoUrl && googlePhotoUrl !== (customAvatarUrl.trim() || avatarVal) && (
+                      <button
+                        type="button"
+                        id="modal-sync-google-avatar-btn"
+                        onClick={() => {
+                          setAvatarVal(googlePhotoUrl);
+                          setCustomAvatarUrl('');
+                          updateCustomerProfile({ avatar: googlePhotoUrl });
+                          showToast('Google profile photo synchronized!');
+                        }}
+                        className="px-3.5 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50 font-bold text-xs hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-transform active:scale-95 cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                        <span>Sync Google Photo</span>
+                      </button>
+                    )}
+
                     {(customerUser.avatar || avatarVal) && (
                       <button
                         type="button"
@@ -1191,38 +1210,6 @@ export const CustomerProfileView: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <span className={`text-xs font-bold uppercase tracking-wider ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                    Or Choose From Curated Presets
-                  </span>
-                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                    {AVATAR_PRESETS.map((preset, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => {
-                          setAvatarVal(preset);
-                          setCustomAvatarUrl('');
-                        }}
-                        className={`relative rounded-2xl overflow-hidden aspect-square border-2 transition-transform hover:scale-105 active:scale-95 cursor-pointer ${
-                          avatarVal === preset && !customAvatarUrl
-                            ? 'ring-2 ring-offset-1 ring-emerald-500 border-emerald-500'
-                            : isLight
-                            ? 'border-slate-200'
-                            : 'border-slate-700'
-                        }`}
-                      >
-                        <img src={preset} alt={`Preset ${idx + 1}`} className="w-full h-full object-cover" />
-                        {avatarVal === preset && !customAvatarUrl && (
-                          <div className="absolute inset-0 bg-emerald-500/20 flex items-center justify-center">
-                            <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-300 stroke-[3]" />
-                          </div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 <div className="space-y-1.5">
                   <label className={`text-xs font-bold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                     Or Paste Custom Image URL
@@ -1231,7 +1218,7 @@ export const CustomerProfileView: React.FC = () => {
                     type="url"
                     value={customAvatarUrl}
                     onChange={e => setCustomAvatarUrl(e.target.value)}
-                    placeholder="https://images.unsplash.com/..."
+                    placeholder="https://example.com/photo.jpg"
                     className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none transition-all ${
                       isLight
                         ? 'bg-slate-50 border-slate-200 text-slate-900 focus:border-slate-400'
