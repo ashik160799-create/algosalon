@@ -327,6 +327,19 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
         if (res.error) {
           console.warn('Supabase OTP dispatch note:', res.error);
           const parsed = parseAuthError(res.error);
+          if (parsed.category === 'rate_limit') {
+            // Supabase hourly limit reached, but a link was recently dispatched to this email inbox
+            setResolvedAccount(null);
+            setResendCooldown(parsed.retryAfterSeconds || 60);
+            setVerificationNotice(null);
+            setResendNotice({
+              type: 'warning',
+              message: 'Rate limit active: A verification link was recently sent to your inbox. Please check your email and tap Verify.',
+            });
+            setStep('new_verify_link');
+            setIsSubmittingEmail(false);
+            return;
+          }
           setErrorMessage(parsed.message || 'Unable to send verification email. Please try again.');
           setIsSubmittingEmail(false);
           return;
