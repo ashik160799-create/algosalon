@@ -65,14 +65,23 @@ export function isValidEmail(email: string): boolean {
   return domainParts.length >= 2 && tld.length >= 2;
 }
 
+export interface AuthErrorObject {
+  message?: string;
+  error_description?: string;
+  details?: string;
+  code?: string;
+  status?: number;
+}
+
 /**
- * Extracts wait time in seconds from error messages or status payloads
+ * Extracts cooldown/rate-limit seconds from a Supabase Auth error message or headers
  * (e.g., "For security purposes, you can only request this once every 60 seconds")
  */
-export function extractRateLimitSeconds(error: any, defaultSeconds: number = 60): number {
+export function extractRateLimitSeconds(error: unknown, defaultSeconds: number = 60): number {
   if (!error) return defaultSeconds;
 
-  const msg = typeof error === 'string' ? error : error?.message || error?.error_description || '';
+  const errObj = error as AuthErrorObject;
+  const msg = typeof error === 'string' ? error : errObj?.message || errObj?.error_description || '';
   const match = msg.match(/(\d+)\s*seconds?/i);
   if (match && match[1]) {
     const parsed = parseInt(match[1], 10);
@@ -82,7 +91,7 @@ export function extractRateLimitSeconds(error: any, defaultSeconds: number = 60)
   }
 
   // Check headers or retry_after if available
-  if (error?.status === 429 || error?.code === 'over_email_send_rate_limit') {
+  if (errObj?.status === 429 || errObj?.code === 'over_email_send_rate_limit') {
     return defaultSeconds;
   }
 
@@ -93,7 +102,7 @@ export function extractRateLimitSeconds(error: any, defaultSeconds: number = 60)
  * Parses any Supabase, GoTrue, OAuth, network, or application authentication error
  * and returns a standardized, user-friendly, internationalized error object.
  */
-export function parseAuthError(error: any): ParsedAuthError {
+export function parseAuthError(error: unknown): ParsedAuthError {
   if (!error) {
     return {
       category: 'unknown',
@@ -102,13 +111,14 @@ export function parseAuthError(error: any): ParsedAuthError {
     };
   }
 
+  const errObj = error as AuthErrorObject;
   const rawMsg = (
     typeof error === 'string'
       ? error
-      : error?.message || error?.error_description || error?.details || JSON.stringify(error)
+      : errObj?.message || errObj?.error_description || errObj?.details || JSON.stringify(error)
   ).toLowerCase();
 
-  const code = (error?.code || error?.status || '').toString().toLowerCase();
+  const code = ((error as any)?.code || (error as any)?.status || '').toString().toLowerCase();
 
   // 1. Network / Offline / Connection Drops
   const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
@@ -276,6 +286,6 @@ export function parseAuthError(error: any): ParsedAuthError {
 /**
  * Convenient shorthand returning directly the translated human-friendly error string.
  */
-export function translateAuthError(error: any): string {
+export function translateAuthError(error: unknown): string {
   return parseAuthError(error).message;
 }

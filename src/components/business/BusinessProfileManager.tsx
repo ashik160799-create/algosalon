@@ -429,6 +429,8 @@ export const BusinessProfileManager: React.FC = () => {
   const [copiedAppCode, setCopiedAppCode] = useState(false);
   const [isResetAppCodeModalOpen, setIsResetAppCodeModalOpen] = useState(false);
   const [customResetCode, setCustomResetCode] = useState('');
+  const [confirmingDeleteDocId, setConfirmingDeleteDocId] = useState<string | null>(null);
+  const [confirmingDeleteSpecialId, setConfirmingDeleteSpecialId] = useState<string | null>(null);
 
   // Sync state on session updates or fresh profile retrieval
   useEffect(() => {
@@ -2247,11 +2249,24 @@ export const BusinessProfileManager: React.FC = () => {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDeleteSpecialDate(spec.id)}
-                          title="Delete Special Date"
-                          className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-800/60 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                          onClick={() => {
+                            if (confirmingDeleteSpecialId !== spec.id) {
+                              setConfirmingDeleteSpecialId(spec.id);
+                              setTimeout(() => setConfirmingDeleteSpecialId(prev => prev === spec.id ? null : prev), 4000);
+                            } else {
+                              handleDeleteSpecialDate(spec.id);
+                              setConfirmingDeleteSpecialId(null);
+                            }
+                          }}
+                          title={confirmingDeleteSpecialId === spec.id ? 'Click again to confirm delete' : 'Delete Special Date'}
+                          className={`p-1.5 rounded-lg border cursor-pointer transition-all flex items-center gap-1 ${
+                            confirmingDeleteSpecialId === spec.id
+                              ? 'bg-rose-600 text-white border-rose-500 shadow-sm'
+                              : 'border-rose-200 dark:border-rose-800/60 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40'
+                          }`}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
+                          {confirmingDeleteSpecialId === spec.id && <span className="text-[10px] font-bold">Delete?</span>}
                         </button>
                       </div>
                     </div>
@@ -2786,11 +2801,24 @@ export const BusinessProfileManager: React.FC = () => {
 
                     <button
                       type="button"
-                      onClick={() => handleDeleteDocument(doc.id)}
-                      className="p-1.5 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                      title="Delete record"
+                      onClick={() => {
+                        if (confirmingDeleteDocId !== doc.id) {
+                          setConfirmingDeleteDocId(doc.id);
+                          setTimeout(() => setConfirmingDeleteDocId(prev => prev === doc.id ? null : prev), 4000);
+                        } else {
+                          handleDeleteDocument(doc.id);
+                          setConfirmingDeleteDocId(null);
+                        }
+                      }}
+                      className={`p-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
+                        confirmingDeleteDocId === doc.id
+                          ? 'bg-rose-600 text-white shadow-sm'
+                          : 'text-slate-400 hover:text-rose-500 hover:bg-rose-500/10'
+                      }`}
+                      title={confirmingDeleteDocId === doc.id ? 'Click again to confirm delete' : 'Delete record'}
                     >
                       <Trash2 className="w-4 h-4" />
+                      {confirmingDeleteDocId === doc.id && <span className="text-[10px] font-bold">Delete?</span>}
                     </button>
                   </div>
                 </div>

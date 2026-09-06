@@ -28,8 +28,9 @@ import {
   sendSupabaseOtp,
   verifySupabaseOtp,
   syncAccountIdentityToSupabase,
+  checkSupabaseAccountIdentity,
 } from '../../services/supabaseService';
-import { isValidEmail } from '../../utils/authErrorHandling';
+import { isValidEmail, translateAuthError } from '../../utils/authErrorHandling';
 import { GoogleOauthSetupModal } from './GoogleOauthSetupModal';
 
 type CustomerScreenStep =
@@ -51,6 +52,7 @@ interface CustomerAuthFlowProps {
 export const CustomerAuthFlow: React.FC<CustomerAuthFlowProps> = ({
   initialMode = 'new',
   onComplete,
+  onCancel,
 }) => {
   const {
     loginAsCustomer,
@@ -64,7 +66,7 @@ export const CustomerAuthFlow: React.FC<CustomerAuthFlowProps> = ({
   const isLight = colorThemeMode === 'light';
 
   const [customerType, setCustomerType] = useState<'new' | 'existing'>(initialMode);
-  const [step, setStep] = useState<CustomerScreenStep>('email_google_select');
+  const [step, setStep] = useState<CustomerScreenStep>(initialMode === 'existing' ? 'existing_enter_code' : 'email_google_select');
 
   const [email, setEmail] = useState('');
   const [entryError, setEntryError] = useState<string | null>(null);
@@ -96,15 +98,17 @@ export const CustomerAuthFlow: React.FC<CustomerAuthFlowProps> = ({
       if (typeof window !== 'undefined') {
         localStorage.setItem('algosalon_pending_oauth_role', 'customer');
       }
-      const { data, error } = await signInWithSupabaseGoogle();
+      const { error } = await signInWithSupabaseGoogle();
       if (error) {
-        console.warn('Supabase Google OAuth error:', error.message);
-        setGoogleOauthErrorMsg(error.message || 'Google OAuth provider is awaiting setup in Supabase.');
+        const errorMsg = translateAuthError(error);
+        console.warn('Supabase Google OAuth error:', errorMsg);
+        setGoogleOauthErrorMsg(errorMsg || 'Google OAuth provider is awaiting setup in Supabase.');
         setGoogleOauthGuideOpen(true);
       }
     } catch (err: any) {
       console.warn('Google login error:', err);
-      setGoogleOauthErrorMsg(err?.message || 'Could not initiate Google login.');
+      const errorMsg = translateAuthError(err);
+      setGoogleOauthErrorMsg(errorMsg || 'Could not initiate Google login.');
       setGoogleOauthGuideOpen(true);
     } finally {
       setIsGoogleSigningIn(false);
@@ -119,7 +123,30 @@ export const CustomerAuthFlow: React.FC<CustomerAuthFlowProps> = ({
       return;
     }
 
-    const status = checkAccountStatus(normalizedEmail);
+    let status = checkAccountStatus(normalizedEmail);
+
+    // If not found in local storage, check remote Supabase identity across devices
+    if (!status.exists) {
+      try {
+        const remote = await checkSupabaseAccountIdentity(normalizedEmail);
+        if (remote.exists && remote.account) {
+          const syncedAccount = {
+            id: remote.account.id || `cust-${Date.now()}`,
+            email: normalizedEmail,
+            role: remote.role || 'customer',
+            name: remote.account.name || normalizedEmail.split('@')[0],
+            appCode: remote.account.appCode || '',
+            phone: remote.account.phone || '',
+            avatar: remote.account.avatar || undefined,
+            signUpGmail: normalizedEmail,
+          };
+          registerNewAccount(syncedAccount);
+          status = checkAccountStatus(normalizedEmail);
+        }
+      } catch (err) {
+        console.warn('Supabase account check note in CustomerAuthFlow:', err);
+      }
+    }
 
     if (status.exists && status.account) {
       if (status.role === 'business') {
@@ -469,7 +496,7 @@ export const CustomerAuthFlow: React.FC<CustomerAuthFlowProps> = ({
             codeLength={6}
             onVerifyCode={async (code) => {
               const res = await verifySupabaseOtp(email, code);
-              return { success: !res.error, error: res.error?.message };
+              return { success: !res.error, error: res.error ? translateAuthError(res.error) : undefined };
             }}
             onResendCode={async () => {
               await sendSupabaseOtp(email);

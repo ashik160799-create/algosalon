@@ -781,6 +781,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       if (result.services && result.services.length > 0) setServices(result.services);
       if (result.staff && result.staff.length > 0) setStaffMembers(result.staff);
+    }).catch(err => {
+      console.warn('[AppContext] Failed to hydrate salons from db:', err);
     });
 
     // 2. Hydrate appointments (replace initial mock data with live database appointments)
@@ -794,6 +796,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.setItem('algosalon_appointments', JSON.stringify(combined));
         return combined;
       });
+    }).catch(err => {
+      console.warn('[AppContext] Failed to hydrate appointments from db:', err);
     });
 
     // 3. Hydrate reviews (replace initial mock reviews with live database reviews)
@@ -807,6 +811,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.setItem('algosalon_reviews', JSON.stringify(combined));
         return combined;
       });
+    }).catch(err => {
+      console.warn('[AppContext] Failed to hydrate reviews from db:', err);
     });
 
     // 4. Real-time Reviews subscription
@@ -822,6 +828,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           localStorage.setItem('algosalon_reviews', JSON.stringify(combined));
           return combined;
         });
+      }).catch(err => {
+        console.warn('[AppContext] Failed to refresh reviews on realtime update:', err);
       });
     });
 
@@ -1122,6 +1130,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               ...prev,
               savedSalonIds: Array.from(new Set([...prev.savedSalonIds, ...liveFavs])),
             }));
+          }).catch(err => {
+            console.warn('[AppContext] Failed to fetch favorites for authUser:', err);
           });
 
           fetchNotificationsFromDb(authUser.id).then(liveNotifs => {
@@ -1134,6 +1144,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               localStorage.setItem('algosalon_notifications', JSON.stringify(combined));
               return combined;
             });
+          }).catch(err => {
+            console.warn('[AppContext] Failed to fetch notifications for authUser:', err);
           });
         }
       }
@@ -1159,6 +1171,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ...prev,
           savedSalonIds: Array.from(new Set([...prev.savedSalonIds, ...liveFavs])),
         }));
+      }).catch(err => {
+        console.warn('[AppContext] Failed to fetch favorites for customerUser:', err);
       });
     }
 
@@ -1174,6 +1188,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           localStorage.setItem('algosalon_notifications', JSON.stringify(combined));
           return combined;
         });
+      }).catch(err => {
+        console.warn('[AppContext] Failed to fetch notifications for user/role:', err);
       });
 
       const unsubscribeUserNotifs = subscribeToNotifications(currentUserId, notif => {
@@ -1308,6 +1324,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setAuthToken(session.access_token);
           localStorage.setItem('algosalon_auth_token', session.access_token);
         }
+      }).catch(err => {
+        console.warn('[AppContext] Failed to get session during signupCustomer:', err);
       });
     } else if (!effectiveToken) {
       effectiveToken = `algosalon_tk_cust_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
@@ -1351,9 +1369,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     }
 
+    setCustomerUser(freshCustomer);
+    setAuthToken(effectiveToken);
     if (effectiveToken) {
       localStorage.setItem('algosalon_auth_token', effectiveToken);
-      setAuthToken(effectiveToken);
     }
     localStorage.setItem('algosalon_role', 'customer');
     localStorage.setItem('algosalon_customer', JSON.stringify(freshCustomer));
@@ -1405,6 +1424,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setAuthToken(session.access_token);
           localStorage.setItem('algosalon_auth_token', session.access_token);
         }
+      }).catch(err => {
+        console.warn('[AppContext] Failed to get session during signupBusiness:', err);
       });
     } else if (!effectiveToken) {
       effectiveToken = `algosalon_tk_biz_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;

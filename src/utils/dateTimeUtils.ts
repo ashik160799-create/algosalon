@@ -38,8 +38,8 @@ export function getSalonTimezone(salon?: Salon | { address?: string; city?: stri
   }
 
   // 1. Authoritative: Use explicit database salon.timezone if present
-  if ((salon as any).timezone && typeof (salon as any).timezone === 'string') {
-    const tz = (salon as any).timezone.trim();
+  if (salon.timezone && typeof salon.timezone === 'string') {
+    const tz = salon.timezone.trim();
     const matched = Object.values(TIMEZONE_REGISTRY).find(r => r.timeZone.toLowerCase() === tz.toLowerCase());
     if (matched) {
       return {

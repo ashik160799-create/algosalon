@@ -21,8 +21,12 @@ import {
   checkAccountStatus,
   verifyAccountPin,
 } from '../../utils/accountRegistry';
-import { syncAccountIdentityToSupabase, signInWithSupabaseGoogle } from '../../services/supabaseService';
-import { isValidEmail } from '../../utils/authErrorHandling';
+import {
+  syncAccountIdentityToSupabase,
+  signInWithSupabaseGoogle,
+  checkSupabaseAccountIdentity,
+} from '../../services/supabaseService';
+import { isValidEmail, translateAuthError } from '../../utils/authErrorHandling';
 
 type BusinessScreenStep =
   | 'email_google_select'
@@ -93,14 +97,14 @@ export const BusinessAuthFlow: React.FC<BusinessAuthFlowProps> = ({
       }
       const { error } = await signInWithSupabaseGoogle();
       if (error) {
-        setEntryError(error.message || 'Could not initiate Google login.');
+        setEntryError(translateAuthError(error));
       }
-    } catch (err: any) {
-      setEntryError(err?.message || 'Could not initiate Google login.');
+    } catch (err: unknown) {
+      setEntryError(translateAuthError(err));
     }
   };
 
-  const handleEmailContinue = (e: React.FormEvent) => {
+  const handleEmailContinue = async (e: React.FormEvent) => {
     e.preventDefault();
     const normalizedEmail = normalizeEmail(email);
     if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
@@ -108,7 +112,30 @@ export const BusinessAuthFlow: React.FC<BusinessAuthFlowProps> = ({
       return;
     }
 
-    const status = checkAccountStatus(normalizedEmail);
+    let status = checkAccountStatus(normalizedEmail);
+
+    // If not found in local storage, check remote Supabase identity across devices
+    if (!status.exists) {
+      try {
+        const remote = await checkSupabaseAccountIdentity(normalizedEmail);
+        if (remote.exists && remote.account) {
+          const syncedAccount = {
+            id: remote.account.id || `biz-${Date.now()}`,
+            email: normalizedEmail,
+            role: remote.role || 'business',
+            name: remote.account.name || normalizedEmail.split('@')[0],
+            appCode: remote.account.appCode || '',
+            phone: remote.account.phone || '',
+            avatar: remote.account.avatar || undefined,
+            signUpGmail: normalizedEmail,
+          };
+          registerNewAccount(syncedAccount);
+          status = checkAccountStatus(normalizedEmail);
+        }
+      } catch (err) {
+        console.warn('Supabase account check note in BusinessAuthFlow:', err);
+      }
+    }
 
     if (status.exists && status.account) {
       if (status.role === 'customer') {

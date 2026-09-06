@@ -21,6 +21,27 @@ import {
 import { sanitizeEmail } from '../utils/authErrorHandling';
 import { getLocalDateString } from '../utils/dateTimeUtils';
 
+export function getErrorMessage(err: unknown, fallback: string = 'Network error occurred'): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'string') return err;
+  if (err && typeof err === 'object' && 'message' in err && typeof (err as { message: unknown }).message === 'string') {
+    return (err as { message: string }).message;
+  }
+  return fallback;
+}
+
+interface DbSpecialRow {
+  id?: string;
+  salon_id?: string;
+  date: string;
+  title?: string;
+  note?: string;
+  is_open: boolean;
+  opens_at?: string;
+  closes_at?: string;
+  reason?: string;
+}
+
 /**
  * Maps raw database salon and related rows into frontend Salon type
  */
@@ -66,7 +87,7 @@ export async function fetchSalonsFromDb(): Promise<{
     const dbServices = servicesRes.data || [];
     const dbStaff = staffRes.data || [];
     const dbHours = hoursRes.data || [];
-    const dbSpecials = specialRes.data || [];
+    const dbSpecials: DbSpecialRow[] = (specialRes.data as DbSpecialRow[]) || [];
 
     const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -82,8 +103,8 @@ export async function fetchSalonsFromDb(): Promise<{
         }));
 
       const salonSpecials: SpecialDateSchedule[] = dbSpecials
-        .filter((ss: any) => ss.salon_id === s.id)
-        .map((ss: any) => ({
+        .filter((ss: DbSpecialRow) => ss.salon_id === s.id)
+        .map((ss: DbSpecialRow) => ({
           id: ss.id || ss.date,
           date: ss.date,
           title: ss.title || ss.note || 'Special Hours',
@@ -216,9 +237,9 @@ export async function createBookingInDb(data: {
     }
 
     return { success: true, appointmentId };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error executing create_booking:', err);
-    return { success: false, error: err.message || 'Network error during booking creation' };
+    return { success: false, error: getErrorMessage(err, 'Network error during booking creation') };
   }
 }
 
@@ -263,9 +284,9 @@ export async function setAppointmentStatusInDb(params: {
     }
 
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error executing set_appointment_status:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -637,9 +658,9 @@ export async function createReviewInDb(review: {
     }
 
     return { success: true, reviewId: data?.id };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error executing createReviewInDb:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -671,9 +692,9 @@ export async function updateSalonRatingInDb(
     }
 
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error executing updateSalonRatingInDb:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -708,9 +729,9 @@ export async function replyToReviewInDb(
     }
 
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error executing replyToReviewInDb:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -814,9 +835,9 @@ export async function addFavoriteInDb(
       return { success: false, error: error.message };
     }
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error executing addFavoriteInDb:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -857,9 +878,9 @@ export async function removeFavoriteInDb(
       return { success: false, error: error.message };
     }
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error executing removeFavoriteInDb:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -980,9 +1001,9 @@ export async function createNotificationInDb(notification: {
     }
 
     return { success: true, notificationId: data?.id };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error creating notification in Supabase:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -1007,9 +1028,9 @@ export async function markNotificationReadInDb(
       return { success: false, error: error.message };
     }
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error marking notification read:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -1050,9 +1071,9 @@ export async function markAllNotificationsReadInDb(
       return { success: false, error: error.message };
     }
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error marking all notifications read:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -1077,9 +1098,9 @@ export async function deleteNotificationInDb(
       return { success: false, error: error.message };
     }
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error deleting notification:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -1120,9 +1141,9 @@ export async function clearAllNotificationsInDb(
       return { success: false, error: error.message };
     }
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error clearing notifications:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -1178,8 +1199,8 @@ export function subscribeToNotifications(
  * Redirects the patron to Google login and handles return to the application.
  */
 export async function signInWithSupabaseGoogle(): Promise<{
-  data: any;
-  error: any;
+  data: unknown;
+  error: unknown;
 }> {
   if (!isSupabaseConfigured()) {
     return { data: null, error: new Error('Supabase client is not configured') };
@@ -1198,7 +1219,7 @@ export async function signInWithSupabaseGoogle(): Promise<{
       },
     });
     return response;
-  } catch (err: any) {
+  } catch (err: unknown) {
     return { data: null, error: err };
   }
 }
@@ -1211,8 +1232,8 @@ export async function sendSupabaseOtp(
   role?: 'customer' | 'business',
   name?: string
 ): Promise<{
-  data: any;
-  error: any;
+  data: unknown;
+  error: unknown;
 }> {
   if (!isSupabaseConfigured()) {
     return { data: null, error: new Error('Supabase client is not configured') };
@@ -1222,7 +1243,7 @@ export async function sendSupabaseOtp(
     const cleanEmail = sanitizeEmail(email);
     const redirectTo = `${window.location.origin}/`;
     const accountType = role === 'business' ? 'Business' : 'Customer';
-    const metadata: Record<string, any> = {
+    const metadata: Record<string, string | undefined> = {
       role: role || 'customer',
       account_type: accountType,
       type: accountType,
@@ -1241,7 +1262,7 @@ export async function sendSupabaseOtp(
       },
     });
     return response;
-  } catch (err: any) {
+  } catch (err: unknown) {
     return { data: null, error: err };
   }
 }
@@ -1255,8 +1276,8 @@ export async function resendSupabaseVerification(
   role?: 'customer' | 'business',
   name?: string
 ): Promise<{
-  data: any;
-  error: any;
+  data: unknown;
+  error: unknown;
 }> {
   if (!isSupabaseConfigured()) {
     return { data: null, error: new Error('Supabase client is not configured') };
@@ -1265,7 +1286,7 @@ export async function resendSupabaseVerification(
   const cleanEmail = sanitizeEmail(email);
   const redirectTo = `${window.location.origin}/`;
   const accountType = role === 'business' ? 'Business' : 'Customer';
-  const metadata: Record<string, any> = {
+  const metadata: Record<string, string | undefined> = {
     role: role || 'customer',
     account_type: accountType,
     type: accountType,
@@ -1303,7 +1324,7 @@ export async function resendSupabaseVerification(
     }
 
     return response;
-  } catch (err: any) {
+  } catch (err: unknown) {
     return { data: null, error: err };
   }
 }
@@ -1315,8 +1336,8 @@ export async function verifySupabaseOtp(
   email: string,
   token: string
 ): Promise<{
-  data: any;
-  error: any;
+  data: unknown;
+  error: unknown;
 }> {
   if (!isSupabaseConfigured()) {
     return { data: null, error: new Error('Supabase client is not configured') };
@@ -1330,7 +1351,7 @@ export async function verifySupabaseOtp(
       type: 'email',
     });
     return response;
-  } catch (err: any) {
+  } catch (err: unknown) {
     return { data: null, error: err };
   }
 }
@@ -1520,9 +1541,9 @@ export async function syncUserProfileAndAuthInDb(params: {
       return { success: false, error: error.message };
     }
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error in syncUserProfileAndAuthInDb:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -1716,9 +1737,9 @@ export async function addServiceInDb(service: Omit<ServiceItem, 'id'>): Promise<
     }
 
     return { success: true, serviceId: data?.id };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error adding service in DB:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -1761,9 +1782,9 @@ export async function updateServiceInDb(
     }
 
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error updating service in DB:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -1787,9 +1808,9 @@ export async function deleteServiceInDb(serviceId: string): Promise<{ success: b
     }
 
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error deleting service in DB:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -1831,9 +1852,9 @@ export async function addStaffInDb(staff: Omit<StaffMember, 'id'>): Promise<{
     }
 
     return { success: true, staffId: data?.id };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error adding staff in DB:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -1873,9 +1894,9 @@ export async function updateStaffInDb(
     }
 
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error updating staff in DB:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -1899,9 +1920,9 @@ export async function deleteStaffInDb(staffId: string): Promise<{ success: boole
     }
 
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error deleting staff in DB:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -1952,9 +1973,9 @@ export async function updateSalonProfileInDb(
     }
 
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error updating salon profile in DB:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -1999,9 +2020,9 @@ export async function updateSpecialSchedulesInDb(
     }
 
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error updating special schedules in DB:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -2043,9 +2064,9 @@ export async function registerBusinessSalonInDb(params: {
     }
 
     return { success: true, salonId };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error executing register_business_salon:', err);
-    return { success: false, error: err.message || 'Failed to register business salon' };
+    return { success: false, error: getErrorMessage(err, 'Failed to register business salon') };
   }
 }
 
@@ -2089,9 +2110,9 @@ export async function updateBusinessHoursInDb(
     }
 
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error updating business hours in DB:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -2144,9 +2165,9 @@ export async function updateCustomerProfileInDb(
     }
 
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error updating customer profile in DB:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -2182,9 +2203,9 @@ export async function uploadAvatarToSupabase(
       .getPublicUrl(filePath);
 
     return { success: true, url: publicData?.publicUrl };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error uploading avatar:', err);
-    return { success: false, error: err.message || 'Failed to upload avatar' };
+    return { success: false, error: getErrorMessage(err, 'Failed to upload avatar') };
   }
 }
 
@@ -2211,9 +2232,9 @@ export async function deleteAvatarFromSupabase(
       }
     }
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.warn('Error deleting avatar from storage:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -2273,10 +2294,8 @@ export async function deleteAccountInSupabase(
     }
 
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error deleting account in Supabase:', err);
-    return { success: false, error: err.message || 'Database error during account deletion' };
+    return { success: false, error: getErrorMessage(err, 'Database error during account deletion') };
   }
 }
-
-

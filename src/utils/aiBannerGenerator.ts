@@ -1,3 +1,9 @@
+/**
+ * AI Visual Studio & Banner Generator Engine
+ * 
+ * Provides client-side curated high-fashion salon presets paired with a deterministic
+ * prompt engineering generator for instant banner configuration without requiring server roundtrips.
+ */
 export interface AiBannerPreset {
   id: string;
   category: string;

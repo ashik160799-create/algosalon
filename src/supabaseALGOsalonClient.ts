@@ -73,11 +73,12 @@ function normalizeSupabaseKey(rawAnonKey?: unknown, rawPublishableKey?: unknown)
   return '';
 }
 
-const supabaseUrl: string = normalizeSupabaseUrl((import.meta as any).env?.VITE_SUPABASE_URL);
+const env = (import.meta as unknown as { env?: Record<string, string | undefined> }).env || {};
+const supabaseUrl: string = normalizeSupabaseUrl(env.VITE_SUPABASE_URL);
 
 const supabaseAnonKey: string = normalizeSupabaseKey(
-  (import.meta as any).env?.VITE_SUPABASE_ANON_KEY,
-  (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY
+  env.VITE_SUPABASE_ANON_KEY,
+  env.VITE_SUPABASE_PUBLISHABLE_KEY
 );
 
 export const isSupabaseConfigured = (): boolean => {
@@ -111,7 +112,7 @@ export const supabaseALGOsalonClient: SupabaseClient = initSupabaseClient();
 /**
  * Health check to verify live connectivity with your Supabase database
  */
-export async function testSupabaseConnection(): Promise<{ connected: boolean; error?: string; data?: any }> {
+export async function testSupabaseConnection(): Promise<{ connected: boolean; error?: string; data?: unknown }> {
   if (!isSupabaseConfigured()) {
     return { connected: false, error: 'Supabase environment variables are unconfigured' };
   }
@@ -126,9 +127,10 @@ export async function testSupabaseConnection(): Promise<{ connected: boolean; er
       return { connected: false, error: error.message };
     }
     return { connected: true, data };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : typeof err === 'string' ? err : 'Unknown network error';
     console.warn('Supabase connection error:', err);
-    return { connected: false, error: err.message || 'Unknown network error' };
+    return { connected: false, error: message };
   }
 }
 

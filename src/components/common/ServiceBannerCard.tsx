@@ -48,20 +48,19 @@ export const ServiceBannerCard: React.FC<ServiceBannerCardProps> = ({
     service.originalPrice ||
     (discountPercent > 0 ? Math.round(service.price / (1 - discountPercent / 100)) : service.price + 10);
 
-  const offerTag = service.offerTag || `${discountPercent}% off`;
-
   const fallbackImg = getRecommendedAiBanner(
     service.name,
     service.category,
     service.genderTarget || 'Unisex'
   ).imageUrl;
 
-  const bannerImage = service.image || (service as any).bannerImage || fallbackImg;
+  const bannerImage = service.image || fallbackImg;
+  const [confirmingDelete, setConfirmingDelete] = React.useState(false);
 
   return (
     <div
       id={`service-card-${service.id}`}
-      className={`group relative w-full rounded-3xl overflow-hidden border transition-all duration-300 shadow-xl ${
+      className={`group relative rounded-3xl border overflow-hidden transition-all duration-300 hover:shadow-2xl flex flex-col justify-between ${
         isLight
           ? 'bg-slate-900 border-slate-800 text-white'
           : 'bg-[#121316] border-slate-800/90 text-white'
@@ -75,7 +74,7 @@ export const ServiceBannerCard: React.FC<ServiceBannerCardProps> = ({
           referrerPolicy="no-referrer"
           loading="lazy"
           onError={e => {
-            e.currentTarget.src = fallbackImg;
+            e.currentTarget.src = getRecommendedAiBanner(service.name, service.category, service.genderTarget || 'Unisex').imageUrl;
           }}
         />
 
@@ -86,17 +85,20 @@ export const ServiceBannerCard: React.FC<ServiceBannerCardProps> = ({
             {gender}
           </span>
 
-          {offerTag && (
-            <span className="px-3.5 py-1 rounded-full text-xs font-black tracking-wide bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-lg shadow-rose-500/30 flex items-center gap-1 animate-pulse">
+          {service.offerTag && (
+            <span
+              className="px-3 py-1 rounded-full text-xs font-black text-white shadow-md flex items-center gap-1"
+              style={{ backgroundColor: currentThemeConfig.primaryHex }}
+            >
               <Tag className="w-3 h-3" />
-              {offerTag}
+              {service.offerTag}
             </span>
           )}
         </div>
 
-        <div className="absolute bottom-3 left-4 right-4 z-10 space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight drop-shadow-md">
+        <div className="absolute bottom-4 left-4 right-4 z-10 space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-lg sm:text-xl font-black text-white tracking-tight drop-shadow-md">
               {service.name}
             </h3>
 
@@ -187,12 +189,23 @@ export const ServiceBannerCard: React.FC<ServiceBannerCardProps> = ({
                   onClick={e => {
                     e.stopPropagation();
                     e.preventDefault();
-                    onDelete(service.id);
+                    if (!confirmingDelete) {
+                      setConfirmingDelete(true);
+                      setTimeout(() => setConfirmingDelete(false), 4000);
+                    } else {
+                      onDelete(service.id);
+                      setConfirmingDelete(false);
+                    }
                   }}
-                  className="p-2 rounded-xl bg-rose-500/15 text-rose-400 hover:bg-rose-500/25 border border-rose-500/30 transition-all cursor-pointer active:scale-95"
-                  title="Delete Service"
+                  className={`p-2 rounded-xl border transition-all cursor-pointer active:scale-95 flex items-center gap-1 ${
+                    confirmingDelete
+                      ? 'bg-rose-600 text-white border-rose-500 shadow-md font-bold text-xs'
+                      : 'bg-rose-500/15 text-rose-400 hover:bg-rose-500/25 border-rose-500/30'
+                  }`}
+                  title={confirmingDelete ? 'Click again to confirm delete' : 'Delete Service'}
                 >
-                  <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                  <Trash2 className="w-3.5 h-3.5" />
+                  {confirmingDelete && <span className="text-[10px] font-bold">Delete?</span>}
                 </button>
               )}
             </div>

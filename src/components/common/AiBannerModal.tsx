@@ -161,6 +161,9 @@ export const AiBannerModal: React.FC<AiBannerModalProps> = ({
               alt="AI Preview"
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
+              onError={e => {
+                e.currentTarget.src = AI_BANNER_PRESETS[0].imageUrl;
+              }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
             <div className="absolute top-3 left-3 right-3 flex justify-between">
@@ -301,6 +304,9 @@ export const AiBannerModal: React.FC<AiBannerModalProps> = ({
                     alt={preset.title}
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
+                    onError={e => {
+                      e.currentTarget.src = AI_BANNER_PRESETS[0].imageUrl;
+                    }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
                   <span className="absolute bottom-1 left-1.5 right-1.5 text-[9px] font-bold text-white truncate text-left">

@@ -192,7 +192,9 @@ export const cleanupDuplicateAccounts = (): void => {
         ) {
           localStorage.removeItem('algosalon_customer');
         }
-      } catch {}
+      } catch (err) {
+        console.warn('[AccountRegistry] Failed to parse customer profile during cleanup:', err);
+      }
     }
 
     const bizRaw = localStorage.getItem('algosalon_business_user');
@@ -205,7 +207,9 @@ export const cleanupDuplicateAccounts = (): void => {
         ) {
           localStorage.removeItem('algosalon_business_user');
         }
-      } catch {}
+      } catch (err) {
+        console.warn('[AccountRegistry] Failed to parse business profile during cleanup:', err);
+      }
     }
 
     // Also check if customer and business localStorage user profiles share the same email
@@ -226,8 +230,8 @@ export const cleanupDuplicateAccounts = (): void => {
             localStorage.setItem('algosalon_customer', JSON.stringify(INITIAL_CUSTOMER));
           }
         }
-      } catch {
-        // ignore
+      } catch (err) {
+        console.warn('[AccountRegistry] Failed to compare customer and business profiles:', err);
       }
     }
 
@@ -329,20 +333,24 @@ export const getRegisteredAccounts = (): RegisteredAccount[] => {
 
       const existing = uniqueMap.get(normEmail);
       if (!existing) {
+        const pin = account.appCode || '';
         uniqueMap.set(normEmail, {
           ...account,
           email: normEmail,
+          appCodeHash: account.appCodeHash || (pin ? hashAccountPin(pin, normEmail) : undefined),
         });
       } else {
         // If an entry already exists, merge attributes without mutating the fixed role
         // Keep the latest details while maintaining role consistency
+        const pin = account.appCode || existing.appCode || generateSecurePin();
         uniqueMap.set(normEmail, {
           ...existing,
           ...account,
           id: existing.id || account.id,
           role: existing.role, // role remains strictly fixed
           email: normEmail,
-          appCode: account.appCode || existing.appCode || generateSecurePin(),
+          appCode: pin,
+          appCodeHash: account.appCodeHash || existing.appCodeHash || hashAccountPin(pin, normEmail),
         });
       }
     });

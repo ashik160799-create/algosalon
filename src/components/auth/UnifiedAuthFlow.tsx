@@ -365,25 +365,25 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
       if (typeof window !== 'undefined') {
         localStorage.setItem('algosalon_pending_oauth_role', selectedRole || initialRole || 'customer');
       }
-      const { data, error } = await signInWithSupabaseGoogle();
+      const { error } = await signInWithSupabaseGoogle();
       if (error) {
-        console.warn('Supabase Google OAuth response:', error.message);
         const parsed = parseAuthError(error);
+        console.warn('Supabase Google OAuth response:', parsed.message);
         if (parsed.category === 'oauth_cancelled' || parsed.category === 'network') {
           setErrorMessage(parsed.message);
         } else {
-          setGoogleOauthErrorMsg(error.message || 'Google OAuth provider is awaiting setup in Supabase.');
+          setGoogleOauthErrorMsg(parsed.message || 'Google OAuth provider is awaiting setup in Supabase.');
           setGoogleOauthGuideOpen(true);
         }
       }
       // If redirect initiated, browser navigates to Google
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn('Google login error:', err);
       const parsed = parseAuthError(err);
       if (parsed.category === 'oauth_cancelled' || parsed.category === 'network') {
         setErrorMessage(parsed.message);
       } else {
-        setGoogleOauthErrorMsg(err?.message || 'Could not initiate Google login.');
+        setGoogleOauthErrorMsg(parsed.message || 'Could not initiate Google login.');
         setGoogleOauthGuideOpen(true);
       }
     } finally {

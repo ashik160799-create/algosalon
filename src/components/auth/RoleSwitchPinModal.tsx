@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   RotateCcw,
 } from 'lucide-react';
-import { RegisteredAccount } from '../../utils/accountRegistry';
+import { RegisteredAccount, verifyAccountPin } from '../../utils/accountRegistry';
 
 interface RoleSwitchPinModalProps {
   isOpen: boolean;
@@ -61,8 +61,6 @@ export const RoleSwitchPinModal: React.FC<RoleSwitchPinModalProps> = ({
 
   if (!isOpen || !targetAccount) return null;
 
-  const expectedCode = targetAccount.appCode;
-
   const handleDigitChange = (val: string) => {
     if (lockoutTimer > 0) return;
     const clean = val.replace(/\D/g, '').slice(0, 4);
@@ -75,11 +73,12 @@ export const RoleSwitchPinModal: React.FC<RoleSwitchPinModalProps> = ({
   };
 
   const verifyPin = (inputPin: string) => {
-    if (!expectedCode) {
+    if (!targetAccount.appCode && !targetAccount.appCodeHash) {
       setError('No App Code is configured for this account. Please tap Forgot App Code below to reset via email.');
       return;
     }
-    if (inputPin === expectedCode) {
+    const isValid = verifyAccountPin(targetAccount, inputPin);
+    if (isValid) {
       setFailedAttempts(0);
       setError(null);
       onSuccess();
