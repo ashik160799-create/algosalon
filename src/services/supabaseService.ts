@@ -1639,7 +1639,7 @@ import { del } from 'idb-keyval';
  * Direct public CDN URL for Screen 2 background image.
  * Bypasses database/storage RLS entirely for zero latency, instant response, and browser CDN caching.
  */
-const DEFAULT_BG = 'https://mmmthrlbikllhdupslrz.supabase.co/storage/v1/object/public/app-background-images/Splash%20Screen%202/Image%202.png';
+const DEFAULT_BG = 'https://mmmthrlbikllhdupslrz.supabase.co/storage/v1/object/public/app-background-images/Splash%20Screen%202/1788503584034(1)-Picsart-AiImageEnhancer.png';
 const DEFAULT_BG_JPG = DEFAULT_BG;
 
 // Clean up any heavy legacy Base64 blobs from IndexedDB asynchronously in background
@@ -1659,7 +1659,9 @@ try {
 export async function getBackgroundImage(): Promise<string> {
   try {
     const customUrl = localStorage.getItem('algosalon_screen2_bg_url');
-    if (customUrl) return customUrl;
+    if (customUrl && !customUrl.includes('Image%202.png') && !customUrl.includes('Image 2.png')) {
+      return customUrl;
+    }
 
     if (isSupabaseConfigured()) {
       const { data } = await supabaseALGOsalonClient.storage

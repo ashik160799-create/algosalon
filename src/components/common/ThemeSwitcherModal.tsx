@@ -12,6 +12,11 @@ interface ThemeSwitcherModalProps {
 
 const BACKGROUND_PRESETS = [
   {
+    id: 'supabase_default',
+    label: 'Original Salon Haircut (Enhanced)',
+    url: 'https://mmmthrlbikllhdupslrz.supabase.co/storage/v1/object/public/app-background-images/Splash%20Screen%202/1788503584034(1)-Picsart-AiImageEnhancer.png',
+  },
+  {
     id: 'female_stylist_male_client',
     label: 'Female Stylist & Male Client Barber',
     url: '/images/splash-haircut-stylist.jpg',
@@ -37,9 +42,16 @@ export const ThemeSwitcherModal: React.FC<ThemeSwitcherModalProps> = ({ isOpen, 
     currentThemeConfig,
   } = useApp();
 
-  const defaultSupabaseBg = 'https://mmmthrlbikllhdupslrz.supabase.co/storage/v1/object/public/app-background-images/Splash%20Screen%202/Image%202.png';
+  const defaultSupabaseBg = 'https://mmmthrlbikllhdupslrz.supabase.co/storage/v1/object/public/app-background-images/Splash%20Screen%202/1788503584034(1)-Picsart-AiImageEnhancer.png';
   const [activeBgUrl, setActiveBgUrl] = useState<string>(
-    () => localStorage.getItem('algosalon_screen2_bg_url') || defaultSupabaseBg
+    () => {
+      const saved = localStorage.getItem('algosalon_screen2_bg_url');
+      if (saved && (saved.includes('Image%202.png') || saved.includes('Image 2.png'))) {
+        localStorage.removeItem('algosalon_screen2_bg_url');
+        return defaultSupabaseBg;
+      }
+      return saved || defaultSupabaseBg;
+    }
   );
   const [customBgInput, setCustomBgInput] = useState<string>('');
 

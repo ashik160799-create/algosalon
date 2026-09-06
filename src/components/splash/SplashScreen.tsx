@@ -46,7 +46,7 @@ import { del } from 'idb-keyval';
 import { getBackgroundImage } from '../../services/supabaseService';
 
 // Primary Screen 2 Background Image from Supabase Storage bucket app-background-images (Direct Public CDN)
-const SALON_HAIRCUT_IMAGE = 'https://mmmthrlbikllhdupslrz.supabase.co/storage/v1/object/public/app-background-images/Splash%20Screen%202/Image%202.png';
+const SALON_HAIRCUT_IMAGE = 'https://mmmthrlbikllhdupslrz.supabase.co/storage/v1/object/public/app-background-images/Splash%20Screen%202/1788503584034(1)-Picsart-AiImageEnhancer.png';
 const APP_BACKGROUNDS_BUCKET = 'app-background-images';
 
 // Global eager preloader & GPU texture decode on script evaluation for instant Screen 2 paint
@@ -183,7 +183,8 @@ export const SplashScreen: React.FC = () => {
     // Clear legacy cached data or deleted old image URL if present
     localStorage.removeItem('algosalon_screen2_bg_cached_data');
     const saved = localStorage.getItem('algosalon_screen2_bg_url');
-    if (saved && saved.includes('1788503584034')) {
+    // If the saved URL is the legacy broken 'Image 2.png', reset it to the active high-res background
+    if (saved && (saved.includes('Image%202.png') || saved.includes('Image 2.png'))) {
       localStorage.removeItem('algosalon_screen2_bg_url');
       return SALON_HAIRCUT_IMAGE;
     }
@@ -886,8 +887,10 @@ export const SplashScreen: React.FC = () => {
                   fetchPriority="high"
                   onError={(e) => {
                     const target = e.currentTarget;
-                    if (target.src !== SALON_HAIRCUT_IMAGE) {
+                    if (target.src !== SALON_HAIRCUT_IMAGE && !target.src.includes('1788503584034')) {
                       target.src = SALON_HAIRCUT_IMAGE;
+                    } else if (!target.src.includes('splash-screen-2-default.png') && !target.src.includes('splash-haircut-stylist.jpg')) {
+                      target.src = '/images/splash-screen-2-default.png';
                     }
                   }}
                   className="w-full h-full object-cover object-[center_32%] transition-transform duration-700 opacity-100 dark:opacity-95 transform-gpu"
