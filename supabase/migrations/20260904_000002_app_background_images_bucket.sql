@@ -1,7 +1,7 @@
 -- =============================================================================
 -- App Background Images Storage Bucket & Admin Access Control Policies
 -- Bucket: app-background-images
--- Access Rule: Don't access any standard users for uploads/modifications. Access Admin (ashik160799@gmail.com / service_role) only.
+-- Access Rule: Service role and Super Admin users only for administrative uploads.
 -- =============================================================================
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -30,7 +30,6 @@ create policy "Admin Only Upload App Background Images"
   with check (
     bucket_id = 'app-background-images' and (
       auth.role() = 'service_role' or
-      (auth.jwt() ->> 'email') = 'ashik160799@gmail.com' or
       (auth.jwt() -> 'user_metadata' ->> 'role') = 'super_admin'
     )
   );
@@ -42,7 +41,6 @@ create policy "Admin Only Update App Background Images"
   using (
     bucket_id = 'app-background-images' and (
       auth.role() = 'service_role' or
-      (auth.jwt() ->> 'email') = 'ashik160799@gmail.com' or
       (auth.jwt() -> 'user_metadata' ->> 'role') = 'super_admin'
     )
   );
@@ -54,7 +52,6 @@ create policy "Admin Only Delete App Background Images"
   using (
     bucket_id = 'app-background-images' and (
       auth.role() = 'service_role' or
-      (auth.jwt() ->> 'email') = 'ashik160799@gmail.com' or
       (auth.jwt() -> 'user_metadata' ->> 'role') = 'super_admin'
     )
   );

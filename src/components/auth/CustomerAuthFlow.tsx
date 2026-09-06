@@ -160,7 +160,11 @@ export const CustomerAuthFlow: React.FC<CustomerAuthFlowProps> = ({
 
     setCodeError(null);
 
-    const normEmail = normalizeEmail(email) || 'user@example.com';
+    const normEmail = normalizeEmail(email);
+    if (!normEmail) {
+      setCodeError('Please provide a valid email.');
+      return;
+    }
     const regResult = registerNewAccount({
       email: normEmail,
       role: 'customer',
@@ -419,8 +423,8 @@ export const CustomerAuthFlow: React.FC<CustomerAuthFlowProps> = ({
                     onChange={e => setEmail(e.target.value)}
                     placeholder={
                       customerType === 'new'
-                        ? 'e.g. name@example.com'
-                        : 'e.g. alex.j@example.com'
+                        ? 'e.g. name@gmail.com'
+                        : 'e.g. name@gmail.com'
                     }
                     className={`w-full border rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm font-medium placeholder-zinc-400 focus:outline-none transition-all ${
                       isLight
@@ -460,7 +464,7 @@ export const CustomerAuthFlow: React.FC<CustomerAuthFlowProps> = ({
             key="new_verify_email"
             title="Verify Your Email"
             subtitle={`Enter the 6-digit Supabase verification code sent to ${email || 'your email'}`}
-            email={email || 'alex.j@example.com'}
+            email={email || ''}
             isGoogle={false}
             codeLength={6}
             onVerifyCode={async (code) => {

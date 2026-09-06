@@ -574,7 +574,11 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
 
     setCodeError(null);
 
-    const email = normalizeEmail(emailInput) || 'user@example.com';
+    const email = normalizeEmail(emailInput);
+    if (!email) {
+      setCodeError('Please enter a valid email address.');
+      return;
+    }
     
     // Strict Database Check: One email = one account only
     const regResult = registerNewAccount({

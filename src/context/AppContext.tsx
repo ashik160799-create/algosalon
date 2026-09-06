@@ -93,6 +93,7 @@ import {
   updateStaffInDb,
   deleteStaffInDb,
   updateSalonProfileInDb,
+  registerBusinessSalonInDb,
   fetchBusinessProfileFromDb,
   fetchCustomerProfileFromDb,
   updateCustomerProfileInDb,
@@ -752,10 +753,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try {
         return JSON.parse(saved);
       } catch {
-        return INITIAL_NOTIFICATIONS;
+        return isSupabaseConfigured() ? [] : INITIAL_NOTIFICATIONS;
       }
     }
-    return INITIAL_NOTIFICATIONS;
+    return isSupabaseConfigured() ? [] : INITIAL_NOTIFICATIONS;
   });
 
   // ---------------------------------------------------------------------------
@@ -1490,6 +1491,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem('algosalon_salons', JSON.stringify(updated));
       return updated;
     });
+
+    if (isSupabaseConfigured()) {
+      registerBusinessSalonInDb({
+        name: freshSalon.name,
+        phone: freshSalon.phone,
+        city: freshSalon.city,
+        address: freshSalon.address,
+        categories: freshSalon.categories,
+        coverImage: freshSalon.coverImage,
+      }).then(res => {
+        if (res.success && res.salonId) {
+          freshBusiness.salonId = res.salonId;
+          freshSalon.id = res.salonId;
+          setBusinessUser(prev => ({ ...prev, salonId: res.salonId }));
+          localStorage.setItem('algosalon_business_user', JSON.stringify({ ...freshBusiness, salonId: res.salonId }));
+        }
+      }).catch(err => {
+        console.warn('registerBusinessSalonInDb error on signup:', err);
+      });
+    }
 
     setCurrentRole('business');
     setBusinessUser(freshBusiness);

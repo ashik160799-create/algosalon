@@ -24,7 +24,7 @@ export interface RegisteredAccount {
 }
 
 export const STORAGE_ACCOUNTS_KEY = 'algosalon_registered_accounts';
-export const ACCOUNTS_PURGE_VERSION_KEY = 'algosalon_clean_slate_v7';
+export const ACCOUNTS_PURGE_VERSION_KEY = 'algosalon_clean_slate_v8';
 const UNWANTED_EMAILS = ['marcus@algosalon.com', 'partner@algosalon.com', 'user@example.com', 'demo@algosalon.com'];
 const UNWANTED_IDS = ['biz-201', 'cust-guest'];
 
@@ -250,6 +250,14 @@ export const cleanupDuplicateAccounts = (): void => {
 if (typeof window !== 'undefined') {
   try {
     if (!localStorage.getItem(ACCOUNTS_PURGE_VERSION_KEY)) {
+      localStorage.removeItem(STORAGE_ACCOUNTS_KEY);
+      localStorage.removeItem('algosalon_auth_token');
+      localStorage.removeItem('algosalon_customer');
+      localStorage.removeItem('algosalon_business_user');
+      localStorage.removeItem('algosalon_appointments');
+      localStorage.removeItem('algosalon_reviews');
+      localStorage.removeItem('algosalon_notifications');
+      localStorage.setItem('algosalon_role', 'customer');
       cleanupDuplicateAccounts();
       localStorage.setItem(ACCOUNTS_PURGE_VERSION_KEY, 'true');
     }
