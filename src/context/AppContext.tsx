@@ -691,10 +691,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return s;
         });
       } catch {
-        return INITIAL_SALONS;
+        return isSupabaseConfigured() ? [] : INITIAL_SALONS;
       }
     }
-    return INITIAL_SALONS;
+    return isSupabaseConfigured() ? [] : INITIAL_SALONS;
   });
 
   const [selectedSalon, setSelectedSalon] = useState<Salon | null>(null);
@@ -705,10 +705,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try {
         return JSON.parse(saved);
       } catch {
-        return INITIAL_SERVICES;
+        return isSupabaseConfigured() ? [] : INITIAL_SERVICES;
       }
     }
-    return INITIAL_SERVICES;
+    return isSupabaseConfigured() ? [] : INITIAL_SERVICES;
   });
 
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>(() => {
@@ -717,10 +717,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try {
         return JSON.parse(saved);
       } catch {
-        return INITIAL_STAFF;
+        return isSupabaseConfigured() ? [] : INITIAL_STAFF;
       }
     }
-    return INITIAL_STAFF;
+    return isSupabaseConfigured() ? [] : INITIAL_STAFF;
   });
 
   const [appointments, setAppointments] = useState<Appointment[]>(() => {
@@ -1280,6 +1280,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem('algosalon_seen_splash');
     localStorage.removeItem('algosalon_appointments');
     localStorage.removeItem('algosalon_notifications');
+    localStorage.removeItem('algosalon_salons');
+    localStorage.removeItem('algosalon_services');
+    localStorage.removeItem('algosalon_staff');
+    localStorage.removeItem('algosalon_reviews');
+    localStorage.removeItem('algosalon_favorites');
     localStorage.removeItem('algosalon_pending_auth');
     localStorage.removeItem('algosalon_location_prompted');
     localStorage.removeItem('algosalon_location_permission');
@@ -1967,6 +1972,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     data: Omit<Appointment, 'id' | 'createdAt' | 'status'>,
     initialStatus: AppointmentStatus = 'pending'
   ): Promise<{ success: boolean; appointmentId?: string; error?: string }> => {
+    if (isSupabaseConfigured() && !isAuthenticated) {
+      return { success: false, error: 'Authentication required to book an appointment' };
+    }
+
     let resolvedAppointmentId = `apt-${Date.now()}`;
 
     // If Supabase is configured, validate and create booking in DB first
@@ -2016,7 +2025,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return updated;
     });
 
-    // Notify salon and customer
+    // Local optimistic notification update for UI responsiveness
     const newNotifs: NotificationItem[] = [
       {
         id: `notif-${Date.now()}-biz`,
@@ -2046,29 +2055,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return updated;
     });
 
-    if (isSupabaseConfigured()) {
-      if (businessUser?.id) {
-        createNotificationInDb({
-          userId: businessUser.id,
-          userType: 'business',
-          title: newNotifs[0].title,
-          message: newNotifs[0].message,
-          type: 'booking',
-          linkTab: newNotifs[0].linkTab,
-        }).catch(err => console.warn('Background business notification sync error:', err));
-      }
-      if (customerUser?.id) {
-        createNotificationInDb({
-          userId: customerUser.id,
-          userType: 'customer',
-          title: newNotifs[1].title,
-          message: newNotifs[1].message,
-          type: 'booking',
-          linkTab: newNotifs[1].linkTab,
-        }).catch(err => console.warn('Background customer notification sync error:', err));
-      }
-    }
-
     return { success: true, appointmentId: resolvedAppointmentId };
   };
 
@@ -2096,7 +2082,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     if (targetApt) {
-      // Synchronize status update to Supabase
+      // Synchronize status update to Supabase (RPC automatically handles DB notifications)
       if (isSupabaseConfigured()) {
         try {
           const res = await setAppointmentStatusInDb({
@@ -2166,18 +2152,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.setItem('algosalon_notifications', JSON.stringify(updated));
         return updated;
       });
-
-      if (isSupabaseConfigured() && targetApt.customerId) {
-        createNotificationInDb({
-          userId: targetApt.customerId,
-          userType: 'customer',
-          title: notifTitle,
-          message: notifMsg,
-          type: status === 'completed' ? 'review' : 'reminder',
-          linkTab: 'bookings',
-          appointmentId: targetApt.id,
-        }).catch(err => console.warn('Background Supabase status notif error:', err));
-      }
     }
 
     return { success: true };
@@ -2203,18 +2177,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.setItem('algosalon_notifications', JSON.stringify(updated));
         return updated;
       });
-
-      if (isSupabaseConfigured() && targetApt.customerId) {
-        createNotificationInDb({
-          userId: targetApt.customerId,
-          userType: 'customer',
-          title: custNotif.title,
-          message: custNotif.message,
-          type: 'booking',
-          linkTab: 'bookings',
-          appointmentId: targetApt.id,
-        }).catch(err => console.warn('Background Supabase accept notif error:', err));
-      }
     }
   };
 

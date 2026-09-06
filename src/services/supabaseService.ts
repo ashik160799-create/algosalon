@@ -86,11 +86,11 @@ export async function fetchSalonsFromDb(): Promise<{
         .map((ss: any) => ({
           id: ss.id || ss.date,
           date: ss.date,
-          title: ss.note || 'Special Hours',
+          title: ss.title || ss.note || 'Special Hours',
           isOpen: ss.is_open,
           open: ss.opens_at ? ss.opens_at.slice(0, 5) : '09:00',
           close: ss.closes_at ? ss.closes_at.slice(0, 5) : '21:00',
-          reason: ss.note || undefined,
+          reason: ss.reason || ss.note || undefined,
         }));
 
       const priceSigns: Record<number, '$' | '$$' | '$$$' | '$$$$'> = {
@@ -109,8 +109,8 @@ export async function fetchSalonsFromDb(): Promise<{
         city: s.city,
         mapUrl: s.map_url || undefined,
         distanceKm: 1.2,
-        lat: Number(s.latitude) || 25.1972,
-        lng: Number(s.longitude) || 55.2744,
+        lat: s.latitude !== null && s.latitude !== undefined && !isNaN(Number(s.latitude)) ? Number(s.latitude) : undefined,
+        lng: s.longitude !== null && s.longitude !== undefined && !isNaN(Number(s.longitude)) ? Number(s.longitude) : undefined,
         phone: s.phone_e164,
         rating: Number(s.rating) || 4.9,
         reviewCount: s.review_count || 0,
@@ -1983,6 +1983,8 @@ export async function updateSpecialSchedulesInDb(
       is_open: s.isOpen,
       opens_at: s.isOpen ? (s.open?.length === 5 ? `${s.open}:00` : s.open || '09:00:00') : null,
       closes_at: s.isOpen ? (s.close?.length === 5 ? `${s.close}:00` : s.close || '21:00:00') : null,
+      title: s.title || 'Special Hours',
+      reason: s.reason || null,
       note: s.reason || s.title || null,
       updated_at: new Date().toISOString(),
     }));
@@ -2014,16 +2016,23 @@ export async function registerBusinessSalonInDb(params: {
   categories?: string[];
   priceRange?: number;
   coverImage?: string;
+  timezone?: string;
+  countryCode?: string;
+  amenities?: string[];
 }): Promise<{ success: boolean; salonId?: string; error?: string }> {
   if (!isSupabaseConfigured()) return { success: false, error: 'Supabase unconfigured' };
 
   try {
     const { data: salonId, error } = await supabaseALGOsalonClient.rpc('register_business_salon', {
+      p_salon_name: params.name,
       p_name: params.name,
       p_phone: params.phone,
       p_city: params.city || 'Dubai',
       p_address: params.address || 'Downtown Dubai',
       p_categories: params.categories || ['Haircut', 'Styling'],
+      p_amenities: params.amenities || ['WiFi', 'Valet Parking'],
+      p_timezone: params.timezone || 'Asia/Dubai',
+      p_country_code: params.countryCode || null,
       p_price_range: params.priceRange || 2,
       p_cover_image: params.coverImage || null,
     });

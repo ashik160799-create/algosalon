@@ -307,12 +307,12 @@ export const BusinessProfileManager: React.FC = () => {
     try {
       const success = await deleteAccount();
       if (!success) {
-        alert('Failed to delete business account. Please try again.');
+        setGeneralNotice('Failed to delete business account. Please try again.');
         setIsDeletingBizAccount(false);
       }
     } catch (err) {
       console.error('Delete business account error:', err);
-      alert('Error deleting business account.');
+      setGeneralNotice('Error deleting business account.');
       setIsDeletingBizAccount(false);
     }
   };
@@ -478,7 +478,8 @@ export const BusinessProfileManager: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      alert('Logo file size exceeds 5MB. Please choose a smaller file.');
+      setLogoActionNotice('Logo file size exceeds 5MB. Please choose a smaller file.');
+      setTimeout(() => setLogoActionNotice(null), 4000);
       return;
     }
     const reader = new FileReader();
@@ -505,7 +506,8 @@ export const BusinessProfileManager: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 8 * 1024 * 1024) {
-      alert('Image size exceeds 8MB. Please choose a smaller file.');
+      setBannerActionNotice('Image size exceeds 8MB. Please choose a smaller file.');
+      setTimeout(() => setBannerActionNotice(null), 4000);
       return;
     }
     const reader = new FileReader();
@@ -557,7 +559,8 @@ export const BusinessProfileManager: React.FC = () => {
     const trimmed = newCustomAmenity.trim();
     if (!trimmed) return;
     if (amenitiesList.includes(trimmed)) {
-      alert('This amenity is already in your list.');
+      setGeneralNotice('This amenity is already in your list.');
+      setTimeout(() => setGeneralNotice(null), 3000);
       return;
     }
     const updated = [...amenitiesList, trimmed];
@@ -730,11 +733,13 @@ export const BusinessProfileManager: React.FC = () => {
   const handleSaveSpecialDateModal = (e: React.FormEvent) => {
     e.preventDefault();
     if (!specialDateInput) {
-      alert('Please select a date for the special schedule override.');
+      setScheduleNotice('Please select a date for the special schedule override.');
+      setTimeout(() => setScheduleNotice(null), 3000);
       return;
     }
     if (!specialTitleInput.trim()) {
-      alert('Please enter an occasion title (e.g. Christmas Day, VIP Event).');
+      setScheduleNotice('Please enter an occasion title (e.g. Christmas Day, VIP Event).');
+      setTimeout(() => setScheduleNotice(null), 3000);
       return;
     }
 
@@ -829,7 +834,8 @@ export const BusinessProfileManager: React.FC = () => {
     e.preventDefault();
     const cleanCode = customResetCode.trim();
     if (cleanCode.length !== 4 || !/^\d{4}$/.test(cleanCode)) {
-      alert('App code must be exactly 4 numeric digits (e.g. 5821).');
+      setGeneralNotice('App code must be exactly 4 numeric digits (e.g. 5821).');
+      setTimeout(() => setGeneralNotice(null), 3000);
       return;
     }
     setAppCode(cleanCode);
@@ -2764,7 +2770,8 @@ export const BusinessProfileManager: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        alert(`Downloading verified copy of ${doc.name} (${doc.fileName || 'document.pdf'})...`);
+                        setGeneralNotice(`Downloading verified copy of ${doc.name} (${doc.fileName || 'document.pdf'})...`);
+                        setTimeout(() => setGeneralNotice(null), 3000);
                       }}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
                         isLight
@@ -3439,7 +3446,8 @@ export const BusinessProfileManager: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  alert(`Downloading ${selectedDocPreview.name}...`);
+                  setGeneralNotice(`Downloading ${selectedDocPreview.name}...`);
+                  setTimeout(() => setGeneralNotice(null), 3000);
                   setSelectedDocPreview(null);
                 }}
                 className="px-4 py-2 rounded-xl text-xs font-black text-white bg-emerald-600 hover:bg-emerald-500 shadow-md cursor-pointer transition-all flex items-center gap-1.5"

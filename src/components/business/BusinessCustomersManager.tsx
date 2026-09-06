@@ -476,7 +476,7 @@ export const BusinessCustomersManager: React.FC<BusinessCustomersManagerProps> =
               </div>
 
               <button
-                id="filter-tier-all"
+                id="bcm-filter-tier-all"
                 type="button"
                 onClick={() => setClientTierFilter('all')}
                 className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
@@ -491,7 +491,7 @@ export const BusinessCustomersManager: React.FC<BusinessCustomersManagerProps> =
               </button>
 
               <button
-                id="filter-tier-guest"
+                id="bcm-filter-tier-guest"
                 type="button"
                 onClick={() => setClientTierFilter('guest')}
                 className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
@@ -507,7 +507,7 @@ export const BusinessCustomersManager: React.FC<BusinessCustomersManagerProps> =
               </button>
 
               <button
-                id="filter-tier-vip"
+                id="bcm-filter-tier-vip"
                 type="button"
                 onClick={() => setClientTierFilter('vip')}
                 className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${

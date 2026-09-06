@@ -429,7 +429,7 @@ create policy "Salon owners and managers can update their salon"
 drop policy if exists "Authenticated users can create a salon" on public.salons;
 create policy "Authenticated users can create a salon"
   on public.salons for insert
-  with check (auth.role() = 'authenticated');
+  with check (auth.uid() = created_by or auth.role() = 'service_role');
 
 -- Salon Members
 drop policy if exists "Salon members can view team" on public.salon_members;
@@ -680,6 +680,11 @@ declare
   v_local_date date;
   v_owner record;
 begin
+  -- Enforce Authentication
+  if v_caller_id is null then
+    raise exception 'Authentication required to book an appointment';
+  end if;
+
   -- 1. Validate future time
   if p_starts_at <= now() then
     raise exception 'Appointment time must be in the future';
@@ -1183,15 +1188,204 @@ begin
 end;
 $$;
 
--- Guarded register_business_salon RPC
+-- Missing & Upgraded Stored Procedures
+
+-- 1. check_email_confirmed RPC
+create or replace function public.check_email_confirmed(email_to_check text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, auth, pg_temp
+as $$
+declare
+  v_confirmed boolean := false;
+begin
+  if email_to_check is null or trim(email_to_check) = '' then
+    return false;
+  end if;
+
+  select (email_confirmed_at is not null or confirmed_at is not null)
+  into v_confirmed
+  from auth.users
+  where lower(email) = lower(trim(email_to_check))
+  limit 1;
+
+  return coalesce(v_confirmed, false);
+end;
+$$;
+
+-- 2. check_recovery_link_verified RPC
+create or replace function public.check_recovery_link_verified(
+  email_to_check text,
+  sent_after timestamptz default null
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, auth, pg_temp
+as $$
+declare
+  v_verified boolean := false;
+begin
+  if email_to_check is null or trim(email_to_check) = '' then
+    return false;
+  end if;
+
+  select case 
+    when sent_after is not null then (recovery_sent_at is null or updated_at > sent_after or last_sign_in_at > sent_after)
+    else (email_confirmed_at is not null or confirmed_at is not null)
+  end
+  into v_verified
+  from auth.users
+  where lower(email) = lower(trim(email_to_check))
+  limit 1;
+
+  return coalesce(v_verified, false);
+end;
+$$;
+
+-- 3. check_user_account_status RPC
+create or replace function public.check_user_account_status(email_to_check text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, auth, pg_temp
+as $$
+declare
+  v_user_id uuid;
+  v_role text := 'customer';
+  v_user record;
+  v_profile record;
+begin
+  if email_to_check is null or trim(email_to_check) = '' then
+    return jsonb_build_object('exists', false);
+  end if;
+
+  select id, email, raw_user_meta_data into v_user
+  from auth.users
+  where lower(email) = lower(trim(email_to_check))
+  limit 1;
+
+  if not found then
+    return jsonb_build_object('exists', false);
+  end if;
+
+  v_user_id := v_user.id;
+
+  select * into v_profile
+  from public.profiles
+  where id = v_user_id;
+
+  if (v_profile.role = 'business') or 
+     (v_user.raw_user_meta_data->>'role' = 'business') or 
+     (v_user.raw_user_meta_data->>'account_type' = 'Business') or
+     exists (select 1 from public.salon_members where user_id = v_user_id and is_active = true) then
+    v_role := 'business';
+  end if;
+
+  return jsonb_build_object(
+    'exists', true,
+    'id', v_user_id,
+    'email', v_user.email,
+    'role', v_role,
+    'accountType', case when v_role = 'business' then 'Business' else 'Customer' end,
+    'fullName', coalesce(v_profile.full_name, v_user.raw_user_meta_data->>'full_name', ''),
+    'phone', coalesce(v_profile.phone_e164, v_user.raw_user_meta_data->>'phone', '')
+  );
+end;
+$$;
+
+-- 4. sync_user_profile_and_auth RPC
+create or replace function public.sync_user_profile_and_auth(
+  p_full_name text default null,
+  p_phone text default null,
+  p_gender text default null,
+  p_app_code text default null,
+  p_avatar text default null,
+  p_role text default null
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, auth, pg_temp
+as $$
+declare
+  v_caller_id uuid := auth.uid();
+  v_current_meta jsonb;
+  v_new_meta jsonb;
+begin
+  if v_caller_id is null then
+    raise exception 'Authentication required to sync profile';
+  end if;
+
+  -- 1. Upsert public.profiles
+  insert into public.profiles (
+    id,
+    full_name,
+    phone_e164,
+    avatar_url,
+    role,
+    updated_at
+  ) values (
+    v_caller_id,
+    p_full_name,
+    p_phone,
+    p_avatar,
+    coalesce(p_role, 'customer')::public.user_role,
+    now()
+  )
+  on conflict (id) do update set
+    full_name = coalesce(p_full_name, public.profiles.full_name),
+    phone_e164 = coalesce(p_phone, public.profiles.phone_e164),
+    avatar_url = coalesce(p_avatar, public.profiles.avatar_url),
+    role = case when p_role is not null then p_role::public.user_role else public.profiles.role end,
+    updated_at = now();
+
+  -- 2. Sync metadata in auth.users
+  select coalesce(raw_user_meta_data, '{}'::jsonb) into v_current_meta
+  from auth.users
+  where id = v_caller_id;
+
+  v_new_meta := v_current_meta;
+  if p_full_name is not null then
+    v_new_meta := jsonb_set(v_new_meta, '{full_name}', to_jsonb(p_full_name));
+    v_new_meta := jsonb_set(v_new_meta, '{name}', to_jsonb(p_full_name));
+  end if;
+  if p_phone is not null then
+    v_new_meta := jsonb_set(v_new_meta, '{phone}', to_jsonb(p_phone));
+  end if;
+  if p_gender is not null then
+    v_new_meta := jsonb_set(v_new_meta, '{gender}', to_jsonb(p_gender));
+  end if;
+  if p_avatar is not null then
+    v_new_meta := jsonb_set(v_new_meta, '{avatar_url}', to_jsonb(p_avatar));
+  end if;
+  if p_role is not null then
+    v_new_meta := jsonb_set(v_new_meta, '{role}', to_jsonb(p_role));
+    v_new_meta := jsonb_set(v_new_meta, '{account_type}', to_jsonb(case when p_role = 'business' then 'Business' else 'Customer' end));
+  end if;
+
+  update auth.users
+  set raw_user_meta_data = v_new_meta, updated_at = now()
+  where id = v_caller_id;
+
+  return true;
+end;
+$$;
+
+-- 5. Guarded register_business_salon RPC
 create or replace function public.register_business_salon(
-  p_salon_name text,
-  p_phone text,
+  p_salon_name text default null,
+  p_name text default null,
+  p_phone text default null,
   p_city text default 'Dubai',
   p_address text default 'Downtown',
   p_categories text[] default array['Haircut', 'Styling'],
   p_amenities text[] default array['WiFi', 'Valet Parking'],
-  p_timezone text default 'Asia/Dubai'
+  p_timezone text default 'Asia/Dubai',
+  p_country_code text default null,
+  p_price_range int default 2,
+  p_cover_image text default null
 )
 returns uuid
 language plpgsql
@@ -1203,14 +1397,30 @@ declare
   v_salon_id uuid;
   v_slug text;
   v_cleaned_name text;
+  v_resolved_country text;
 begin
   if v_caller_id is null then
     raise exception 'Authentication required to register a business';
   end if;
 
-  v_cleaned_name := trim(p_salon_name);
+  v_cleaned_name := trim(coalesce(p_salon_name, p_name, ''));
   if char_length(v_cleaned_name) < 2 then
     raise exception 'Salon name must be at least 2 characters';
+  end if;
+
+  -- Infer or assign country code
+  if p_country_code is not null and trim(p_country_code) <> '' then
+    v_resolved_country := upper(trim(p_country_code));
+  elsif lower(p_city) like '%mumbai%' or lower(p_city) like '%delhi%' or lower(p_city) like '%bangalore%' then
+    v_resolved_country := 'IN';
+  elsif lower(p_city) like '%london%' or lower(p_city) like '%manchester%' then
+    v_resolved_country := 'GB';
+  elsif lower(p_city) like '%riyadh%' or lower(p_city) like '%jeddah%' then
+    v_resolved_country := 'SA';
+  elsif lower(p_city) like '%new york%' or lower(p_city) like '%los angeles%' then
+    v_resolved_country := 'US';
+  else
+    v_resolved_country := 'AE';
   end if;
 
   -- Generate clean unique slug
@@ -1233,6 +1443,8 @@ begin
     timezone,
     categories,
     amenities,
+    price_range,
+    cover_image,
     status,
     is_open_now,
     is_verified
@@ -1243,13 +1455,15 @@ begin
     p_phone,
     p_address,
     p_city,
-    'AE',
+    v_resolved_country,
     coalesce(p_timezone, 'Asia/Dubai'),
-    p_categories,
-    p_amenities,
+    coalesce(p_categories, array['Haircut', 'Styling']),
+    coalesce(p_amenities, array['WiFi', 'Valet Parking']),
+    coalesce(p_price_range, 2),
+    p_cover_image,
     'published',
     true,
-    true
+    false
   )
   returning id into v_salon_id;
 
@@ -1283,7 +1497,7 @@ begin
 end;
 $$;
 
--- Authoritative delete_user_account RPC
+-- 6. Authoritative delete_user_account RPC
 create or replace function public.delete_user_account()
 returns void
 language plpgsql
@@ -1301,6 +1515,72 @@ begin
   delete from auth.users where id = v_caller_id;
 end;
 $$;
+
+-- 7. delete_user_account_complete RPC
+create or replace function public.delete_user_account_complete(
+  email_to_delete text default null,
+  user_id_to_delete uuid default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, auth, pg_temp
+as $$
+declare
+  v_caller_id uuid := auth.uid();
+  v_target_id uuid;
+begin
+  if v_caller_id is null and user_id_to_delete is null and email_to_delete is null then
+    raise exception 'Not authenticated or target missing';
+  end if;
+
+  v_target_id := coalesce(v_caller_id, user_id_to_delete);
+
+  if v_target_id is null and email_to_delete is not null then
+    select id into v_target_id from auth.users where lower(email) = lower(trim(email_to_delete)) limit 1;
+  end if;
+
+  if v_target_id is null then
+    return jsonb_build_object('success', false, 'error', 'User not found');
+  end if;
+
+  if v_caller_id is not null and v_caller_id <> v_target_id then
+    raise exception 'Cannot delete another user account';
+  end if;
+
+  delete from public.salon_members where user_id = v_target_id;
+  delete from public.favorites where customer_id = v_target_id;
+  delete from public.notifications where user_id = v_target_id;
+  delete from public.reviews where customer_id = v_target_id;
+  delete from public.appointments where customer_id = v_target_id;
+  delete from public.profiles where id = v_target_id;
+  delete from auth.users where id = v_target_id;
+
+  return jsonb_build_object('success', true);
+end;
+$$;
+
+-- 8. Protect profile role trigger
+create or replace function public.protect_profile_role()
+returns trigger
+language plpgsql
+security definer
+as $$
+begin
+  if NEW.role is distinct from OLD.role and current_setting('algo.allow_role_change', true) is distinct from 'on' then
+    if pg_trigger_depth() <= 1 and current_user = 'authenticated' then
+      NEW.role := OLD.role;
+    end if;
+  end if;
+  return NEW;
+end;
+$$;
+
+drop trigger if exists trg_protect_profile_role on public.profiles;
+create trigger trg_protect_profile_role
+  before update on public.profiles
+  for each row
+  execute function public.protect_profile_role();
 
 -- -----------------------------------------------------------------------------
 -- 6. Storage Setup

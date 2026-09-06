@@ -53,6 +53,7 @@ export const CustomerBookingsView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [rebookNotice, setRebookNotice] = useState<string | null>(null);
 
   const customerBookings = appointments.filter(a => a.customerId === customerUser.id);
 
@@ -79,7 +80,6 @@ export const CustomerBookingsView: React.FC = () => {
     if (!matchesTab) return false;
 
     if (!searchQuery.trim()) return true;
-
     const q = searchQuery.toLowerCase();
     return (
       apt.salonName.toLowerCase().includes(q) ||
@@ -90,9 +90,10 @@ export const CustomerBookingsView: React.FC = () => {
   });
 
   const handleRebook = (apt: Appointment) => {
-    const salon = salons.find(s => s.id === apt.salonId);
+    const salon = salons.find(s => s.id === apt.salonId) || salons.find(s => s.name === apt.salonName);
     if (!salon) {
-      alert('This salon is currently unavailable for online rebooking.');
+      setRebookNotice('This salon is currently unavailable for online rebooking.');
+      setTimeout(() => setRebookNotice(null), 3500);
       return;
     }
     const service = services.find(s => s.id === apt.serviceId && s.salonId === salon.id) ||
@@ -156,6 +157,12 @@ export const CustomerBookingsView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {rebookNotice && (
+        <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-500 text-xs font-bold animate-in fade-in">
+          {rebookNotice}
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div

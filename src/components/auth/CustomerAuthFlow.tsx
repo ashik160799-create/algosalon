@@ -550,7 +550,7 @@ export const CustomerAuthFlow: React.FC<CustomerAuthFlowProps> = ({
 
               <div>
                 <PhoneCountryInput
-                  id="new-customer-phone-input"
+                  id="customer-auth-phone-input"
                   label="Contact Phone Number"
                   value={phone}
                   onChange={(full) => setPhone(full)}

@@ -146,8 +146,8 @@ export interface Salon {
   city: string;
   mapUrl?: string;
   distanceKm: number;
-  lat: number;
-  lng: number;
+  lat?: number;
+  lng?: number;
   phone: string;
   rating: number;
   reviewCount: number;

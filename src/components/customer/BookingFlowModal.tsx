@@ -56,6 +56,9 @@ export const BookingFlowModal: React.FC = () => {
     formatPrice,
     t,
     activeCountry,
+    isAuthenticated,
+    setAuthModalOpen,
+    setAuthTargetRole,
   } = useApp();
 
   const isLight = colorThemeMode === 'light';
@@ -302,6 +305,12 @@ export const BookingFlowModal: React.FC = () => {
 
   const handleConfirmBooking = async () => {
     if (!selectedService || isSubmittingBooking) return;
+
+    if (!isAuthenticated) {
+      setAuthTargetRole('customer');
+      setAuthModalOpen(true);
+      return;
+    }
 
     if (isSlotInPast(selectedDate, selectedTimeSlot, salonTimezone)) {
       setBookingError('Please select a future appointment time.');

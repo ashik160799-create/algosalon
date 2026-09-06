@@ -1,15 +1,11 @@
 /**
  * ALGO SALON SPOT-PRO — Supabase Client Connection (TypeScript)
- * Configured with live project credentials and automatic session persistence.
+ * Configured with environment variables and automatic session persistence.
  */
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const DEFAULT_SUPABASE_URL = 'https://mmmthrlbikllhdupslrz.supabase.co';
-const DEFAULT_SUPABASE_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tbXRocmxiaWtsbGhkdXBzbHJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0Mzk1MDcsImV4cCI6MjEwNDAxNTUwN30.K00AzMuva-wTGWzYBCGLeNxxGFnkXw0FJWI27a1PIz0';
-
 function normalizeSupabaseUrl(rawUrl?: unknown): string {
-  if (!rawUrl || typeof rawUrl !== 'string') return DEFAULT_SUPABASE_URL;
+  if (!rawUrl || typeof rawUrl !== 'string') return '';
 
   let cleaned = rawUrl.trim().replace(/^['"]+|['"]+$/g, '');
   if (cleaned.startsWith('VITE_SUPABASE_URL=')) {
@@ -18,7 +14,7 @@ function normalizeSupabaseUrl(rawUrl?: unknown): string {
   cleaned = cleaned.replace(/^['"]+|['"]+$/g, '');
 
   if (!cleaned || cleaned.includes('YOUR_PROJECT_REF') || cleaned === 'undefined' || cleaned === 'null') {
-    return DEFAULT_SUPABASE_URL;
+    return '';
   }
 
   // Valid full HTTP/HTTPS URL
@@ -27,18 +23,18 @@ function normalizeSupabaseUrl(rawUrl?: unknown): string {
       new URL(cleaned);
       return cleaned.replace(/\/+$/, '');
     } catch {
-      return DEFAULT_SUPABASE_URL;
+      return '';
     }
   }
 
-  // Domain without protocol (e.g. mmmthrlbikllhdupslrz.supabase.co)
+  // Domain without protocol (e.g. yourproject.supabase.co)
   if (cleaned.includes('.')) {
     try {
       const formatted = `https://${cleaned}`.replace(/\/+$/, '');
       new URL(formatted);
       return formatted;
     } catch {
-      return DEFAULT_SUPABASE_URL;
+      return '';
     }
   }
 
@@ -47,7 +43,7 @@ function normalizeSupabaseUrl(rawUrl?: unknown): string {
     return `https://${cleaned}.supabase.co`;
   }
 
-  return DEFAULT_SUPABASE_URL;
+  return '';
 }
 
 function normalizeSupabaseKey(rawAnonKey?: unknown, rawPublishableKey?: unknown): string {
@@ -74,7 +70,7 @@ function normalizeSupabaseKey(rawAnonKey?: unknown, rawPublishableKey?: unknown)
     return key2;
   }
 
-  return DEFAULT_SUPABASE_KEY;
+  return '';
 }
 
 const supabaseUrl: string = normalizeSupabaseUrl((import.meta as any).env?.VITE_SUPABASE_URL);
@@ -104,12 +100,10 @@ function initSupabaseClient(): SupabaseClient {
     },
   };
 
-  try {
-    return createClient(supabaseUrl, supabaseAnonKey, options);
-  } catch (err) {
-    console.warn('Failed to initialize Supabase with current credentials, falling back to default:', err);
-    return createClient(DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_KEY, options);
-  }
+  const effectiveUrl = supabaseUrl || 'https://unconfigured.supabase.co';
+  const effectiveKey = supabaseAnonKey || 'unconfigured-placeholder-key-00000000000000000000000000';
+
+  return createClient(effectiveUrl, effectiveKey, options);
 }
 
 export const supabaseALGOsalonClient: SupabaseClient = initSupabaseClient();
@@ -118,6 +112,10 @@ export const supabaseALGOsalonClient: SupabaseClient = initSupabaseClient();
  * Health check to verify live connectivity with your Supabase database
  */
 export async function testSupabaseConnection(): Promise<{ connected: boolean; error?: string; data?: any }> {
+  if (!isSupabaseConfigured()) {
+    return { connected: false, error: 'Supabase environment variables are unconfigured' };
+  }
+
   try {
     const { data, error } = await supabaseALGOsalonClient
       .from('salons')
