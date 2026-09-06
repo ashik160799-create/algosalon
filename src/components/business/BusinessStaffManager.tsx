@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { StaffMember } from '../../types';
 import { StaffAvatar } from '../common/StaffAvatar';
+import { INITIAL_SALONS } from '../../data/mockData';
 import {
   Plus,
   Star,
@@ -29,7 +30,10 @@ export const BusinessStaffManager: React.FC = () => {
   } = useApp();
 
   const isLight = colorThemeMode === 'light';
-  const salon = salons.find(s => s.id === businessUser.salonId) || salons[0];
+  const salon =
+    salons.find(s => s.id === businessUser.salonId) ||
+    salons[0] ||
+    INITIAL_SALONS[0];
   const salonStaff = staffMembers.filter(s => s.salonId === salon?.id);
 
   const [searchQuery, setSearchQuery] = useState('');

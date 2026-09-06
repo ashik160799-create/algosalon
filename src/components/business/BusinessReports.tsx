@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { StaffAvatar } from '../common/StaffAvatar';
+import { INITIAL_SALONS } from '../../data/mockData';
 import {
   TrendingUp,
   Scissors,
@@ -41,10 +42,13 @@ export const BusinessReports: React.FC = () => {
   } = useApp();
 
   const isLight = colorThemeMode === 'light';
-  const salon = salons.find(s => s.id === businessUser.salonId) || salons[0];
-  const salonAppointments = appointments.filter(a => a.salonId === salon.id);
-  const salonServices = services.filter(s => s.salonId === salon.id);
-  const salonStaff = staffMembers.filter(s => s.salonId === salon.id);
+  const salon =
+    salons.find(s => s.id === businessUser.salonId) ||
+    salons[0] ||
+    INITIAL_SALONS[0];
+  const salonAppointments = appointments.filter(a => a.salonId === salon?.id);
+  const salonServices = services.filter(s => s.salonId === salon?.id);
+  const salonStaff = staffMembers.filter(s => s.salonId === salon?.id);
 
   // Sub-Tab State: 'financial' | 'inventory' | 'payroll'
   const [activeSubTab, setActiveSubTab] = useState<'financial' | 'inventory' | 'payroll'>('financial');

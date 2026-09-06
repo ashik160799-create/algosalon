@@ -1,6 +1,7 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { useKeyboardVisibility } from '../../utils/useKeyboardVisibility';
+import { INITIAL_SALONS } from '../../data/mockData';
 import {
   Home,
   Radio,
@@ -27,7 +28,10 @@ export const BusinessBottomNav: React.FC<BusinessBottomNavProps> = () => {
   const isKeyboardVisible = useKeyboardVisibility();
 
   const isLight = colorThemeMode === 'light';
-  const salon = salons.find(s => s.id === businessUser.salonId) || salons[0];
+  const salon =
+    salons.find(s => s.id === businessUser.salonId) ||
+    salons[0] ||
+    INITIAL_SALONS[0];
   const salonAppointments = appointments.filter(a => a.salonId === salon?.id);
 
   const pendingLiveCount = salonAppointments.filter(a => a.status === 'pending').length;

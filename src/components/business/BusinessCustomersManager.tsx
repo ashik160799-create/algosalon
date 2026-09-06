@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Appointment } from '../../types';
+import { INITIAL_SALONS } from '../../data/mockData';
 import {
   Users,
   Search,
@@ -71,9 +72,12 @@ export const BusinessCustomersManager: React.FC<BusinessCustomersManagerProps> =
   } = useApp();
 
   const isLight = colorThemeMode === 'light';
-  const salon = salons.find(s => s.id === businessUser.salonId) || salons[0];
-  const salonAppointments = appointments.filter(a => a.salonId === salon.id);
-  const salonStaff = staffMembers.filter(s => s.salonId === salon.id);
+  const salon =
+    salons.find(s => s.id === businessUser.salonId) ||
+    salons[0] ||
+    INITIAL_SALONS[0];
+  const salonAppointments = appointments.filter(a => a.salonId === salon?.id);
+  const salonStaff = staffMembers.filter(s => s.salonId === salon?.id);
 
   const [activeFilter, setActiveFilter] = useState<
     'pending' | 'rescheduled' | 'confirmed' | 'cancelled' | 'all'

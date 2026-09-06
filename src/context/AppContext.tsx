@@ -93,6 +93,7 @@ import {
   deleteAccountInSupabase,
   signOutSupabase,
 } from '../services/supabaseService';
+import { INITIAL_SALONS, INITIAL_SERVICES, INITIAL_STAFF } from '../data/mockData';
 import { calculateDistanceKm } from '../utils/salonUtils';
 
 interface AppContextType {
@@ -668,10 +669,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return EMPTY_BUSINESS;
   });
 
-  const [salons, setSalons] = useState<Salon[]>([]);
-  const [selectedSalon, setSelectedSalon] = useState<Salon | null>(null);
-  const [services, setServices] = useState<ServiceItem[]>([]);
-  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
+  const [salons, setSalons] = useState<Salon[]>(INITIAL_SALONS);
+  const [selectedSalon, setSelectedSalon] = useState<Salon | null>(INITIAL_SALONS[0] || null);
+  const [services, setServices] = useState<ServiceItem[]>(INITIAL_SERVICES);
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>(INITIAL_STAFF);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -738,21 +739,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // 1. Hydrate published salons, services, and staff
     fetchSalonsFromDb().then(result => {
       if (!isMounted || !result) return;
-      if (Array.isArray(result.salons)) {
+      if (Array.isArray(result.salons) && result.salons.length > 0) {
         setSalons(result.salons);
-        if (result.salons.length > 0) {
-          setSelectedSalon(prev => prev || result.salons[0]);
-          setBusinessUser(prev =>
-            (prev.salonId === 'salon-1' || !prev.salonId) && prev.salonId !== result.salons[0].id
-              ? { ...prev, salonId: result.salons[0].id }
-              : prev
-          );
-        }
-      } else {
-        setSalons([]);
+        setSelectedSalon(prev => prev || result.salons[0]);
+        setBusinessUser(prev =>
+          (prev.salonId === 'salon-1' || !prev.salonId) && prev.salonId !== result.salons[0].id
+            ? { ...prev, salonId: result.salons[0].id }
+            : prev
+        );
       }
-      if (Array.isArray(result.services)) setServices(result.services);
-      if (Array.isArray(result.staff)) setStaffMembers(result.staff);
+      if (Array.isArray(result.services) && result.services.length > 0) setServices(result.services);
+      if (Array.isArray(result.staff) && result.staff.length > 0) setStaffMembers(result.staff);
     }).catch(err => {
       console.warn('[AppContext] Failed to hydrate salons from db:', err);
     });

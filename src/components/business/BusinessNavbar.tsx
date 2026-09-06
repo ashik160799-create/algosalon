@@ -4,6 +4,7 @@ import { AlgoLogo } from '../common/AlgoLogo';
 import { ThemeSwitcherModal } from '../common/ThemeSwitcherModal';
 import { LocaleRegionSwitcherModal } from '../common/LocaleRegionSwitcherModal';
 import { BusinessNotificationDrawer } from './BusinessNotificationDrawer';
+import { INITIAL_SALONS } from '../../data/mockData';
 import {
   Store,
   LayoutDashboard,
@@ -48,7 +49,10 @@ export const BusinessNavbar: React.FC = () => {
   const [themeModalOpen, setThemeModalOpen] = useState(false);
 
   const isLight = colorThemeMode === 'light';
-  const activeSalon = salons.find(s => s.id === businessUser.salonId) || salons[0];
+  const activeSalon =
+    salons.find(s => s.id === businessUser.salonId) ||
+    salons[0] ||
+    INITIAL_SALONS[0];
   const businessNotifs = notifications.filter(n => n.userType === 'business');
   const unreadCount = businessNotifs.filter(n => !n.read).length;
 
@@ -58,14 +62,15 @@ export const BusinessNavbar: React.FC = () => {
   }, []);
 
   const todayBookingsCount = appointments.filter(
-    a => a.salonId === activeSalon.id && a.date === todayStr && a.status === 'confirmed'
+    a => a.salonId === activeSalon?.id && a.date === todayStr && a.status === 'confirmed'
   ).length;
 
   const pendingRequestsCount = appointments.filter(
-    a => a.salonId === activeSalon.id && a.status === 'pending'
+    a => a.salonId === activeSalon?.id && a.status === 'pending'
   ).length;
 
   const toggleSalonOpenState = () => {
+    if (!activeSalon?.id) return;
     updateSalonProfile(activeSalon.id, {
       isOpenNow: !activeSalon.isOpenNow,
     });
@@ -94,10 +99,10 @@ export const BusinessNavbar: React.FC = () => {
                 isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900 border-slate-800'
               }`}
             >
-              {activeSalon.logo && activeSalon.logo.trim() ? (
+              {activeSalon?.logo && activeSalon.logo.trim() ? (
                 <img
                   src={activeSalon.logo.trim()}
-                  alt={activeSalon.name}
+                  alt={activeSalon.name || 'Salon'}
                   className="w-4 h-4 rounded-full object-cover shrink-0"
                 />
               ) : (
@@ -105,18 +110,18 @@ export const BusinessNavbar: React.FC = () => {
                   className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black text-white shrink-0"
                   style={{ backgroundColor: currentThemeConfig.primaryHex }}
                 >
-                  {(activeSalon.name?.trim() || 'A').charAt(0).toUpperCase()}
+                  {(activeSalon?.name?.trim() || 'A').charAt(0).toUpperCase()}
                 </span>
               )}
               <div className="text-xs">
                 <span className={`font-bold block truncate max-w-[140px] ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                  {activeSalon.name}
+                  {activeSalon?.name || 'My Salon'}
                 </span>
               </div>
               <button
                 onClick={toggleSalonOpenState}
                 className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold transition-colors ${
-                  activeSalon.isOpenNow
+                  activeSalon?.isOpenNow
                     ? isLight
                       ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200'
                       : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30'
@@ -125,7 +130,7 @@ export const BusinessNavbar: React.FC = () => {
                     : 'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30'
                 }`}
               >
-                {activeSalon.isOpenNow ? '● OPEN' : '● CLOSED'}
+                {activeSalon?.isOpenNow ? '● OPEN' : '● CLOSED'}
               </button>
             </div>
           </div>
@@ -379,18 +384,18 @@ export const BusinessNavbar: React.FC = () => {
                   className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-xs shadow-xs overflow-hidden"
                   style={{ backgroundColor: currentThemeConfig.primaryHex }}
                 >
-                  {activeSalon.logo && activeSalon.logo.trim() ? (
+                  {activeSalon?.logo && activeSalon.logo.trim() ? (
                     <img
                       src={activeSalon.logo.trim()}
-                      alt={activeSalon.name}
+                      alt={activeSalon.name || 'Salon'}
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <span>{activeSalon.name.charAt(0) || 'S'}</span>
+                    <span>{activeSalon?.name?.charAt(0) || 'S'}</span>
                   )}
                 </div>
                 <span className={`hidden sm:inline font-bold max-w-[110px] truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                  {activeSalon.name}
+                  {activeSalon?.name || 'Salon'}
                 </span>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               </button>
@@ -413,20 +418,20 @@ export const BusinessNavbar: React.FC = () => {
                         className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-sm shrink-0 overflow-hidden shadow-xs"
                         style={{ backgroundColor: currentThemeConfig.primaryHex }}
                       >
-                        {activeSalon.logo && activeSalon.logo.trim() ? (
+                        {activeSalon?.logo && activeSalon.logo.trim() ? (
                           <img
                             src={activeSalon.logo.trim()}
-                            alt={activeSalon.name}
+                            alt={activeSalon.name || 'Salon'}
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <span>{activeSalon.name.charAt(0) || 'S'}</span>
+                          <span>{activeSalon?.name?.charAt(0) || 'S'}</span>
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
                           <p className={`font-extrabold truncate text-xs ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                            {activeSalon.name}
+                            {activeSalon?.name || 'Salon'}
                           </p>
                           <span
                             className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-sm shrink-0"

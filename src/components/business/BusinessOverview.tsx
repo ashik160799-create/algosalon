@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useApp } from '../../context/AppContext';
 import { StaffAvatar } from '../common/StaffAvatar';
 import { isSlotInPast, isSlotWithinNextHours } from '../../utils/dateTimeUtils';
+import { INITIAL_SALONS } from '../../data/mockData';
 import {
   Store,
   MapPin,
@@ -43,10 +44,13 @@ export const BusinessOverview: React.FC = () => {
 
   const isLight = colorThemeMode === 'light';
 
-  const salon = salons.find(s => s.id === businessUser.salonId) || salons[0];
-  const salonAppointments = appointments.filter(a => a.salonId === salon.id);
-  const salonServices = services.filter(s => s.salonId === salon.id);
-  const salonStaff = staffMembers.filter(s => s.salonId === salon.id);
+  const salon =
+    salons.find(s => s.id === businessUser.salonId) ||
+    salons[0] ||
+    INITIAL_SALONS[0];
+  const salonAppointments = appointments.filter(a => a.salonId === salon?.id);
+  const salonServices = services.filter(s => s.salonId === salon?.id);
+  const salonStaff = staffMembers.filter(s => s.salonId === salon?.id);
 
   const [selectedCurrency, setSelectedCurrency] = useState<string>(activeCountry.currency);
 
@@ -54,7 +58,7 @@ export const BusinessOverview: React.FC = () => {
     setSelectedCurrency(activeCountry.currency);
   }, [activeCountry.currency]);
 
-  const isAcceptingOnline = salon.isOpenNow ?? true;
+  const isAcceptingOnline = salon?.isOpenNow ?? true;
 
   const [showDocsModal, setShowDocsModal] = useState(false);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
@@ -160,10 +164,10 @@ export const BusinessOverview: React.FC = () => {
                 backgroundColor: isLight ? '#f8fafc' : '#0f172a',
               }}
             >
-              {salon.logo && salon.logo.trim() ? (
+              {salon?.logo && salon.logo.trim() ? (
                 <img
                   src={salon.logo.trim()}
-                  alt={salon.name}
+                  alt={salon.name || 'Salon'}
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -174,7 +178,7 @@ export const BusinessOverview: React.FC = () => {
                   }}
                 >
                   <span className="font-['Outfit',sans-serif] tracking-tight">
-                    {(salon.name?.trim() || 'A').charAt(0).toUpperCase()}
+                    {(salon?.name?.trim() || 'A').charAt(0).toUpperCase()}
                   </span>
                 </div>
               )}
@@ -205,7 +209,7 @@ export const BusinessOverview: React.FC = () => {
                     isLight ? 'text-slate-900' : 'text-white'
                   }`}
                 >
-                  {salon.name || 'Spot-Pro Signature Studio'}
+                  {salon?.name || 'Spot-Pro Signature Studio'}
                 </h1>
                 <CheckCircle2
                   className="w-3.5 h-3.5 shrink-0"

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { WorkingDayHour } from '../../types';
+import { INITIAL_SALONS } from '../../data/mockData';
 import { CheckCircle2, Save, AlertCircle } from 'lucide-react';
 
 const TIME_24H_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -32,10 +33,17 @@ const getDayTimeError = (dayItem: WorkingDayHour): string | null => {
 
 export const BusinessHoursManager: React.FC = () => {
   const { businessUser, salons, updateSalonProfile, currentThemeConfig, colorThemeMode } = useApp();
-  const salon = salons.find(s => s.id === businessUser.salonId) || salons[0];
+  const salon =
+    salons.find(s => s.id === businessUser.salonId) ||
+    salons[0] ||
+    INITIAL_SALONS[0];
   const isLight = colorThemeMode === 'light';
 
-  const [hours, setHours] = useState<WorkingDayHour[]>(salon.workingHours);
+  const [hours, setHours] = useState<WorkingDayHour[]>(
+    salon?.workingHours && Array.isArray(salon.workingHours)
+      ? salon.workingHours
+      : (INITIAL_SALONS[0]?.workingHours || [])
+  );
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 

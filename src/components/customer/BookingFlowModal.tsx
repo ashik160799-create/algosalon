@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { Salon, ServiceItem, StaffMember } from '../../types';
 import { StaffAvatar } from '../common/StaffAvatar';
 import { getRecommendedAiBanner } from '../../utils/aiBannerGenerator';
+import { INITIAL_SALONS } from '../../data/mockData';
 import {
   isSlotInPast,
   getLocalDateString,
@@ -63,8 +64,8 @@ export const BookingFlowModal: React.FC = () => {
 
   const isLight = colorThemeMode === 'light';
 
-  const salon = preselectedSalon || salons[0];
-  const salonTimezone = useMemo(() => getSalonTimezone(salon).timeZone, [salon]);
+  const salon = preselectedSalon || salons[0] || INITIAL_SALONS[0];
+  const salonTimezone = useMemo(() => (salon ? getSalonTimezone(salon).timeZone : 'UTC'), [salon]);
   const salonServices = services.filter(s => s.salonId === salon?.id);
   const salonStaff = staffMembers.filter(st => st.salonId === salon?.id);
 

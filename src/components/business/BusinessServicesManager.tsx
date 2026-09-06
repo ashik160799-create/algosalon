@@ -4,6 +4,7 @@ import { ServiceItem } from '../../types';
 import { ServiceBannerCard } from '../common/ServiceBannerCard';
 import { AiBannerModal } from '../common/AiBannerModal';
 import { getRecommendedAiBanner } from '../../utils/aiBannerGenerator';
+import { INITIAL_SALONS } from '../../data/mockData';
 import {
   Scissors,
   Plus,
@@ -36,7 +37,10 @@ export const BusinessServicesManager: React.FC = () => {
   } = useApp();
 
   const isLight = colorThemeMode === 'light';
-  const salon = salons.find(s => s.id === businessUser.salonId) || salons[0];
+  const salon =
+    salons.find(s => s.id === businessUser.salonId) ||
+    salons[0] ||
+    INITIAL_SALONS[0];
   const salonServices = services.filter(s => s.salonId === salon?.id);
 
   const [searchQuery, setSearchQuery] = useState('');

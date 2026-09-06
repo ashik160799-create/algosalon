@@ -7,6 +7,7 @@ import { getSalonMapUrl, format12Hour } from '../../utils/salonUtils';
 import { ALL_COUNTRY_LOCALES } from '../../utils/localeConfig';
 import { getLocalDateString } from '../../utils/dateTimeUtils';
 import { SalonDocument, WorkingDayHour, SpecialDateSchedule } from '../../types';
+import { INITIAL_SALONS } from '../../data/mockData';
 import { uploadAvatarToSupabase, deleteAvatarFromSupabase, syncAccountIdentityToSupabase } from '../../services/supabaseService';
 import {
   Store,
@@ -318,7 +319,10 @@ export const BusinessProfileManager: React.FC = () => {
   };
 
   const isLight = colorThemeMode === 'light';
-  const salon = salons.find(s => s.id === businessUser.salonId) || salons[0];
+  const salon =
+    salons.find(s => s.id === businessUser.salonId) ||
+    salons[0] ||
+    INITIAL_SALONS[0];
 
   // Settings Section Navigation: 5 clean, focused sections
   const [activeSettingsSection, setActiveSettingsSection] = useState<

@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { INITIAL_SALONS } from '../../data/mockData';
 import { Star, MessageSquare, CornerDownRight } from 'lucide-react';
 
 export const BusinessReviewsManager: React.FC = () => {
   const { businessUser, salons, reviews, replyToReview, currentThemeConfig, colorThemeMode } = useApp();
-  const salon = salons.find(s => s.id === businessUser.salonId) || salons[0];
-  const salonReviews = reviews.filter(r => r.salonId === salon.id);
+  const salon =
+    salons.find(s => s.id === businessUser.salonId) ||
+    salons[0] ||
+    INITIAL_SALONS[0];
+  const salonReviews = reviews.filter(r => r.salonId === salon?.id);
   const isLight = colorThemeMode === 'light';
 
   const [replyingReviewId, setReplyingReviewId] = useState<string | null>(null);
@@ -15,7 +19,7 @@ export const BusinessReviewsManager: React.FC = () => {
   const positivePercent = salonReviews.length > 0
     ? Math.round((positiveReviews.length / salonReviews.length) * 100)
     : 100;
-  const totalReviewsCount = salonReviews.length > 0 ? salonReviews.length : (salon.reviewCount || 0);
+  const totalReviewsCount = salonReviews.length > 0 ? salonReviews.length : (salon?.reviewCount || 0);
 
   const handleSendReply = (reviewId: string) => {
     if (!replyText.trim()) return;
