@@ -495,9 +495,12 @@ export const updateRegisteredAccount = (
   // Don't allow changing email or role through standard profile update
   const { email: _ignoredEmail, role: _ignoredRole, ...safeUpdates } = updates;
 
+  const newAppCode = safeUpdates.appCode || accounts[index].appCode;
   accounts[index] = {
     ...accounts[index],
     ...safeUpdates,
+    appCode: newAppCode,
+    appCodeHash: newAppCode ? hashAccountPin(newAppCode, normEmail) : accounts[index].appCodeHash,
   };
 
   try {

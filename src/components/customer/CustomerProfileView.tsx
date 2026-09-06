@@ -6,7 +6,7 @@ import { SecurityBadge } from '../common/SecurityBadge';
 import { parsePhoneNumber } from '../../utils/countryCodes';
 import { SUPPORTED_LANGUAGES } from '../../utils/localeConfig';
 import { isValidEmail } from '../../utils/authErrorHandling';
-import { uploadAvatarToSupabase, deleteAvatarFromSupabase } from '../../services/supabaseService';
+import { uploadAvatarToSupabase, deleteAvatarFromSupabase, fetchCustomerProfileFromDb } from '../../services/supabaseService';
 import { UserAvatar } from '../common/UserAvatar';
 import { supabaseALGOsalonClient } from '../../supabaseALGOsalonClient';
 import {
@@ -93,10 +93,25 @@ export const CustomerProfileView: React.FC = () => {
   const [savedToast, setSavedToast] = useState<string | null>(null);
 
   useEffect(() => {
-    supabaseALGOsalonClient.auth.getSession().then(({ data }) => {
+    supabaseALGOsalonClient.auth.getSession().then(async ({ data }) => {
       const u = data?.session?.user;
-      const photo = u?.user_metadata?.avatar_url || u?.user_metadata?.picture;
+      if (!u) return;
+      const photo = u.user_metadata?.avatar_url || u.user_metadata?.picture;
       if (photo) setGooglePhotoUrl(photo);
+
+      // If phone, name, or gender is missing in local state, hydrate directly from Supabase
+      if (!customerUser.phone || !customerUser.name || customerUser.name === 'Valued Client') {
+        const liveProfile = await fetchCustomerProfileFromDb(u.id);
+        if (liveProfile) {
+          updateCustomerProfile({
+            id: u.id,
+            name: liveProfile.name || u.user_metadata?.full_name || customerUser.name,
+            phone: liveProfile.phone || u.phone || u.user_metadata?.phone || customerUser.phone,
+            gender: liveProfile.gender || u.user_metadata?.gender || customerUser.gender,
+            avatar: liveProfile.avatar || photo || customerUser.avatar,
+          });
+        }
+      }
     }).catch(() => {});
   }, []);
 
@@ -153,49 +168,64 @@ export const CustomerProfileView: React.FC = () => {
 
   const handleSaveField = (field: ActiveEditField) => {
     switch (field) {
-      case 'name':
-        if (!nameVal.trim()) return;
-        updateCustomerProfile({ name: nameVal.trim() });
-        showToast('Name updated successfully');
+      case 'name': {
+        const cleanName = nameVal.trim();
+        if (!cleanName) return;
+        updateCustomerProfile({ name: cleanName });
+        setNameVal(cleanName);
+        showToast('Full Name updated successfully');
         break;
-      case 'phone':
+      }
+      case 'phone': {
         const cleanPhone = phoneVal.trim();
         if (!cleanPhone || cleanPhone.replace(/\D/g, '').length < 6) {
           showToast('Please enter a valid phone number');
           return;
         }
         updateCustomerProfile({ phone: cleanPhone });
-        showToast('Phone number updated successfully');
+        setPhoneVal(cleanPhone);
+        showToast('Mobile Contact Number updated successfully');
         break;
-      case 'email':
+      }
+      case 'email': {
         const cleanEmail = emailVal.trim();
         if (!cleanEmail || !isValidEmail(cleanEmail)) {
           showToast('Please enter a valid email address');
           return;
         }
         updateCustomerProfile({ email: cleanEmail });
+        setEmailVal(cleanEmail);
         showToast('Sign-up Gmail / Email ID updated successfully');
         break;
-      case 'pin':
-        if (!/^\d{4}$/.test(pinVal)) {
+      }
+      case 'pin': {
+        const cleanPin = pinVal.trim();
+        if (!/^\d{4}$/.test(cleanPin)) {
           setPinError('App Code must be exactly 4 numeric digits.');
           return;
         }
-        if (!confirmPinVal || pinVal !== confirmPinVal) {
+        if (!confirmPinVal || cleanPin !== confirmPinVal.trim()) {
           setPinError('PIN confirmation does not match.');
           return;
         }
-        updateCustomerProfile({ appCode: pinVal.trim() });
+        updateCustomerProfile({ appCode: cleanPin });
+        setPinVal(cleanPin);
+        setConfirmPinVal(cleanPin);
         showToast('4-Digit Security PIN reset successfully');
         break;
-      case 'gender':
+      }
+      case 'gender': {
         updateCustomerProfile({ gender: genderVal });
         showToast('Gender preference updated');
         break;
-      case 'avatar':
-        updateCustomerProfile({ avatar: customAvatarUrl.trim() || avatarVal });
+      }
+      case 'avatar': {
+        const chosenAvatar = customAvatarUrl.trim() || avatarVal;
+        updateCustomerProfile({ avatar: chosenAvatar });
+        setAvatarVal(chosenAvatar);
         showToast('Profile photo updated');
         break;
+      }
       default:
         break;
     }

@@ -96,6 +96,7 @@ import {
   fetchBusinessProfileFromDb,
   fetchCustomerProfileFromDb,
   updateCustomerProfileInDb,
+  syncAccountIdentityToSupabase,
   deleteAccountInSupabase,
   signOutSupabase,
 } from '../services/supabaseService';
@@ -937,48 +938,142 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             regAccount?.role === 'business' ||
             (!regAccount && (pendingOAuthRole === 'business' || !!bizProfile || metaRole === 'business'));
 
+          let custProfile: any = null;
+
           if (isBusiness) {
             const chosenAvatar = userAvatar || regAccount?.avatar || '';
+            const resolvedBizPhone =
+              bizProfile?.phone ||
+              authUser.phone ||
+              authUser.user_metadata?.phone ||
+              regAccount?.phone ||
+              '';
+            const resolvedBizName =
+              regAccount?.businessName ||
+              bizProfile?.businessName ||
+              authUser.user_metadata?.business_name ||
+              'My Salon Studio';
+            const resolvedOwnerName =
+              regAccount?.name ||
+              authUser.user_metadata?.full_name ||
+              authUser.user_metadata?.name ||
+              (userName !== userEmail.split('@')[0] ? userName : 'Salon Director');
+            const resolvedBizAppCode =
+              authUser.user_metadata?.app_code ||
+              regAccount?.appCode ||
+              '';
+
             const bizData: Partial<BusinessUser> = {
               id: authUser.id,
-              name: regAccount?.name || bizProfile?.businessName || (userName !== userEmail.split('@')[0] ? userName : ''),
+              name: resolvedOwnerName,
               email: userEmail,
               signUpGmail: userEmail,
               isGmailLinked: true,
-              phone: regAccount?.phone || bizProfile?.phone || authUser.phone || '',
-              businessName: regAccount?.businessName || bizProfile?.businessName || '',
-              salonId: regAccount?.salonId || bizProfile?.salonId || '',
+              phone: resolvedBizPhone,
+              businessName: resolvedBizName,
+              salonId: regAccount?.salonId || bizProfile?.salonId || salons[0]?.id || 'salon-1',
               ownerRole: regAccount?.ownerRole || bizProfile?.ownerRole || 'Owner & Salon Director',
-              appCode: regAccount?.appCode || '',
-            };
-            if (regAccount && regAccount.appCode) {
-              setBusinessUser(prev => ({ ...prev, ...bizData }));
-              localStorage.setItem('algosalon_business_user', JSON.stringify({ ...INITIAL_BUSINESS_USER, ...bizData }));
-              setCurrentRole('business');
-              localStorage.setItem('algosalon_role', 'business');
-            } else if (userAvatar && regAccount && !regAccount.avatar) {
-              updateRegisteredAccount(userEmail, { avatar: userAvatar, signUpGmail: userEmail });
-            }
-          } else {
-            // Customer role: prioritize user's real Google photo or fallback to registered avatar
-            const chosenAvatar = userAvatar || regAccount?.avatar || '';
-            const custData: Partial<CustomerUser> = {
-              id: authUser.id,
-              email: userEmail,
-              name: regAccount?.name || (userName !== userEmail.split('@')[0] ? userName : ''),
-              phone: regAccount?.phone || authUser.phone || '',
-              avatar: chosenAvatar,
-              gender: regAccount?.gender || 'Prefer not to say',
-              appCode: regAccount?.appCode || '',
+              appCode: resolvedBizAppCode,
             };
 
-            if (regAccount && regAccount.appCode) {
-              setCustomerUser(prev => ({ ...prev, ...custData }));
-              localStorage.setItem('algosalon_customer', JSON.stringify({ ...INITIAL_CUSTOMER, ...custData }));
-              setCurrentRole('customer');
-              localStorage.setItem('algosalon_role', 'customer');
-            } else if (userAvatar && regAccount && (!regAccount.avatar || regAccount.avatar.includes('unsplash.com'))) {
-              updateRegisteredAccount(userEmail, { avatar: userAvatar, signUpGmail: userEmail });
+            setBusinessUser(prev => ({ ...prev, ...bizData }));
+            localStorage.setItem('algosalon_business_user', JSON.stringify({ ...INITIAL_BUSINESS_USER, ...bizData }));
+            setCurrentRole('business');
+            localStorage.setItem('algosalon_role', 'business');
+
+            if (!regAccount) {
+              registerNewAccount({
+                id: authUser.id,
+                email: userEmail,
+                role: 'business',
+                name: resolvedOwnerName,
+                businessName: resolvedBizName,
+                phone: resolvedBizPhone,
+                appCode: resolvedBizAppCode,
+                avatar: chosenAvatar,
+              });
+            } else {
+              updateRegisteredAccount(userEmail, {
+                id: authUser.id,
+                name: resolvedOwnerName,
+                businessName: resolvedBizName,
+                phone: resolvedBizPhone,
+                appCode: resolvedBizAppCode,
+                avatar: chosenAvatar,
+              });
+              if (resolvedBizAppCode) {
+                updateAccountAppCode(userEmail, resolvedBizAppCode);
+              }
+            }
+          } else {
+            // Customer role: fetch profile from public.profiles and auth metadata
+            custProfile = await fetchCustomerProfileFromDb(authUser.id);
+            const chosenAvatar = userAvatar || custProfile?.avatar || regAccount?.avatar || '';
+            const resolvedName =
+              custProfile?.name ||
+              authUser.user_metadata?.full_name ||
+              authUser.user_metadata?.name ||
+              regAccount?.name ||
+              (userName !== userEmail.split('@')[0] ? userName : 'Valued Client');
+            const resolvedPhone =
+              custProfile?.phone ||
+              authUser.phone ||
+              authUser.user_metadata?.phone ||
+              regAccount?.phone ||
+              '';
+            const resolvedGender =
+              custProfile?.gender ||
+              authUser.user_metadata?.gender ||
+              regAccount?.gender ||
+              'Male';
+            const resolvedAppCode =
+              authUser.user_metadata?.app_code ||
+              regAccount?.appCode ||
+              '';
+
+            const custData: CustomerUser = {
+              id: authUser.id,
+              email: userEmail,
+              name: resolvedName,
+              phone: resolvedPhone,
+              avatar: chosenAvatar,
+              gender: resolvedGender as any,
+              dateOfBirth: regAccount?.dateOfBirth || '',
+              nationality: regAccount?.nationality || '',
+              appCode: resolvedAppCode,
+              savedSalonIds: custProfile?.savedSalonIds || [],
+              loyaltyPoints: custProfile?.loyaltyPoints || 0,
+            };
+
+            setCustomerUser(custData);
+            localStorage.setItem('algosalon_customer', JSON.stringify(custData));
+            setCurrentRole('customer');
+            localStorage.setItem('algosalon_role', 'customer');
+
+            // Ensure account exists in accountRegistry
+            if (!regAccount) {
+              registerNewAccount({
+                id: authUser.id,
+                email: userEmail,
+                role: 'customer',
+                name: resolvedName,
+                phone: resolvedPhone,
+                gender: resolvedGender,
+                appCode: resolvedAppCode,
+                avatar: chosenAvatar,
+              });
+            } else {
+              updateRegisteredAccount(userEmail, {
+                id: authUser.id,
+                name: resolvedName,
+                phone: resolvedPhone,
+                gender: resolvedGender,
+                appCode: resolvedAppCode,
+                avatar: chosenAvatar,
+              });
+              if (resolvedAppCode) {
+                updateAccountAppCode(userEmail, resolvedAppCode);
+              }
             }
           }
 
@@ -987,7 +1082,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             localStorage.setItem('algosalon_auth_token', session.access_token);
 
             const isGoogleOAuth = authUser.app_metadata?.provider === 'google';
-            const hasCompleteProfile = regAccount && !!regAccount.appCode;
+            const hasCompleteProfile = !!(
+              authUser.user_metadata?.app_code ||
+              regAccount?.appCode ||
+              (isBusiness ? !!bizProfile : !!custProfile?.name)
+            );
 
             if (isGoogleOAuth && hasCompleteProfile) {
               setShowSplash(false);
@@ -1445,13 +1544,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const activeEmail = customerUser.email || updates.email;
     if (activeEmail) {
       updateRegisteredAccount(activeEmail, updates);
+      if (updates.appCode) {
+        updateAccountAppCode(activeEmail, updates.appCode);
+      }
     }
 
-    if (customerUser.id) {
-      updateCustomerProfileInDb(customerUser.id, updates).catch(err => {
-        console.warn('Background sync customer profile error:', err);
-      });
-    }
+    updateCustomerProfileInDb(customerUser.id || '', updates).catch(err => {
+      console.warn('Background sync customer profile error:', err);
+    });
   };
 
   const updateBusinessProfile = (updates: Partial<BusinessUser>) => {
@@ -1464,6 +1564,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const activeEmail = businessUser.email || updates.email;
     if (activeEmail) {
       updateRegisteredAccount(activeEmail, updates);
+      if (updates.appCode) {
+        updateAccountAppCode(activeEmail, updates.appCode);
+      }
+      syncAccountIdentityToSupabase(activeEmail, 'business', {
+        full_name: updates.name || businessUser.name,
+        name: updates.name || businessUser.name,
+        phone: updates.phone || businessUser.phone,
+        business_name: updates.businessName || businessUser.businessName,
+        app_code: updates.appCode || businessUser.appCode,
+      }).catch(err => {
+        console.warn('Background sync business identity error:', err);
+      });
     }
   };
 

@@ -642,6 +642,8 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
       full_name: createdAccount.name,
       name: createdAccount.name,
       phone: createdAccount.phone,
+      gender: createdAccount.gender,
+      app_code: newAppCode,
       business_name: createdAccount.businessName,
     });
 

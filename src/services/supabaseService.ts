@@ -1492,6 +1492,40 @@ export async function checkSupabaseAccountIdentity(
  * Synchronizes and locks the user's account identity in Supabase auth metadata,
  * ensuring Type : Customer or Type : Business is explicitly maintained.
  */
+/**
+ * Authoritatively syncs user profile, phone, role, and provider type to Supabase auth.users and public.profiles
+ */
+export async function syncUserProfileAndAuthInDb(params: {
+  fullName?: string;
+  phone?: string;
+  gender?: string;
+  appCode?: string;
+  avatar?: string;
+  role?: 'customer' | 'business';
+}): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) return { success: true };
+
+  try {
+    const { data, error } = await supabaseALGOsalonClient.rpc('sync_user_profile_and_auth', {
+      p_full_name: params.fullName || null,
+      p_phone: params.phone || null,
+      p_gender: params.gender || null,
+      p_app_code: params.appCode || null,
+      p_avatar: params.avatar || null,
+      p_role: params.role || null,
+    });
+
+    if (error) {
+      console.warn('sync_user_profile_and_auth RPC note:', error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: any) {
+    console.error('Error in syncUserProfileAndAuthInDb:', err);
+    return { success: false, error: err.message };
+  }
+}
+
 export async function syncAccountIdentityToSupabase(
   email: string,
   role: 'customer' | 'business',
@@ -1505,6 +1539,17 @@ export async function syncAccountIdentityToSupabase(
     const accountType: 'Customer' | 'Business' = role === 'business' ? 'Business' : 'Customer';
     const fullName = extraMetadata?.full_name || extraMetadata?.name || session?.user?.user_metadata?.full_name || '';
 
+    // 1. Authoritative RPC sync to auth.users (phone, metadata, provider_type) and public.profiles
+    await syncUserProfileAndAuthInDb({
+      fullName: fullName.trim() || undefined,
+      phone: extraMetadata?.phone?.trim() || undefined,
+      gender: extraMetadata?.gender?.trim() || undefined,
+      appCode: extraMetadata?.app_code || extraMetadata?.appCode || undefined,
+      avatar: extraMetadata?.avatar || undefined,
+      role,
+    });
+
+    // 2. Client-side auth update to keep JWT session metadata in sync
     if (session?.user && session.user.email?.toLowerCase() === normEmail) {
       await supabaseALGOsalonClient.auth.updateUser({
         data: {
@@ -1519,7 +1564,7 @@ export async function syncAccountIdentityToSupabase(
       console.log(`[Supabase Auth] Identity synchronized: Type: ${accountType}, User: ${normEmail}, Name: ${fullName}`);
     }
 
-    // Also update public.profiles table
+    // 3. Fallback direct update to public.profiles table
     const profileUpdates: Record<string, any> = {
       role,
       updated_at: new Date().toISOString(),
@@ -1530,10 +1575,21 @@ export async function syncAccountIdentityToSupabase(
     if (extraMetadata?.phone) {
       profileUpdates.phone_e164 = extraMetadata.phone.trim();
     }
-    await supabaseALGOsalonClient
-      .from('profiles')
-      .update(profileUpdates)
-      .eq('email', normEmail);
+    if (extraMetadata?.gender) {
+      profileUpdates.gender = extraMetadata.gender.trim();
+    }
+    const targetUserId = session?.user?.id;
+    if (targetUserId) {
+      await supabaseALGOsalonClient
+        .from('profiles')
+        .update(profileUpdates)
+        .eq('id', targetUserId);
+    } else {
+      await supabaseALGOsalonClient
+        .from('profiles')
+        .update(profileUpdates)
+        .eq('email', normEmail);
+    }
   } catch (err) {
     console.warn('Failed to sync Supabase user identity:', err);
   }
@@ -2037,30 +2093,45 @@ export async function updateCustomerProfileInDb(
   customerId: string,
   updates: Partial<Customer>
 ): Promise<{ success: boolean; error?: string }> {
-  if (!isSupabaseConfigured() || !isValidUuid(customerId)) {
-    return { success: false, error: 'Supabase unconfigured or local user' };
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase unconfigured' };
   }
 
   try {
-    const payload: any = {
-      updated_at: new Date().toISOString(),
-    };
+    // 1. Authoritative RPC sync to auth.users and public.profiles
+    await syncUserProfileAndAuthInDb({
+      fullName: updates.name,
+      phone: updates.phone,
+      gender: updates.gender,
+      appCode: (updates as any).appCode,
+      avatar: updates.avatar,
+      role: 'customer',
+    });
 
-    if (updates.name !== undefined) payload.full_name = updates.name;
-    if (updates.phone !== undefined) payload.phone_e164 = updates.phone;
-    if (updates.avatar !== undefined) payload.avatar_path = updates.avatar;
-    if (updates.gender !== undefined) payload.gender = updates.gender;
-    if (updates.preferredLocale !== undefined) payload.preferred_locale = updates.preferredLocale;
-    if (updates.preferredCurrency !== undefined) payload.preferred_currency = updates.preferredCurrency;
+    // 2. Direct fallback update
+    const { data: { session } } = await supabaseALGOsalonClient.auth.getSession();
+    const targetId = session?.user?.id || (isValidUuid(customerId) ? customerId : null);
 
-    const { error } = await supabaseALGOsalonClient
-      .from('profiles')
-      .update(payload)
-      .eq('id', customerId);
+    if (targetId) {
+      const payload: any = {
+        updated_at: new Date().toISOString(),
+      };
 
-    if (error) {
-      console.warn('updateCustomerProfileInDb error:', error.message);
-      return { success: false, error: error.message };
+      if (updates.name !== undefined) payload.full_name = updates.name;
+      if (updates.phone !== undefined) payload.phone_e164 = updates.phone;
+      if (updates.avatar !== undefined) payload.avatar_path = updates.avatar;
+      if (updates.gender !== undefined) payload.gender = updates.gender;
+      if (updates.preferredLocale !== undefined) payload.preferred_locale = updates.preferredLocale;
+      if (updates.preferredCurrency !== undefined) payload.preferred_currency = updates.preferredCurrency;
+
+      const { error } = await supabaseALGOsalonClient
+        .from('profiles')
+        .update(payload)
+        .eq('id', targetId);
+
+      if (error) {
+        console.warn('updateCustomerProfileInDb direct error:', error.message);
+      }
     }
 
     return { success: true };
