@@ -19,6 +19,7 @@ import {
   updateAccountAppCode,
   normalizeEmail,
   checkAccountStatus,
+  verifyAccountPin,
 } from '../../utils/accountRegistry';
 import { syncAccountIdentityToSupabase, signInWithSupabaseGoogle } from '../../services/supabaseService';
 import { isValidEmail } from '../../utils/authErrorHandling';
@@ -192,31 +193,30 @@ export const BusinessAuthFlow: React.FC<BusinessAuthFlowProps> = ({
   const handleValidateExistingCode = (code = enterAppCode) => {
     const normEmail = normalizeEmail(email);
     const existing = findAccountByEmail(normEmail);
-    const validCode = existing?.appCode || (existing ? undefined : businessUser.appCode);
 
-    if (!validCode) {
-      setExistingCodeError('No App Code configured for this account. Please reset your code below.');
+    if (!existing) {
+      setExistingCodeError('Account not found. Please check your email or sign up.');
       return;
     }
 
-    if (code === validCode) {
+    if (verifyAccountPin(existing, code)) {
       setExistingCodeError(null);
       syncAccountIdentityToSupabase(normEmail, 'business', {
-        full_name: existing?.name,
-        business_name: existing?.businessName,
-        phone: existing?.phone,
+        full_name: existing.name,
+        business_name: existing.businessName,
+        phone: existing.phone,
       });
       loginAsBusiness(
         {
-          id: existing?.id,
-          email: existing?.email || normEmail,
-          name: existing?.name,
-          phone: existing?.phone,
-          businessName: existing?.businessName,
-          category: existing?.category,
-          appCode: validCode,
+          id: existing.id,
+          email: existing.email || normEmail,
+          name: existing.name,
+          phone: existing.phone,
+          businessName: existing.businessName,
+          category: existing.category,
+          appCode: existing.appCode,
         },
-        existing?.salonId || businessUser.salonId
+        existing.salonId || businessUser.salonId
       );
       onComplete();
     } else {

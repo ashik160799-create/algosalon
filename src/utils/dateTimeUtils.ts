@@ -28,15 +28,35 @@ export const TIMEZONE_REGISTRY: Record<string, { timeZone: string; label: string
   JP: { timeZone: 'Asia/Tokyo', label: 'Japan Standard Time (JST)', offsetLabel: 'UTC+9' },
 };
 
-export function getSalonTimezone(salon?: Salon | { address?: string; city?: string } | null): {
+export function getSalonTimezone(salon?: Salon | { address?: string; city?: string; timezone?: string } | null): {
   timeZone: string;
   label: string;
   code: string;
 } {
   if (!salon) {
-    return { timeZone: 'Asia/Dubai', label: 'GST (UTC+4)', code: 'GST' };
+    return { timeZone: 'Asia/Dubai', label: 'GST (Dubai • UTC+4)', code: 'GST' };
   }
 
+  // 1. Authoritative: Use explicit database salon.timezone if present
+  if ((salon as any).timezone && typeof (salon as any).timezone === 'string') {
+    const tz = (salon as any).timezone.trim();
+    const matched = Object.values(TIMEZONE_REGISTRY).find(r => r.timeZone.toLowerCase() === tz.toLowerCase());
+    if (matched) {
+      return {
+        timeZone: matched.timeZone,
+        label: `${matched.label} (${matched.offsetLabel})`,
+        code: matched.timeZone.split('/').pop()?.replace('_', ' ') || 'GST',
+      };
+    }
+    const shortCode = tz.split('/').pop()?.replace('_', ' ') || tz;
+    return {
+      timeZone: tz,
+      label: `${shortCode} (${tz})`,
+      code: shortCode,
+    };
+  }
+
+  // 2. Fallback to address/city heuristic
   const text = `${salon.city || ''} ${salon.address || ''}`.toLowerCase();
 
   if (text.includes('london') || text.includes('mercer road') || text.includes('uk')) {
@@ -113,61 +133,126 @@ export function parseAppointmentDateTime(dateStr: string, timeSlotStr: string): 
   return new Date(year, month, day, hour, minute, 0);
 }
 
+/**
+ * Authoritative converter: Converts salon-local date and time into an exact single UTC instant Date.
+ * Works seamlessly across all timezones without browser/client timezone skew.
+ */
+export function salonTimeToUtcInstant(
+  dateStr: string,
+  timeSlotStr: string,
+  salonTimeZone: string = 'Asia/Dubai'
+): Date {
+  if (!dateStr) return new Date();
+  const dateParts = dateStr.split('-');
+  const year = parseInt(dateParts[0], 10) || new Date().getFullYear();
+  const month = parseInt(dateParts[1], 10) || 1;
+  const day = parseInt(dateParts[2], 10) || 1;
+  const { hour, minute } = parseTimeSlotHoursMinutes(timeSlotStr);
+
+  let guessTime = Date.UTC(year, month - 1, day, hour, minute, 0);
+
+  try {
+    const dtf = new Intl.DateTimeFormat('en-US', {
+      timeZone: salonTimeZone,
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      hour12: false,
+    });
+
+    const getParts = (t: number) => {
+      const parts = dtf.formatToParts(new Date(t));
+      let y = 0, m = 0, d = 0, h = 0, min = 0, s = 0;
+      for (const p of parts) {
+        if (p.type === 'year') y = parseInt(p.value, 10);
+        if (p.type === 'month') m = parseInt(p.value, 10);
+        if (p.type === 'day') d = parseInt(p.value, 10);
+        if (p.type === 'hour') h = parseInt(p.value, 10) % 24;
+        if (p.type === 'minute') min = parseInt(p.value, 10);
+        if (p.type === 'second') s = parseInt(p.value, 10);
+      }
+      return Date.UTC(y, m - 1, d, h, min, s);
+    };
+
+    const formattedAtGuess = getParts(guessTime);
+    const targetLocalUtc = Date.UTC(year, month - 1, day, hour, minute, 0);
+    const diff = formattedAtGuess - targetLocalUtc;
+    guessTime = guessTime - diff;
+
+    const secondCheck = getParts(guessTime);
+    if (secondCheck !== targetLocalUtc) {
+      guessTime = guessTime - (secondCheck - targetLocalUtc);
+    }
+    return new Date(guessTime);
+  } catch {
+    return new Date(Date.UTC(year, month - 1, day, hour, minute, 0));
+  }
+}
+
+/**
+ * Formats an authoritative UTC instant into standard display format for a target timezone.
+ */
+export function formatUtcInstantDisplay(
+  utcDate: Date,
+  targetTimeZone?: string
+): string {
+  if (!utcDate || isNaN(utcDate.getTime())) return '';
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: targetTimeZone || 'Asia/Dubai',
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+
+    const parts = formatter.formatToParts(utcDate);
+    let day = '';
+    let mon = '';
+    let year = '';
+    let hour = '';
+    let minute = '';
+    let dayPeriod = 'AM';
+
+    for (const part of parts) {
+      if (part.type === 'day') day = part.value.padStart(2, '0');
+      if (part.type === 'month') mon = part.value;
+      if (part.type === 'year') year = part.value;
+      if (part.type === 'hour') hour = part.value.padStart(2, '0');
+      if (part.type === 'minute') minute = part.value.padStart(2, '0');
+      if (part.type === 'dayPeriod') dayPeriod = part.value.toUpperCase();
+    }
+
+    const sanitizedMon = mon.slice(0, 3);
+    return `${day}_${sanitizedMon}_${year}__${hour}:${minute}${dayPeriod}`;
+  } catch {
+    const d = new Date(utcDate);
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    const mon = MONTH_NAMES_SHORT[d.getUTCMonth()] || 'Jan';
+    const year = String(d.getUTCFullYear());
+    let rawH = d.getUTCHours();
+    const m = String(d.getUTCMinutes()).padStart(2, '0');
+    const ampm = rawH >= 12 ? 'PM' : 'AM';
+    rawH = rawH % 12;
+    if (rawH === 0) rawH = 12;
+    const h = String(rawH).padStart(2, '0');
+    return `${day}_${mon}_${year}__${h}:${m}${ampm}`;
+  }
+}
+
 export function formatBookingDateTime(
   dateStr: string,
   timeSlotStr: string,
   targetTimeZone?: string
 ): string {
   if (!dateStr) return '';
-  const dateObj = parseAppointmentDateTime(dateStr, timeSlotStr);
-
-  if (targetTimeZone) {
-    try {
-      const formatter = new Intl.DateTimeFormat('en-US', {
-        timeZone: targetTimeZone,
-        year: 'numeric',
-        month: 'short',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      });
-
-      const parts = formatter.formatToParts(dateObj);
-      let day = '';
-      let mon = '';
-      let year = '';
-      let hour = '';
-      let minute = '';
-      let dayPeriod = 'AM';
-
-      for (const part of parts) {
-        if (part.type === 'day') day = part.value.padStart(2, '0');
-        if (part.type === 'month') mon = part.value;
-        if (part.type === 'year') year = part.value;
-        if (part.type === 'hour') hour = part.value.padStart(2, '0');
-        if (part.type === 'minute') minute = part.value.padStart(2, '0');
-        if (part.type === 'dayPeriod') dayPeriod = part.value.toUpperCase();
-      }
-
-      const sanitizedMon = mon.slice(0, 3);
-      return `${day}_${sanitizedMon}_${year}__${hour}:${minute}${dayPeriod}`;
-    } catch (e) {
-    }
-  }
-
-  const day = String(dateObj.getDate()).padStart(2, '0');
-  const mon = MONTH_NAMES_SHORT[dateObj.getMonth()] || 'Jan';
-  const year = String(dateObj.getFullYear());
-
-  let rawH = dateObj.getHours();
-  const m = String(dateObj.getMinutes()).padStart(2, '0');
-  const ampm = rawH >= 12 ? 'PM' : 'AM';
-  rawH = rawH % 12;
-  if (rawH === 0) rawH = 12;
-  const h = String(rawH).padStart(2, '0');
-
-  return `${day}_${mon}_${year}__${h}:${m}${ampm}`;
+  const utcInstant = salonTimeToUtcInstant(dateStr, timeSlotStr, targetTimeZone || 'Asia/Dubai');
+  return formatUtcInstantDisplay(utcInstant, targetTimeZone);
 }
 
 export interface DualTimezoneResult {
@@ -180,25 +265,30 @@ export interface DualTimezoneResult {
   salonTzCode: string;
   isSameTimezone: boolean;
   isPast: boolean;
+  utcInstant: Date;
 }
 
 export function getDualBookingTime(
   dateStr: string,
   timeSlotStr: string,
-  salon?: Salon | { address?: string; city?: string } | null,
+  salon?: Salon | { address?: string; city?: string; timezone?: string } | null,
   customerCountryCode?: string
 ): DualTimezoneResult {
   const salonTz = getSalonTimezone(salon);
   const customerTz = getCustomerTimezone(customerCountryCode);
 
-  const salonFormatted = formatBookingDateTime(dateStr, timeSlotStr, salonTz.timeZone);
-  const customerFormatted = formatBookingDateTime(dateStr, timeSlotStr, customerTz.timeZone);
-  const standardFormatted = formatBookingDateTime(dateStr, timeSlotStr);
+  // Authoritative: Convert selected Salon Date & Time into single UTC instant
+  const utcInstant = salonTimeToUtcInstant(dateStr, timeSlotStr, salonTz.timeZone);
+
+  const salonFormatted = formatUtcInstantDisplay(utcInstant, salonTz.timeZone);
+  const customerFormatted = formatUtcInstantDisplay(utcInstant, customerTz.timeZone);
+  const standardFormatted = salonFormatted;
 
   const isSameTimezone =
     salonTz.timeZone === customerTz.timeZone || salonFormatted === customerFormatted;
 
-  const isPast = isPastDateTime(dateStr, timeSlotStr);
+  const now = new Date();
+  const isPast = utcInstant.getTime() < now.getTime();
 
   return {
     standardFormatted,
@@ -210,6 +300,7 @@ export function getDualBookingTime(
     salonTzCode: salonTz.code,
     isSameTimezone,
     isPast,
+    utcInstant,
   };
 }
 

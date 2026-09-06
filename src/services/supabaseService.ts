@@ -12,6 +12,8 @@ import {
   NotificationItem,
   AppointmentStatus,
   WorkingDayHour,
+  SpecialSchedule,
+  SpecialDateSchedule,
   Customer,
   Business,
   Role,
@@ -30,7 +32,7 @@ export async function fetchSalonsFromDb(): Promise<{
   if (!isSupabaseConfigured()) return null;
 
   try {
-    const [salonsRes, servicesRes, staffRes, hoursRes] = await Promise.all([
+    const [salonsRes, servicesRes, staffRes, hoursRes, specialRes] = await Promise.all([
       supabaseALGOsalonClient
         .from('salons')
         .select('*')
@@ -50,6 +52,9 @@ export async function fetchSalonsFromDb(): Promise<{
         .from('business_hours')
         .select('*')
         .order('day_of_week', { ascending: true }),
+      supabaseALGOsalonClient
+        .from('special_schedules')
+        .select('*'),
     ]);
 
     if (salonsRes.error || !salonsRes.data || salonsRes.data.length === 0) {
@@ -61,6 +66,7 @@ export async function fetchSalonsFromDb(): Promise<{
     const dbServices = servicesRes.data || [];
     const dbStaff = staffRes.data || [];
     const dbHours = hoursRes.data || [];
+    const dbSpecials = specialRes.data || [];
 
     const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -73,6 +79,18 @@ export async function fetchSalonsFromDb(): Promise<{
           isOpen: h.is_open,
           open: h.opens_at ? h.opens_at.slice(0, 5) : '09:00',
           close: h.closes_at ? h.closes_at.slice(0, 5) : '21:00',
+        }));
+
+      const salonSpecials: SpecialDateSchedule[] = dbSpecials
+        .filter((ss: any) => ss.salon_id === s.id)
+        .map((ss: any) => ({
+          id: ss.id || ss.date,
+          date: ss.date,
+          title: ss.note || 'Special Hours',
+          isOpen: ss.is_open,
+          open: ss.opens_at ? ss.opens_at.slice(0, 5) : '09:00',
+          close: ss.closes_at ? ss.closes_at.slice(0, 5) : '21:00',
+          reason: ss.note || undefined,
         }));
 
       const priceSigns: Record<number, '$' | '$$' | '$$$' | '$$$$'> = {
@@ -101,7 +119,8 @@ export async function fetchSalonsFromDb(): Promise<{
         coverImage: s.cover_image || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1200&auto=format&fit=crop&q=80',
         logo: s.logo_image || undefined,
         amenities: s.amenities || [],
-        isOpenNow: true,
+        isOpenNow: s.is_open_now ?? true,
+        timezone: s.timezone || 'Asia/Dubai',
         workingHours: salonHours.length > 0 ? salonHours : [
           { day: 'Monday', isOpen: true, open: '09:00', close: '21:00' },
           { day: 'Tuesday', isOpen: true, open: '09:00', close: '21:00' },
@@ -111,6 +130,7 @@ export async function fetchSalonsFromDb(): Promise<{
           { day: 'Saturday', isOpen: true, open: '09:00', close: '22:00' },
           { day: 'Sunday', isOpen: true, open: '09:00', close: '21:00' },
         ],
+        specialSchedules: salonSpecials,
         categories: s.categories || ['Haircut', 'Styling', 'Coloring'],
         featured: true,
         isVerified: s.is_verified,
@@ -366,10 +386,16 @@ export async function fetchCustomerProfileFromDb(customerId: string): Promise<Cu
     const data = profileRes.data;
     const savedSalonIds: string[] = (favsRes.data || []).map((f: any) => f.salon_id);
 
+    let customerEmail = data.email || '';
+    if (!customerEmail) {
+      const { data: authData } = await supabaseALGOsalonClient.auth.getUser();
+      customerEmail = authData?.user?.email || '';
+    }
+
     return {
       id: data.id,
       name: data.full_name,
-      email: '',
+      email: customerEmail,
       phone: data.phone_e164 || '',
       avatar: data.avatar_path || '',
       gender: data.gender || 'Prefer not to say',
@@ -410,17 +436,23 @@ export async function fetchBusinessProfileFromDb(userId: string): Promise<Busine
 
     const { data: profileData } = await supabaseALGOsalonClient
       .from('profiles')
-      .select('full_name, phone_e164')
+      .select('full_name, phone_e164, email')
       .eq('id', userId)
       .maybeSingle();
 
     if (!memberData && !profileData) return null;
 
+    let businessEmail = profileData?.email || '';
+    if (!businessEmail) {
+      const { data: authData } = await supabaseALGOsalonClient.auth.getUser();
+      businessEmail = authData?.user?.email || '';
+    }
+
     const salon: any = memberData?.salons;
     return {
       id: userId,
       name: profileData?.full_name || 'Business Director',
-      email: '',
+      email: businessEmail,
       phone: profileData?.phone_e164 || salon?.phone_e164 || '',
       salonId: memberData?.salon_id || '',
       ownerRole: memberData?.role ? `${memberData.role.toUpperCase()} & Salon Director` : 'Salon Owner',
@@ -533,6 +565,32 @@ export async function createReviewInDb(review: {
   try {
     if (!isValidUuid(review.salonId)) {
       return { success: false, error: 'Salon does not have a database UUID' };
+    }
+
+    // When tied to an appointment, use guarded atomic RPC submit_review
+    if (review.appointmentId && isValidUuid(review.appointmentId)) {
+      const { data: rpcReviewId, error: rpcErr } = await supabaseALGOsalonClient.rpc('submit_review', {
+        p_appointment_id: review.appointmentId,
+        p_rating: Math.max(1, Math.min(5, Math.round(review.rating))),
+        p_comment: (review.comment || 'Great service!').trim(),
+        p_images: [],
+      });
+
+      if (!rpcErr && rpcReviewId) {
+        return { success: true, reviewId: rpcReviewId };
+      }
+
+      if (rpcErr) {
+        console.warn('submit_review RPC returned error:', rpcErr.message);
+        // If it's a domain/authorization violation, return immediately
+        if (
+          rpcErr.message.includes('completed') ||
+          rpcErr.message.includes('Unauthorized') ||
+          rpcErr.message.includes('already reviewed')
+        ) {
+          return { success: false, error: rpcErr.message };
+        }
+      }
     }
 
     let targetCustomerId = review.customerId;
@@ -1765,6 +1823,8 @@ export async function updateSalonProfileInDb(
     if (updates.logo !== undefined) payload.logo_image = updates.logo;
     if (updates.amenities !== undefined) payload.amenities = updates.amenities;
     if (updates.categories !== undefined) payload.categories = updates.categories;
+    if (updates.isOpenNow !== undefined) payload.is_open_now = updates.isOpenNow;
+    if (updates.timezone !== undefined) payload.timezone = updates.timezone;
 
     const { error } = await supabaseALGOsalonClient
       .from('salons')
@@ -1780,10 +1840,96 @@ export async function updateSalonProfileInDb(
       await updateBusinessHoursInDb(targetId, updates.workingHours);
     }
 
+    if (updates.specialSchedules !== undefined) {
+      await updateSpecialSchedulesInDb(targetId, updates.specialSchedules);
+    }
+
     return { success: true };
   } catch (err: any) {
     console.error('Error updating salon profile in DB:', err);
     return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Updates special holiday/override schedules in Supabase
+ */
+export async function updateSpecialSchedulesInDb(
+  salonId: string,
+  schedules: SpecialSchedule[]
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) return { success: false, error: 'Supabase unconfigured' };
+  const targetId = isValidUuid(salonId) ? salonId : '11111111-1111-1111-1111-111111111111';
+
+  try {
+    if (schedules.length === 0) {
+      await supabaseALGOsalonClient
+        .from('special_schedules')
+        .delete()
+        .eq('salon_id', targetId);
+      return { success: true };
+    }
+
+    const upsertRows = schedules.map(s => ({
+      salon_id: targetId,
+      date: s.date,
+      is_open: s.isOpen,
+      opens_at: s.isOpen ? (s.open?.length === 5 ? `${s.open}:00` : s.open || '09:00:00') : null,
+      closes_at: s.isOpen ? (s.close?.length === 5 ? `${s.close}:00` : s.close || '21:00:00') : null,
+      note: s.reason || s.title || null,
+      updated_at: new Date().toISOString(),
+    }));
+
+    const { error } = await supabaseALGOsalonClient
+      .from('special_schedules')
+      .upsert(upsertRows, { onConflict: 'salon_id,date' });
+
+    if (error) {
+      console.warn('updateSpecialSchedulesInDb error:', error.message);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('Error updating special schedules in DB:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Registers a new business salon and establishes ownership membership in Supabase
+ */
+export async function registerBusinessSalonInDb(params: {
+  name: string;
+  phone: string;
+  city?: string;
+  address?: string;
+  categories?: string[];
+  priceRange?: number;
+  coverImage?: string;
+}): Promise<{ success: boolean; salonId?: string; error?: string }> {
+  if (!isSupabaseConfigured()) return { success: false, error: 'Supabase unconfigured' };
+
+  try {
+    const { data: salonId, error } = await supabaseALGOsalonClient.rpc('register_business_salon', {
+      p_name: params.name,
+      p_phone: params.phone,
+      p_city: params.city || 'Dubai',
+      p_address: params.address || 'Downtown Dubai',
+      p_categories: params.categories || ['Haircut', 'Styling'],
+      p_price_range: params.priceRange || 2,
+      p_cover_image: params.coverImage || null,
+    });
+
+    if (error) {
+      console.warn('register_business_salon RPC error:', error.message);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, salonId };
+  } catch (err: any) {
+    console.error('Error executing register_business_salon:', err);
+    return { success: false, error: err.message || 'Failed to register business salon' };
   }
 }
 
@@ -1960,10 +2106,19 @@ export async function deleteAccountInSupabase(
       return { success: true };
     }
 
-    // 1. Primary RPC delete_user_account_complete (SECURITY DEFINER)
-    // Deletes from auth.users (which cascades to auth.identities [OAuth Google], sessions),
-    // public.profiles, owned salons, appointments, reviews, favorites, notifications, etc.
-    const { data: rpcData, error: rpcErr } = await supabaseALGOsalonClient.rpc(
+    // 1. Authoritative RPC delete_user_account (SECURITY DEFINER)
+    const { data: deleteRes, error: rpcErr } = await supabaseALGOsalonClient.rpc('delete_user_account');
+    if (!rpcErr && (deleteRes === true || deleteRes === undefined)) {
+      console.log('[Supabase] delete_user_account succeeded');
+      return { success: true };
+    }
+
+    if (rpcErr) {
+      console.warn('delete_user_account RPC note:', rpcErr.message, 'attempting fallback...');
+    }
+
+    // 2. Secondary RPC fallback: delete_user_account_complete
+    const { data: rpcData, error: legacyRpcErr } = await supabaseALGOsalonClient.rpc(
       'delete_user_account_complete',
       {
         email_to_delete: resolvedEmail || null,
@@ -1971,18 +2126,8 @@ export async function deleteAccountInSupabase(
       }
     );
 
-    if (!rpcErr && rpcData?.success) {
+    if (!legacyRpcErr && rpcData?.success) {
       console.log('[Supabase] delete_user_account_complete succeeded:', rpcData);
-      return { success: true };
-    }
-
-    if (rpcErr) {
-      console.warn('delete_user_account_complete RPC error, attempting fallback:', rpcErr.message);
-    }
-
-    // 2. Legacy RPC fallback: delete_user_account
-    const { error: legacyRpcErr } = await supabaseALGOsalonClient.rpc('delete_user_account');
-    if (!legacyRpcErr) {
       return { success: true };
     }
 

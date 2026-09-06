@@ -36,6 +36,7 @@ import {
   updateRegisteredAccount,
   normalizeEmail,
   checkAccountStatus,
+  verifyAccountPin,
 } from '../../utils/accountRegistry';
 import {
   signInWithSupabaseGoogle,
@@ -401,9 +402,9 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
       setStep('existing_enter_code');
       return;
     }
-    // Once Gmail / Email is verified -> Show Screen 4: Select Account Type (Default: Customer)
-    setSelectedRole('customer');
-    setStep('select_account_type');
+    // Role is preselected on Splash Screen ('Get started' -> Customer, 'Join us' -> Business).
+    // Bypasses the intermediate Select Account Type screen and moves directly to profile creation.
+    setStep('new_create_profile');
   };
 
   // When user clicks the "Verify Email & Continue" button
@@ -434,14 +435,14 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
         // ❌ Not verified yet -> show required error and stay on page
         setVerificationNotice({
           type: 'error',
-          message: 'Check your mail & click the verified link',
+          message: 'Check your email and click the verification link.',
         });
       }
     } catch {
       setIsVerifyingLink(false);
       setVerificationNotice({
         type: 'error',
-        message: 'Check your mail & click the verified link',
+        message: 'Check your email and click the verification link.',
       });
     }
   }
@@ -657,24 +658,14 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
       return;
     }
 
-    const targetAccount =
-      resolvedAccount ||
-      findAccountByEmail(emailInput) || {
-        id: 'user-default',
-        email: emailInput || 'user@example.com',
-        role: selectedRole,
-        name: selectedRole === 'customer' ? customerUser.name : businessUser.name,
-        appCode: selectedRole === 'customer' ? customerUser.appCode : businessUser.appCode,
-      };
+    const targetAccount = resolvedAccount || findAccountByEmail(emailInput);
 
-    const validCode = targetAccount.appCode;
-
-    if (!validCode) {
-      setExistingCodeError('No App Code configured for this account. Please reset your PIN code below.');
+    if (!targetAccount) {
+      setExistingCodeError('Account not found. Please check your email or sign up.');
       return;
     }
 
-    if (code === validCode) {
+    if (verifyAccountPin(targetAccount, code)) {
       setPinFailedAttempts(0);
       setExistingCodeError(null);
       syncAccountIdentityToSupabase(targetAccount.email, targetAccount.role, {
@@ -752,14 +743,14 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
         // ❌ Not verified yet -> show required error and stay on page
         setResendNotice({
           type: 'error',
-          message: 'Check your mail & click the verified link',
+          message: 'Check your email and click the verification link.',
         });
       }
     } catch {
       setIsVerifyingLink(false);
       setResendNotice({
         type: 'error',
-        message: 'Check your mail & click the verified link',
+        message: 'Check your email and click the verification link.',
       });
     }
   };
@@ -1621,8 +1612,8 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
             <div className="flex items-center justify-between mb-3 pr-8 sm:pr-10">
               <button
                 type="button"
-                id="btn-back-to-role-selection"
-                onClick={() => setStep('select_account_type')}
+                id="btn-back-to-email-entry"
+                onClick={() => setStep('email_entry')}
                 className={`flex items-center gap-1.5 text-xs font-bold py-1.5 px-3 rounded-xl border transition-all cursor-pointer ${
                   isLight
                     ? 'bg-zinc-100 hover:bg-zinc-200 border-zinc-300 text-zinc-800'

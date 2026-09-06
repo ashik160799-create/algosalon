@@ -58,7 +58,12 @@ import {
   deleteAccountByEmail,
   generateSecurePin,
 } from '../utils/accountRegistry';
-import { parseTimeSlotHoursMinutes, getLocalDateString } from '../utils/dateTimeUtils';
+import {
+  parseTimeSlotHoursMinutes,
+  getLocalDateString,
+  salonTimeToUtcInstant,
+  getSalonTimezone,
+} from '../utils/dateTimeUtils';
 import { supabaseALGOsalonClient, isSupabaseConfigured } from '../supabaseALGOsalonClient';
 import {
   fetchSalonsFromDb,
@@ -567,13 +572,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [colorThemeMode]);
 
   const [authToken, setAuthToken] = useState<string | null>(() => {
-    return localStorage.getItem('algosalon_auth_token');
+    const token = localStorage.getItem('algosalon_auth_token');
+    if (isSupabaseConfigured() && token && token.startsWith('algosalon_tk_')) {
+      localStorage.removeItem('algosalon_auth_token');
+      return null;
+    }
+    return token;
   });
 
-  const isAuthenticated = Boolean(authToken);
+  const isAuthenticated = Boolean(
+    authToken && (!isSupabaseConfigured() || !authToken.startsWith('algosalon_tk_'))
+  );
 
   const checkIsAuthenticated = (): boolean => {
-    return Boolean(localStorage.getItem('algosalon_auth_token'));
+    const token = localStorage.getItem('algosalon_auth_token');
+    if (!token) return false;
+    if (isSupabaseConfigured() && token.startsWith('algosalon_tk_')) {
+      return false;
+    }
+    return true;
   };
 
   const [showSplash, setShowSplash] = useState<boolean>(() => {
@@ -582,7 +599,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // If returning from Google OAuth or Magic link redirect -> go to app (showSplash = false)
     // If no token exists -> go to Login / Splash screen (showSplash = true)
     const token = localStorage.getItem('algosalon_auth_token');
-    if (token) return false;
+    if (token && (!isSupabaseConfigured() || !token.startsWith('algosalon_tk_'))) {
+      return false;
+    }
     if (typeof window !== 'undefined') {
       const hash = window.location.hash || '';
       const search = window.location.search || '';
@@ -690,10 +709,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try {
         return JSON.parse(saved);
       } catch {
-        return INITIAL_APPOINTMENTS;
+        return isSupabaseConfigured() ? [] : INITIAL_APPOINTMENTS;
       }
     }
-    return INITIAL_APPOINTMENTS;
+    return isSupabaseConfigured() ? [] : INITIAL_APPOINTMENTS;
   });
 
   const [reviews, setReviews] = useState<Review[]>(() => {
@@ -702,10 +721,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try {
         return JSON.parse(saved);
       } catch {
-        return INITIAL_REVIEWS;
+        return isSupabaseConfigured() ? [] : INITIAL_REVIEWS;
       }
     }
-    return INITIAL_REVIEWS;
+    return isSupabaseConfigured() ? [] : INITIAL_REVIEWS;
   });
 
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
@@ -1179,19 +1198,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const signupCustomer = (userData: Partial<CustomerUser>, token?: string): CustomerUser => {
     clearAllSessionData();
 
-    const generatedToken = token || `algosalon_tk_cust_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    let effectiveToken = token || null;
+    if (isSupabaseConfigured()) {
+      supabaseALGOsalonClient.auth.getSession().then(({ data: { session } }) => {
+        if (session?.access_token) {
+          setAuthToken(session.access_token);
+          localStorage.setItem('algosalon_auth_token', session.access_token);
+        }
+      });
+    } else if (!effectiveToken) {
+      effectiveToken = `algosalon_tk_cust_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    }
 
     const freshCustomer: CustomerUser = {
-      id: userData.id || `cust-${Date.now()}`,
+      id: userData.id || (isSupabaseConfigured() ? '' : `cust-${Date.now()}`),
       name: userData.name?.trim() || 'Valued Client',
-      email: userData.email?.trim() || 'user@example.com',
+      email: userData.email?.trim() || '',
       phone: userData.phone?.trim() || '',
       avatar:
         userData.avatar ||
         (userData.gender === 'Female'
           ? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80'
           : 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80'),
-      gender: userData.gender || 'Male',
+      gender: userData.gender || 'Prefer not to say',
       dateOfBirth: userData.dateOfBirth || '',
       nationality: userData.nationality || '',
       appCode: userData.appCode || generateSecurePin(),
@@ -1223,7 +1252,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     }
 
-    localStorage.setItem('algosalon_auth_token', generatedToken);
+    if (effectiveToken) {
+      localStorage.setItem('algosalon_auth_token', effectiveToken);
+      setAuthToken(effectiveToken);
+    }
     localStorage.setItem('algosalon_role', 'customer');
     localStorage.setItem('algosalon_customer', JSON.stringify(freshCustomer));
     localStorage.setItem('algosalon_seen_splash', 'true');
@@ -1233,8 +1265,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `notif-${Date.now()}`,
       userId: freshCustomer.id,
       userType: 'customer',
-      title: `Welcome, ${freshCustomer.name.split(' ')[0]}!`,
-      message: 'Your new client account is active. Explore top-tier salons and book appointments in real time.',
+      title: `Welcome, ${freshCustomer.name.split(' ')[0] || 'Client'}!`,
+      message: 'Your client account is active. Explore top-tier salons and book appointments in real time.',
       date: new Date().toISOString(),
       type: 'system',
       read: false,
@@ -1243,7 +1275,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('algosalon_notifications', JSON.stringify([welcomeNotif]));
 
     // Fully reset Global Context state
-    setAuthToken(generatedToken);
     setCurrentRole('customer');
     setCustomerUser(freshCustomer);
     setAppointments([]);
@@ -1268,7 +1299,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   ): BusinessUser => {
     clearAllSessionData();
 
-    const generatedToken = token || `algosalon_tk_biz_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    let effectiveToken = token || null;
+    if (isSupabaseConfigured()) {
+      supabaseALGOsalonClient.auth.getSession().then(({ data: { session } }) => {
+        if (session?.access_token) {
+          setAuthToken(session.access_token);
+          localStorage.setItem('algosalon_auth_token', session.access_token);
+        }
+      });
+    } else if (!effectiveToken) {
+      effectiveToken = `algosalon_tk_biz_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    }
 
     const newSalonId = salonData?.id || `salon-${Date.now()}`;
     const freshSalon: Salon = {
@@ -1300,17 +1341,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     const freshBusiness: BusinessUser = {
-      id: userData.id || `biz-${Date.now()}`,
+      id: userData.id || (isSupabaseConfigured() ? '' : `biz-${Date.now()}`),
       name: userData.name?.trim() || 'Salon Director',
-      email: userData.email?.trim() || 'partner@algosalon.com',
-      phone: userData.phone?.trim() || '+971 50 123 4567',
+      email: userData.email?.trim() || '',
+      phone: userData.phone?.trim() || '',
       salonId: newSalonId,
       ownerRole: userData.ownerRole?.trim() || 'Owner & Salon Director',
       businessName: userData.businessName?.trim() || freshSalon.name,
       category: userData.category || 'Hair & Styling',
       location: userData.location || freshSalon.city,
       appCode: userData.appCode || generateSecurePin(),
-      signUpGmail: userData.signUpGmail?.trim() || userData.email?.trim() || 'partner@algosalon.com',
+      signUpGmail: userData.signUpGmail?.trim() || userData.email?.trim() || '',
       isGmailLinked: true,
     };
 
@@ -1341,7 +1382,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     }
 
-    localStorage.setItem('algosalon_auth_token', generatedToken);
+    if (effectiveToken) {
+      localStorage.setItem('algosalon_auth_token', effectiveToken);
+      setAuthToken(effectiveToken);
+    }
     localStorage.setItem('algosalon_role', 'business');
     localStorage.setItem('algosalon_business_user', JSON.stringify(freshBusiness));
     localStorage.setItem('algosalon_seen_splash', 'true');
@@ -1354,7 +1398,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return updated;
     });
 
-    setAuthToken(generatedToken);
     setCurrentRole('business');
     setBusinessUser(freshBusiness);
     setAppointments([]);
@@ -1431,9 +1474,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const loginAsCustomer = (userUpdates: Partial<CustomerUser>, token?: string) => {
-    const generatedToken = token || localStorage.getItem('algosalon_auth_token') || `algosalon_tk_cust_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-    setAuthToken(generatedToken);
-    localStorage.setItem('algosalon_auth_token', generatedToken);
+    let resolvedToken = token;
+    if (!resolvedToken && isSupabaseConfigured() && supabaseALGOsalonClient) {
+      const stored = localStorage.getItem('algosalon_auth_token');
+      if (stored && !stored.startsWith('algosalon_tk_')) {
+        resolvedToken = stored;
+      }
+    } else if (!resolvedToken && !isSupabaseConfigured()) {
+      resolvedToken = localStorage.getItem('algosalon_auth_token') || `algosalon_tk_cust_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    }
+
+    setAuthToken(resolvedToken || null);
+    if (resolvedToken) {
+      localStorage.setItem('algosalon_auth_token', resolvedToken);
+    } else {
+      localStorage.removeItem('algosalon_auth_token');
+    }
     localStorage.setItem('algosalon_role', 'customer');
     localStorage.setItem('algosalon_seen_splash', 'true');
 
@@ -1444,12 +1500,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
     setCurrentRole('customer');
     setAuthModalOpen(false);
+
+    if (!resolvedToken && isSupabaseConfigured() && supabaseALGOsalonClient) {
+      supabaseALGOsalonClient.auth.getSession().then(({ data }) => {
+        if (data?.session?.access_token) {
+          setAuthToken(data.session.access_token);
+          localStorage.setItem('algosalon_auth_token', data.session.access_token);
+        }
+      }).catch(() => {});
+    }
   };
 
   const loginAsBusiness = (userUpdates: Partial<BusinessUser>, salonId?: string, token?: string) => {
-    const generatedToken = token || localStorage.getItem('algosalon_auth_token') || `algosalon_tk_biz_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-    setAuthToken(generatedToken);
-    localStorage.setItem('algosalon_auth_token', generatedToken);
+    let resolvedToken = token;
+    if (!resolvedToken && isSupabaseConfigured() && supabaseALGOsalonClient) {
+      const stored = localStorage.getItem('algosalon_auth_token');
+      if (stored && !stored.startsWith('algosalon_tk_')) {
+        resolvedToken = stored;
+      }
+    } else if (!resolvedToken && !isSupabaseConfigured()) {
+      resolvedToken = localStorage.getItem('algosalon_auth_token') || `algosalon_tk_biz_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    }
+
+    setAuthToken(resolvedToken || null);
+    if (resolvedToken) {
+      localStorage.setItem('algosalon_auth_token', resolvedToken);
+    } else {
+      localStorage.removeItem('algosalon_auth_token');
+    }
     localStorage.setItem('algosalon_role', 'business');
     localStorage.setItem('algosalon_seen_splash', 'true');
 
@@ -1465,6 +1543,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentRole('business');
     setShowSplash(false);
     setAuthModalOpen(false);
+
+    if (!resolvedToken && isSupabaseConfigured() && supabaseALGOsalonClient) {
+      supabaseALGOsalonClient.auth.getSession().then(({ data }) => {
+        if (data?.session?.access_token) {
+          setAuthToken(data.session.access_token);
+          localStorage.setItem('algosalon_auth_token', data.session.access_token);
+        }
+      }).catch(() => {});
+    }
   };
 
   /**
@@ -1757,16 +1844,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // If Supabase is configured, validate and create booking in DB first
     if (isSupabaseConfigured()) {
-      const { hour, minute } = parseTimeSlotHoursMinutes(data.timeSlot || '10:00');
-      const bookingDate = new Date(`${data.date}T00:00:00`);
-      bookingDate.setHours(hour, minute, 0, 0);
+      const salonObj = salons.find(s => s.id === data.salonId);
+      const tz = getSalonTimezone(salonObj);
+      const bookingInstant = salonTimeToUtcInstant(data.date, data.timeSlot || '10:00', tz.timeZone);
 
       try {
         const res = await createBookingInDb({
           salonId: data.salonId,
           serviceId: data.serviceId,
           staffId: data.staffId,
-          startsAt: bookingDate.toISOString(),
+          startsAt: bookingInstant.toISOString(),
           customerName: data.customerName,
           customerPhone: data.customerPhone,
           customerEmail: data.customerEmail,
@@ -2029,9 +2116,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Synchronize reschedule proposal to Supabase
     if (isSupabaseConfigured()) {
-      const { hour, minute } = parseTimeSlotHoursMinutes(newTimeSlot || '10:00');
-      const proposedStart = new Date(`${newDate}T00:00:00`);
-      proposedStart.setHours(hour, minute, 0, 0);
+      const salonObj = salons.find(s => s.id === targetApt?.salonId);
+      const tz = getSalonTimezone(salonObj);
+      const proposedStart = salonTimeToUtcInstant(newDate, newTimeSlot || '10:00', tz.timeZone);
 
       const durationMin = targetApt?.durationMinutes || 45;
       const proposedEnd = new Date(proposedStart.getTime() + durationMin * 60000);
@@ -2166,9 +2253,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       let proposedEndIso: string | undefined;
 
       if (effectiveDate && effectiveTimeSlot) {
-        const { hour, minute } = parseTimeSlotHoursMinutes(effectiveTimeSlot);
-        const st = new Date(`${effectiveDate}T00:00:00`);
-        st.setHours(hour, minute, 0, 0);
+        const salonObj = salons.find(s => s.id === targetApt?.salonId);
+        const tz = getSalonTimezone(salonObj);
+        const st = salonTimeToUtcInstant(effectiveDate, effectiveTimeSlot, tz.timeZone);
         proposedStartIso = st.toISOString();
         const durationMin = targetApt?.durationMinutes || 45;
         proposedEndIso = new Date(st.getTime() + durationMin * 60000).toISOString();

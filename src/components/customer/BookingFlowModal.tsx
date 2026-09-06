@@ -104,8 +104,18 @@ export const BookingFlowModal: React.FC = () => {
     const serviceDuration = selectedService?.durationMinutes || 45;
     const slotEndMin = slotStartMin + serviceDuration;
 
+    // Check weekday for staff member's working days
+    const [y, m, d] = date.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    const weekdayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+
     return salonStaff.filter(staff => {
       if (!staff.isAvailable) return false;
+
+      // Ensure staff works on this day of the week
+      if (staff.workingDays && staff.workingDays.length > 0 && !staff.workingDays.includes(weekdayName)) {
+        return false;
+      }
 
       // Ensure no overlapping active booking for this staff member:
       // Overlap condition: [slotStartMin, slotEndMin) overlaps with [apptRangeStart, apptRangeEnd)
@@ -201,9 +211,10 @@ export const BookingFlowModal: React.FC = () => {
       salon?.workingHours,
       salon?.specialSchedules,
       30,
-      salon?.isOpenNow
+      salon?.isOpenNow,
+      selectedService?.durationMinutes
     );
-  }, [selectedDate, salon?.workingHours, salon?.specialSchedules, salon?.isOpenNow]);
+  }, [selectedDate, salon?.workingHours, salon?.specialSchedules, salon?.isOpenNow, selectedService?.durationMinutes]);
 
   const visibleSlotGroups = currentDaySlotsResult.visibleSlotGroups;
   const allAvailableSlotsForDate = useMemo(() => {
@@ -225,7 +236,8 @@ export const BookingFlowModal: React.FC = () => {
         salon?.workingHours,
         salon?.specialSchedules,
         30,
-        salon?.isOpenNow
+        salon?.isOpenNow,
+        selectedService?.durationMinutes
       );
       return {
         dateStr,
@@ -241,7 +253,7 @@ export const BookingFlowModal: React.FC = () => {
           : 'Closed',
       };
     });
-  }, [today, salon?.workingHours, salon?.specialSchedules, salon?.isOpenNow]);
+  }, [today, salon?.workingHours, salon?.specialSchedules, salon?.isOpenNow, selectedService?.durationMinutes]);
 
   // If today has no future slots when opening booking modal, default to next available open day
   useEffect(() => {
@@ -252,7 +264,8 @@ export const BookingFlowModal: React.FC = () => {
       salon?.workingHours,
       salon?.specialSchedules,
       30,
-      salon?.isOpenNow
+      salon?.isOpenNow,
+      selectedService?.durationMinutes
     );
     if (!todayResult.hasAnyFutureSlots) {
       const nextOpenDay = days.find(d => d.hasAnyFutureSlots);

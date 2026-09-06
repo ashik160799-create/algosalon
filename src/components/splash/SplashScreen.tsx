@@ -366,6 +366,19 @@ export const SplashScreen: React.FC = () => {
 
   const handleGetStarted = () => {
     sessionStorage.setItem('algosalon_session_intro_seen', 'true');
+    setSelectedRole('customer');
+    setCurrentRole('customer');
+    localStorage.setItem('algosalon_role', 'customer');
+    setPendingAction('explore');
+    setActiveFlow('auth');
+  };
+
+  const handleJoinUs = () => {
+    sessionStorage.setItem('algosalon_session_intro_seen', 'true');
+    setSelectedRole('business');
+    setCurrentRole('business');
+    localStorage.setItem('algosalon_role', 'business');
+    setPendingAction('explore');
     setActiveFlow('auth');
   };
 
@@ -1077,6 +1090,36 @@ export const SplashScreen: React.FC = () => {
                   </button>
                 </motion.div>
 
+                {/* Business Partner Link: 'Are you a Shop business Partner ? join us' */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25, duration: 0.4 }}
+                  className="w-full flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold relative px-2 -mt-1"
+                >
+                  <span
+                    className="text-zinc-900 font-extrabold tracking-tight"
+                    style={{
+                      textShadow: '0 0 8px #FFFFFF, 0 0 16px rgba(255, 255, 255, 0.95)',
+                    }}
+                  >
+                    Are you a Shop business Partner ?
+                  </span>
+                  <button
+                    id="welcome-join-partner-btn"
+                    type="button"
+                    onClick={handleJoinUs}
+                    className="inline-flex items-center gap-1 font-black underline underline-offset-4 hover:opacity-85 transition-all cursor-pointer group active:scale-95"
+                    style={{
+                      color: primaryColor,
+                      textShadow: '0 0 8px #FFFFFF, 0 0 16px rgba(255, 255, 255, 0.95)',
+                    }}
+                  >
+                    <Store className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 transition-transform group-hover:scale-110" />
+                    <span>join us</span>
+                  </button>
+                </motion.div>
+
                 {/* '100% Verified Salons' Security & Copyright */}
                 <div className="w-full flex flex-col items-center justify-center gap-1.5 relative px-2">
                   {/* Soft White Glow behind Security & Copyright text: 90% center, 60% mid-diffusion */}
@@ -1505,7 +1548,7 @@ export const SplashScreen: React.FC = () => {
               <CustomerAuthFlow
                 initialMode={flowInitialMode}
                 onComplete={handleFlowComplete}
-                onCancel={() => setActiveFlow('experience')}
+                onCancel={() => setActiveFlow('welcome')}
               />
             </motion.div>
           )}
@@ -1531,7 +1574,7 @@ export const SplashScreen: React.FC = () => {
               <BusinessAuthFlow
                 initialMode={flowInitialMode}
                 onComplete={handleFlowComplete}
-                onCancel={() => setActiveFlow('experience')}
+                onCancel={() => setActiveFlow('welcome')}
               />
             </motion.div>
           )}

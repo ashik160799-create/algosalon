@@ -137,7 +137,8 @@ export function generateTimeSlotsForDate(
   workingHours?: WorkingDayHour[],
   specialSchedules?: SpecialDateSchedule[],
   stepMinutes: number = 30,
-  isOpenNowOverride?: boolean
+  isOpenNowOverride?: boolean,
+  serviceDurationMinutes?: number
 ): DaySlotsResult {
   const schedule = getSalonScheduleForDate(dateStr, workingHours, specialSchedules, isOpenNowOverride);
 
@@ -161,12 +162,19 @@ export function generateTimeSlotsForDate(
     closeMin += 24 * 60; // Next day rollover (e.g., closing at 01:00 AM)
   }
 
+  const effectiveDuration = serviceDurationMinutes && serviceDurationMinutes > 0 ? serviceDurationMinutes : stepMinutes;
+
   const morningSlots: string[] = [];
   const afternoonSlots: string[] = [];
   const eveningSlots: string[] = [];
   const nightSlots: string[] = [];
 
   for (let m = openMin; m < closeMin; m += stepMinutes) {
+    // Exclude slot if service duration would run past closing time
+    if (m + effectiveDuration > closeMin) {
+      continue;
+    }
+
     const rawH = Math.floor(m / 60) % 24;
     const min = m % 60;
     const h12 = rawH % 12 === 0 ? 12 : rawH % 12;

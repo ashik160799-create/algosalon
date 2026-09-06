@@ -60,6 +60,8 @@ end $$;
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text not null check (char_length(trim(full_name)) between 1 and 120),
+  email text,
+  role text not null default 'customer' check (role in ('customer', 'business')),
   phone_e164 text check (phone_e164 is null or phone_e164 ~ '^\+[1-9][0-9]{6,14}$'),
   avatar_path text,
   gender text check (gender is null or gender in ('Male', 'Female', 'Other', 'Prefer not to say')),
@@ -99,6 +101,7 @@ create table if not exists public.salons (
   amenities text[] not null default '{}',
   categories text[] not null default '{}',
   is_verified boolean not null default true,
+  is_open_now boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check ((latitude is null and longitude is null) or (latitude between -90 and 90 and longitude between -180 and 180))
@@ -311,6 +314,23 @@ create table if not exists public.payment_records (
   created_at timestamptz not null default now()
 );
 
+-- 2.16 Special Schedules
+create table if not exists public.special_schedules (
+  id uuid primary key default gen_random_uuid(),
+  salon_id uuid not null references public.salons(id) on delete cascade,
+  date date not null,
+  title text not null check (char_length(trim(title)) between 1 and 200),
+  is_open boolean not null default true,
+  opens_at time,
+  closes_at time,
+  reason text check (char_length(reason) <= 500),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (salon_id, date),
+  check ((is_open = false and opens_at is null and closes_at is null) or
+         (is_open = true and opens_at is not null and closes_at is not null and opens_at < closes_at))
+);
+
 -- -----------------------------------------------------------------------------
 -- 3. Helper Functions
 -- -----------------------------------------------------------------------------
@@ -357,12 +377,31 @@ alter table public.reviews enable row level security;
 alter table public.favorites enable row level security;
 alter table public.notifications enable row level security;
 alter table public.payment_records enable row level security;
+alter table public.special_schedules enable row level security;
 
 -- Profiles
 drop policy if exists "Profiles are viewable by owner or staff" on public.profiles;
 create policy "Profiles are viewable by owner or staff"
   on public.profiles for select
-  using (auth.uid() = id or auth.role() = 'authenticated');
+  using (
+    auth.uid() = id
+    or exists (
+      select 1
+      from public.appointments a
+      join public.salon_members sm on sm.salon_id = a.salon_id
+      where sm.user_id = auth.uid()
+        and sm.is_active = true
+        and a.customer_id = public.profiles.id
+    )
+    or exists (
+      select 1
+      from public.salon_members sm1
+      join public.salon_members sm2 on sm1.salon_id = sm2.salon_id
+      where sm1.user_id = auth.uid()
+        and sm2.user_id = public.profiles.id
+        and sm1.is_active = true
+    )
+  );
 
 drop policy if exists "Users can update their own profile" on public.profiles;
 create policy "Users can update their own profile"
@@ -488,24 +527,26 @@ create policy "Users can view own appointments or salon appointments"
   using (
     customer_id = auth.uid()
     or is_salon_member(salon_id)
-    or auth.role() = 'authenticated'
   );
 
 drop policy if exists "Users or managers can insert appointments" on public.appointments;
 create policy "Users or managers can insert appointments"
   on public.appointments for insert
   with check (
-    customer_id = auth.uid()
-    or is_salon_member(salon_id)
-    or auth.role() = 'authenticated'
+    (customer_id = auth.uid())
+    or is_salon_member(salon_id, 'manager')
   );
 
 drop policy if exists "Customers can cancel, managers can manage status" on public.appointments;
 create policy "Customers can cancel, managers can manage status"
   on public.appointments for update
   using (
-    customer_id = auth.uid()
-    or is_salon_member(salon_id)
+    (customer_id = auth.uid() and status in ('pending', 'confirmed', 'rescheduled_by_business'))
+    or is_salon_member(salon_id, 'staff')
+  )
+  with check (
+    (customer_id = auth.uid() and status = 'cancelled')
+    or is_salon_member(salon_id, 'staff')
   );
 
 -- Appointment Events
@@ -558,14 +599,42 @@ create policy "Users manage their own notifications"
   on public.notifications for select
   using (user_id = auth.uid());
 
+drop policy if exists "Users can insert notifications for appointments" on public.notifications;
+create policy "Users can insert notifications for appointments"
+  on public.notifications for insert
+  with check (
+    user_id = auth.uid()
+    or (
+      appointment_id is not null and exists (
+        select 1 from public.appointments a
+        where a.id = appointment_id
+          and (a.customer_id = auth.uid() or is_salon_member(a.salon_id))
+      )
+    )
+  );
+
+drop policy if exists "Users can mark own notifications read" on public.notifications;
 create policy "Users can mark own notifications read"
   on public.notifications for update
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
 
+drop policy if exists "Users can delete own notifications" on public.notifications;
 create policy "Users can delete own notifications"
   on public.notifications for delete
   using (user_id = auth.uid());
+
+-- Special Schedules
+drop policy if exists "Special schedules viewable by everyone" on public.special_schedules;
+create policy "Special schedules viewable by everyone"
+  on public.special_schedules for select
+  using (true);
+
+drop policy if exists "Salon managers can manage special schedules" on public.special_schedules;
+create policy "Salon managers can manage special schedules"
+  on public.special_schedules for all
+  using (is_salon_member(salon_id, 'manager'))
+  with check (is_salon_member(salon_id, 'manager'));
 
 -- Payment Records (Strictly hidden from client browser)
 drop policy if exists "No browser access to raw payment records" on public.payment_records;
@@ -595,12 +664,48 @@ security definer
 set search_path = public, auth, pg_temp
 as $$
 declare
+  v_salon record;
   v_service record;
   v_staff record;
+  v_salon_bh record;
+  v_staff_wh record;
+  v_special_sched record;
   v_ends_at timestamptz;
   v_appointment_id uuid;
   v_caller_id uuid := auth.uid();
+  v_salon_tz text;
+  v_local_start_time time;
+  v_local_end_time time;
+  v_local_dow smallint;
+  v_local_date date;
+  v_owner record;
 begin
+  -- 1. Validate future time
+  if p_starts_at <= now() then
+    raise exception 'Appointment time must be in the future';
+  end if;
+
+  -- 2. Validate salon exists and is published
+  select id, name, timezone, is_open_now, status
+  into v_salon
+  from public.salons
+  where id = p_salon_id;
+
+  if not found then
+    raise exception 'Salon not found';
+  end if;
+
+  if v_salon.status != 'published' and not is_salon_member(p_salon_id) then
+    raise exception 'Salon is not currently open for bookings';
+  end if;
+
+  if v_salon.is_open_now = false then
+    raise exception 'Salon is temporarily paused / offline for bookings';
+  end if;
+
+  v_salon_tz := coalesce(v_salon.timezone, 'Asia/Dubai');
+
+  -- 3. Validate service
   select id, name, duration_minutes, price_minor, currency
   into v_service
   from public.services
@@ -610,6 +715,10 @@ begin
     raise exception 'Selected service is invalid or unavailable at this salon';
   end if;
 
+  -- Calculate appointment end time
+  v_ends_at := p_starts_at + (v_service.duration_minutes || ' minutes')::interval;
+
+  -- 4. Validate specialist
   select id, display_name, is_bookable, is_active
   into v_staff
   from public.staff_profiles
@@ -619,12 +728,72 @@ begin
     raise exception 'Selected specialist is not currently available for booking';
   end if;
 
-  v_ends_at := p_starts_at + (v_service.duration_minutes || ' minutes')::interval;
-
-  if p_starts_at <= now() then
-    raise exception 'Appointment time must be in the future';
+  -- 5. Validate staff provides this service (if mappings are configured)
+  if exists (select 1 from public.staff_services where staff_id = p_staff_id) then
+    if not exists (
+      select 1 from public.staff_services
+      where staff_id = p_staff_id and service_id = p_service_id
+    ) then
+      raise exception 'Selected specialist does not offer the requested service';
+    end if;
   end if;
 
+  -- 6. Extract date and time in the salon's authoritative timezone
+  v_local_date := (p_starts_at at time zone v_salon_tz)::date;
+  v_local_start_time := (p_starts_at at time zone v_salon_tz)::time;
+  v_local_end_time := (v_ends_at at time zone v_salon_tz)::time;
+  v_local_dow := extract(dow from (p_starts_at at time zone v_salon_tz))::smallint;
+
+  -- 7. Check special holiday schedule override
+  select * into v_special_sched
+  from public.special_schedules
+  where salon_id = p_salon_id and date = v_local_date;
+
+  if found then
+    if v_special_sched.is_open = false then
+      raise exception 'Salon is closed on % for special schedule: %', v_local_date, v_special_sched.title;
+    end if;
+    if v_special_sched.opens_at is not null and v_special_sched.closes_at is not null then
+      if v_local_start_time < v_special_sched.opens_at or v_local_end_time > v_special_sched.closes_at then
+        raise exception 'Appointment extends outside special holiday hours (% - %)',
+          v_special_sched.opens_at, v_special_sched.closes_at;
+      end if;
+    end if;
+  else
+    -- Standard salon business hours check
+    select * into v_salon_bh
+    from public.business_hours
+    where salon_id = p_salon_id and day_of_week = v_local_dow;
+
+    if found then
+      if v_salon_bh.is_open = false then
+        raise exception 'Salon is closed on this day of the week';
+      end if;
+      if v_local_start_time < v_salon_bh.opens_at or v_local_end_time > v_salon_bh.closes_at then
+        raise exception 'Appointment extends beyond salon operating hours (% - %)',
+          v_salon_bh.opens_at, v_salon_bh.closes_at;
+      end if;
+    end if;
+  end if;
+
+  -- 8. Check staff working hours schedule
+  select * into v_staff_wh
+  from public.staff_working_hours
+  where staff_id = p_staff_id and day_of_week = v_local_dow;
+
+  if found then
+    if v_staff_wh.is_working = false then
+      raise exception 'Specialist is not scheduled to work on this day';
+    end if;
+    if v_staff_wh.starts_at is not null and v_staff_wh.ends_at is not null then
+      if v_local_start_time < v_staff_wh.starts_at or v_local_end_time > v_staff_wh.ends_at then
+        raise exception 'Appointment is outside the specialist scheduled working shift (% - %)',
+          v_staff_wh.starts_at, v_staff_wh.ends_at;
+      end if;
+    end if;
+  end if;
+
+  -- 9. Check double-booking conflict for the specialist
   if exists (
     select 1 from public.appointments
     where staff_id = p_staff_id
@@ -634,6 +803,7 @@ begin
     raise exception 'This specialist already has an active booking at the requested time.';
   end if;
 
+  -- 10. Insert appointment
   insert into public.appointments (
     salon_id,
     customer_id,
@@ -671,6 +841,7 @@ begin
   )
   returning id into v_appointment_id;
 
+  -- Audit event
   insert into public.appointment_events (
     appointment_id,
     actor_id,
@@ -684,6 +855,30 @@ begin
     'pending',
     'Booking requested by customer'
   );
+
+  -- 11. Automatically notify salon managers
+  for v_owner in (
+    select user_id from public.salon_members
+    where salon_id = p_salon_id and is_active = true
+  ) loop
+    insert into public.notifications (
+      user_id,
+      user_type,
+      title,
+      message,
+      type,
+      link_tab,
+      appointment_id
+    ) values (
+      v_owner.user_id,
+      'business',
+      'New Booking Request',
+      coalesce(p_customer_name, 'A client') || ' requested an appointment for ' || v_service.name || '.',
+      'booking',
+      'appointments',
+      v_appointment_id
+    );
+  end loop;
 
   return v_appointment_id;
 end;
@@ -707,6 +902,11 @@ declare
   v_caller_id uuid := auth.uid();
   v_is_manager boolean;
   v_is_customer boolean;
+  v_final_starts_at timestamptz;
+  v_final_ends_at timestamptz;
+  v_target_prop_start timestamptz;
+  v_target_prop_end timestamptz;
+  v_owner record;
 begin
   select * into v_apt from public.appointments where id = p_appointment_id;
   if not found then
@@ -714,51 +914,111 @@ begin
   end if;
 
   v_is_manager := is_salon_member(v_apt.salon_id, 'staff');
-  v_is_customer := (v_apt.customer_id = v_caller_id);
+  v_is_customer := (v_apt.customer_id is not null and v_apt.customer_id = v_caller_id);
 
   if not (v_is_manager or v_is_customer) then
     raise exception 'Not authorized to update this appointment';
   end if;
 
+  -- State machine enforcement
+  if v_apt.status = 'completed' then
+    raise exception 'Completed appointments cannot be modified';
+  elsif v_apt.status = 'cancelled' then
+    raise exception 'Cancelled appointments cannot be reactivated';
+  elsif v_apt.status = 'pending' and p_new_status not in ('confirmed', 'cancelled', 'rescheduled_by_business') then
+    raise exception 'Invalid status transition from pending to %', p_new_status;
+  elsif v_apt.status = 'confirmed' and p_new_status not in ('in_progress', 'completed', 'cancelled', 'rescheduled_by_business') then
+    raise exception 'Invalid status transition from confirmed to %', p_new_status;
+  elsif v_apt.status = 'in_progress' and p_new_status not in ('completed', 'cancelled') then
+    raise exception 'Invalid status transition from in_progress to %', p_new_status;
+  elsif v_apt.status = 'rescheduled_by_business' and p_new_status not in ('confirmed', 'cancelled') then
+    raise exception 'Invalid status transition from rescheduled_by_business to %', p_new_status;
+  end if;
+
+  -- Customers can only cancel or accept proposed reschedule
   if v_is_customer and not v_is_manager then
     if p_new_status not in ('cancelled', 'confirmed') then
       raise exception 'Customers can only cancel or confirm appointments';
     end if;
+    if p_new_status = 'confirmed' and v_apt.status != 'rescheduled_by_business' then
+      raise exception 'Customers cannot unilaterally confirm un-rescheduled appointments';
+    end if;
   end if;
 
+  -- Handling Reschedule Proposal by Business
+  if p_new_status = 'rescheduled_by_business' then
+    if not v_is_manager then
+      raise exception 'Only salon staff can propose a reschedule';
+    end if;
+
+    if p_proposed_starts_at is null then
+      raise exception 'Proposed reschedule start time is required';
+    end if;
+
+    if p_proposed_starts_at <= now() then
+      raise exception 'Proposed reschedule time must be in the future';
+    end if;
+
+    v_target_prop_start := p_proposed_starts_at;
+    v_target_prop_end := coalesce(
+      p_proposed_ends_at,
+      p_proposed_starts_at + (v_apt.ends_at - v_apt.starts_at)
+    );
+
+    if v_target_prop_end <= v_target_prop_start then
+      raise exception 'Proposed end time must be after proposed start time';
+    end if;
+
+    -- Check specialist conflict for proposed time
+    if exists (
+      select 1 from public.appointments
+      where staff_id = v_apt.staff_id
+        and id != p_appointment_id
+        and status in ('pending', 'confirmed', 'in_progress', 'rescheduled_by_business')
+        and tstzrange(starts_at, ends_at) && tstzrange(v_target_prop_start, v_target_prop_end)
+    ) then
+      raise exception 'Specialist already has a booking during the proposed alternative time';
+    end if;
+
+    v_final_starts_at := v_apt.starts_at;
+    v_final_ends_at := v_apt.ends_at;
+
+  -- Handling Customer Accepting Reschedule
+  elsif p_new_status = 'confirmed' and v_apt.status = 'rescheduled_by_business' then
+    if v_apt.proposed_starts_at is null then
+      raise exception 'No proposed reschedule time exists on this appointment';
+    end if;
+
+    -- Authoritative lock: Customer MUST accept the business proposed time!
+    v_final_starts_at := v_apt.proposed_starts_at;
+    v_final_ends_at := coalesce(v_apt.proposed_ends_at, v_apt.proposed_starts_at + (v_apt.ends_at - v_apt.starts_at));
+    v_target_prop_start := null;
+    v_target_prop_end := null;
+
+  -- Standard Status Change (e.g. Business confirms pending appointment)
+  else
+    v_final_starts_at := v_apt.starts_at;
+    v_final_ends_at := v_apt.ends_at;
+    v_target_prop_start := case when p_new_status = 'confirmed' then null else v_apt.proposed_starts_at end;
+    v_target_prop_end := case when p_new_status = 'confirmed' then null else v_apt.proposed_ends_at end;
+  end if;
+
+  -- Perform update
   update public.appointments
   set
     status = p_new_status,
     decline_reason = coalesce(p_reason, decline_reason),
-    starts_at = case
-      when p_new_status = 'confirmed' and coalesce(p_proposed_starts_at, v_apt.proposed_starts_at) is not null
-      then coalesce(p_proposed_starts_at, v_apt.proposed_starts_at)
-      else starts_at
-    end,
-    ends_at = case
-      when p_new_status = 'confirmed' and coalesce(p_proposed_starts_at, v_apt.proposed_starts_at) is not null
-      then coalesce(
-        p_proposed_ends_at,
-        v_apt.proposed_ends_at,
-        coalesce(p_proposed_starts_at, v_apt.proposed_starts_at) + (v_apt.ends_at - v_apt.starts_at)
-      )
-      else ends_at
-    end,
-    proposed_starts_at = case
-      when p_new_status = 'confirmed' then null
-      when p_proposed_starts_at is not null then p_proposed_starts_at
-      else proposed_starts_at
-    end,
-    proposed_ends_at = case
-      when p_new_status = 'confirmed' then null
-      when p_proposed_ends_at is not null then p_proposed_ends_at
-      else proposed_ends_at
-    end,
+    starts_at = v_final_starts_at,
+    ends_at = v_final_ends_at,
+    proposed_starts_at = v_target_prop_start,
+    proposed_ends_at = v_target_prop_end,
+    proposal_note = case when p_new_status = 'rescheduled_by_business' then coalesce(p_reason, proposal_note) else proposal_note end,
     cancelled_at = case when p_new_status = 'cancelled' then now() else cancelled_at end,
     completed_at = case when p_new_status = 'completed' then now() else completed_at end,
     updated_at = now()
   where id = p_appointment_id;
 
+  -- Audit log event
   insert into public.appointment_events (
     appointment_id,
     actor_id,
@@ -772,19 +1032,304 @@ begin
     p_new_status,
     p_reason
   );
+
+  -- Automatic cross-device notification creation
+  if v_is_manager and v_apt.customer_id is not null then
+    -- Business updated: notify customer
+    insert into public.notifications (
+      user_id,
+      user_type,
+      title,
+      message,
+      type,
+      link_tab,
+      appointment_id
+    ) values (
+      v_apt.customer_id,
+      'customer',
+      case
+        when p_new_status = 'confirmed' then 'Appointment Confirmed 👍'
+        when p_new_status = 'rescheduled_by_business' then 'Appointment Reschedule Proposed 🕒'
+        when p_new_status = 'cancelled' then 'Appointment Cancelled'
+        when p_new_status = 'completed' then 'Service Completed ✨'
+        else 'Appointment Updated'
+      end,
+      case
+        when p_new_status = 'rescheduled_by_business' then 'The salon proposed a new time for your ' || v_apt.service_name || ' appointment. Please review.'
+        when p_new_status = 'confirmed' then 'Your ' || v_apt.service_name || ' booking is confirmed!'
+        when p_new_status = 'cancelled' then 'Your appointment was cancelled' || case when p_reason is not null then ': ' || p_reason else '.' end
+        else 'Your appointment status was updated to ' || p_new_status
+      end,
+      'booking',
+      'bookings',
+      p_appointment_id
+    );
+  elsif v_is_customer then
+    -- Customer updated: notify salon managers
+    for v_owner in (
+      select user_id from public.salon_members
+      where salon_id = v_apt.salon_id and is_active = true
+    ) loop
+      insert into public.notifications (
+        user_id,
+        user_type,
+        title,
+        message,
+        type,
+        link_tab,
+        appointment_id
+      ) values (
+        v_owner.user_id,
+        'business',
+        case
+          when p_new_status = 'confirmed' then 'Customer Accepted Reschedule'
+          when p_new_status = 'cancelled' then 'Customer Cancelled Booking'
+          else 'Appointment Updated by Client'
+        end,
+        v_apt.customer_display_name || ' ' || (case when p_new_status = 'confirmed' then 'accepted the proposed slot for ' else 'cancelled booking for ' end) || v_apt.service_name || '.',
+        'booking',
+        'appointments',
+        p_appointment_id
+      );
+    end loop;
+  end if;
+end;
+$$;
+
+-- Guarded submit_review RPC
+create or replace function public.submit_review(
+  p_appointment_id uuid,
+  p_rating smallint,
+  p_comment text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public, auth, pg_temp
+as $$
+declare
+  v_apt record;
+  v_caller_id uuid := auth.uid();
+  v_customer_profile record;
+  v_review_id uuid;
+begin
+  if v_caller_id is null then
+    raise exception 'Authentication required to post a review';
+  end if;
+
+  if p_rating < 1 or p_rating > 5 then
+    raise exception 'Rating must be between 1 and 5';
+  end if;
+
+  if char_length(trim(p_comment)) < 1 then
+    raise exception 'Review comment cannot be empty';
+  end if;
+
+  -- Verify completed appointment belonging to caller
+  select * into v_apt
+  from public.appointments
+  where id = p_appointment_id;
+
+  if not found then
+    raise exception 'Appointment not found';
+  end if;
+
+  if v_apt.customer_id != v_caller_id then
+    raise exception 'You can only review your own appointments';
+  end if;
+
+  if v_apt.status != 'completed' then
+    raise exception 'Only completed appointments can be reviewed';
+  end if;
+
+  if v_apt.reviewed = true or exists (select 1 from public.reviews where appointment_id = p_appointment_id) then
+    raise exception 'This appointment has already been reviewed';
+  end if;
+
+  -- Derive profile info
+  select full_name, avatar_path into v_customer_profile
+  from public.profiles
+  where id = v_caller_id;
+
+  insert into public.reviews (
+    appointment_id,
+    salon_id,
+    customer_id,
+    customer_name,
+    customer_avatar,
+    rating,
+    comment,
+    service_name,
+    staff_name
+  ) values (
+    p_appointment_id,
+    v_apt.salon_id,
+    v_caller_id,
+    coalesce(v_customer_profile.full_name, v_apt.customer_display_name, 'Valued Client'),
+    v_customer_profile.avatar_path,
+    p_rating,
+    trim(p_comment),
+    v_apt.service_name,
+    v_apt.staff_name
+  )
+  returning id into v_review_id;
+
+  -- Mark appointment as reviewed
+  update public.appointments
+  set reviewed = true, updated_at = now()
+  where id = p_appointment_id;
+
+  return v_review_id;
+end;
+$$;
+
+-- Guarded register_business_salon RPC
+create or replace function public.register_business_salon(
+  p_salon_name text,
+  p_phone text,
+  p_city text default 'Dubai',
+  p_address text default 'Downtown',
+  p_categories text[] default array['Haircut', 'Styling'],
+  p_amenities text[] default array['WiFi', 'Valet Parking'],
+  p_timezone text default 'Asia/Dubai'
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public, auth, pg_temp
+as $$
+declare
+  v_caller_id uuid := auth.uid();
+  v_salon_id uuid;
+  v_slug text;
+  v_cleaned_name text;
+begin
+  if v_caller_id is null then
+    raise exception 'Authentication required to register a business';
+  end if;
+
+  v_cleaned_name := trim(p_salon_name);
+  if char_length(v_cleaned_name) < 2 then
+    raise exception 'Salon name must be at least 2 characters';
+  end if;
+
+  -- Generate clean unique slug
+  v_slug := lower(regexp_replace(v_cleaned_name, '[^a-zA-Z0-9]+', '-', 'g')) || '-' || substr(gen_random_uuid()::text, 1, 8);
+
+  -- 1. Ensure caller profile is marked business
+  update public.profiles
+  set role = 'business', updated_at = now()
+  where id = v_caller_id;
+
+  -- 2. Create Salon record
+  insert into public.salons (
+    created_by,
+    name,
+    slug,
+    phone_e164,
+    address_line1,
+    city,
+    country_code,
+    timezone,
+    categories,
+    amenities,
+    status,
+    is_open_now,
+    is_verified
+  ) values (
+    v_caller_id,
+    v_cleaned_name,
+    v_slug,
+    p_phone,
+    p_address,
+    p_city,
+    'AE',
+    coalesce(p_timezone, 'Asia/Dubai'),
+    p_categories,
+    p_amenities,
+    'published',
+    true,
+    true
+  )
+  returning id into v_salon_id;
+
+  -- 3. Create Salon Member record linking user as owner
+  insert into public.salon_members (
+    salon_id,
+    user_id,
+    role,
+    is_active
+  ) values (
+    v_salon_id,
+    v_caller_id,
+    'owner',
+    true
+  )
+  on conflict (salon_id, user_id) do update set role = 'owner', is_active = true;
+
+  -- 4. Create default weekly business hours
+  insert into public.business_hours (salon_id, day_of_week, is_open, opens_at, closes_at)
+  values
+    (v_salon_id, 0, true, '09:00:00', '21:00:00'),
+    (v_salon_id, 1, true, '09:00:00', '21:00:00'),
+    (v_salon_id, 2, true, '09:00:00', '21:00:00'),
+    (v_salon_id, 3, true, '09:00:00', '21:00:00'),
+    (v_salon_id, 4, true, '09:00:00', '21:00:00'),
+    (v_salon_id, 5, true, '13:00:00', '22:00:00'),
+    (v_salon_id, 6, true, '09:00:00', '22:00:00')
+  on conflict (salon_id, day_of_week) do nothing;
+
+  return v_salon_id;
+end;
+$$;
+
+-- Authoritative delete_user_account RPC
+create or replace function public.delete_user_account()
+returns void
+language plpgsql
+security definer
+set search_path = public, auth, pg_temp
+as $$
+declare
+  v_caller_id uuid := auth.uid();
+begin
+  if v_caller_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  delete from public.profiles where id = v_caller_id;
+  delete from auth.users where id = v_caller_id;
 end;
 $$;
 
 -- -----------------------------------------------------------------------------
 -- 6. Storage Setup
 -- -----------------------------------------------------------------------------
-insert into storage.buckets (id, name, public)
-values ('avatars', 'avatars', true)
-on conflict (id) do update set public = true;
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'avatars',
+  'avatars',
+  true,
+  5242880,
+  array['image/jpeg', 'image/png', 'image/webp', 'image/jpg']
+)
+on conflict (id) do update set
+  public = true,
+  file_size_limit = 5242880,
+  allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
 
-insert into storage.buckets (id, name, public)
-values ('salon-media', 'salon-media', true)
-on conflict (id) do update set public = true;
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'salon-media',
+  'salon-media',
+  true,
+  10485760,
+  array['image/jpeg', 'image/png', 'image/webp', 'image/jpg']
+)
+on conflict (id) do update set
+  public = true,
+  file_size_limit = 10485760,
+  allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
 
 drop policy if exists "Public Avatar Read" on storage.objects;
 create policy "Public Avatar Read"
@@ -794,12 +1339,44 @@ create policy "Public Avatar Read"
 drop policy if exists "Authenticated users can upload avatars" on storage.objects;
 create policy "Authenticated users can upload avatars"
   on storage.objects for insert
-  with check (bucket_id = 'avatars' and auth.role() = 'authenticated');
+  with check (
+    bucket_id = 'avatars'
+    and auth.role() = 'authenticated'
+    and (
+      name like auth.uid() || '/%'
+      or (storage.foldername(name))[1] = auth.uid()::text
+    )
+  );
+
+drop policy if exists "Authenticated users can update own avatars" on storage.objects;
+create policy "Authenticated users can update own avatars"
+  on storage.objects for update
+  using (
+    bucket_id = 'avatars'
+    and auth.role() = 'authenticated'
+    and (
+      name like auth.uid() || '/%'
+      or (storage.foldername(name))[1] = auth.uid()::text
+    )
+  );
 
 drop policy if exists "Authenticated users can upload salon media" on storage.objects;
 create policy "Authenticated users can upload salon media"
   on storage.objects for insert
-  with check (bucket_id = 'salon-media' and auth.role() = 'authenticated');
+  with check (
+    bucket_id = 'salon-media'
+    and auth.role() = 'authenticated'
+    and is_salon_member(((storage.foldername(name))[1])::uuid, 'manager')
+  );
+
+drop policy if exists "Salon managers can update salon media" on storage.objects;
+create policy "Salon managers can update salon media"
+  on storage.objects for update
+  using (
+    bucket_id = 'salon-media'
+    and auth.role() = 'authenticated'
+    and is_salon_member(((storage.foldername(name))[1])::uuid, 'manager')
+  );
 
 -- -----------------------------------------------------------------------------
 -- 7. Automated User Registration Trigger
@@ -810,10 +1387,18 @@ language plpgsql
 security definer
 set search_path = public, auth, pg_temp
 as $$
+declare
+  v_role text := coalesce(new.raw_user_meta_data->>'role', 'customer');
 begin
+  if v_role not in ('customer', 'business') then
+    v_role := 'customer';
+  end if;
+
   insert into public.profiles (
     id,
     full_name,
+    email,
+    role,
     phone_e164,
     avatar_path,
     preferred_locale,
@@ -821,6 +1406,8 @@ begin
   ) values (
     new.id,
     coalesce(trim(new.raw_user_meta_data->>'full_name'), trim(new.raw_user_meta_data->>'name'), 'Valued Client'),
+    new.email,
+    v_role,
     new.phone,
     new.raw_user_meta_data->>'avatar_url',
     coalesce(new.raw_user_meta_data->>'preferred_locale', 'en'),
@@ -828,7 +1415,8 @@ begin
   )
   on conflict (id) do update
   set
-    full_name = excluded.full_name,
+    full_name = coalesce(excluded.full_name, public.profiles.full_name),
+    email = coalesce(excluded.email, public.profiles.email),
     avatar_path = coalesce(excluded.avatar_path, public.profiles.avatar_path),
     updated_at = now();
 

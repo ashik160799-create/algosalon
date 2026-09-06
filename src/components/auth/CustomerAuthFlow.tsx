@@ -21,6 +21,7 @@ import {
   updateAccountAppCode,
   normalizeEmail,
   checkAccountStatus,
+  verifyAccountPin,
 } from '../../utils/accountRegistry';
 import {
   signInWithSupabaseGoogle,
@@ -199,27 +200,26 @@ export const CustomerAuthFlow: React.FC<CustomerAuthFlowProps> = ({
   const handleValidateExistingCode = (code = enterAppCode) => {
     const normEmail = normalizeEmail(email);
     const existing = findAccountByEmail(normEmail);
-    const validCode = existing?.appCode || (existing ? undefined : customerUser.appCode);
 
-    if (!validCode) {
-      setExistingCodeError('No App Code configured for this account. Please reset your code below.');
+    if (!existing) {
+      setExistingCodeError('Account not found. Please check your email or sign up.');
       return;
     }
 
-    if (code === validCode) {
+    if (verifyAccountPin(existing, code)) {
       setExistingCodeError(null);
       syncAccountIdentityToSupabase(normEmail, 'customer', {
-        full_name: existing?.name,
-        phone: existing?.phone,
+        full_name: existing.name,
+        phone: existing.phone,
       });
       loginAsCustomer({
-        id: existing?.id,
-        email: existing?.email || normEmail,
-        name: existing?.name,
-        phone: existing?.phone,
-        avatar: existing?.avatar,
-        gender: existing?.gender,
-        appCode: validCode,
+        id: existing.id,
+        email: existing.email || normEmail,
+        name: existing.name,
+        phone: existing.phone,
+        avatar: existing.avatar,
+        gender: existing.gender,
+        appCode: existing.appCode,
       });
       onComplete();
     } else {

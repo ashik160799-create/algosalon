@@ -1,28 +1,28 @@
 import { Salon, ServiceItem, StaffMember, Appointment, Review, CustomerUser, BusinessUser, NotificationItem } from '../types';
 
 export const INITIAL_CUSTOMER: CustomerUser = {
-  id: 'cust-guest',
-  name: 'New Client',
+  id: '',
+  name: 'Client',
   email: '',
   phone: '',
   avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-  gender: 'Male',
+  gender: 'Prefer not to say',
   dateOfBirth: '',
   nationality: '',
-  appCode: '1234',
+  appCode: '',
   savedSalonIds: [],
   loyaltyPoints: 0,
 };
 
 export const INITIAL_BUSINESS_USER: BusinessUser = {
-  id: 'biz-201',
-  name: 'Marcus Vance',
-  email: 'marcus@algosalon.com',
-  signUpGmail: 'marcus.salon@gmail.com',
-  isGmailLinked: true,
-  appCode: '1234',
-  salonId: 'salon-1',
-  ownerRole: 'Master Stylist & Salon Director',
+  id: '',
+  name: 'Salon Owner',
+  email: '',
+  signUpGmail: '',
+  isGmailLinked: false,
+  appCode: '',
+  salonId: '',
+  ownerRole: 'Salon Director',
 };
 
 export const INITIAL_SALONS: Salon[] = [

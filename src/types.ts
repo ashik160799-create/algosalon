@@ -87,6 +87,8 @@ export interface SpecialDateSchedule {
   reason?: string;
 }
 
+export type SpecialSchedule = SpecialDateSchedule;
+
 export interface StaffMember {
   id: string;
   salonId: string;
@@ -167,6 +169,7 @@ export interface Salon {
   documents?: SalonDocument[];
   trnNumber?: string;
   licenseNumber?: string;
+  timezone?: string;
 }
 
 export type AppointmentStatus =
