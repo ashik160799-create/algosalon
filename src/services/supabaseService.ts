@@ -1307,19 +1307,16 @@ export async function resendSupabaseVerification(
     });
 
     if (response.error) {
-      const msg = response.error.message?.toLowerCase() || '';
-      // If error is not a rate limit, attempt auth.resend as fallback
-      if (!msg.includes('security') && !msg.includes('rate') && !msg.includes('seconds')) {
-        const fallback = await supabaseALGOsalonClient.auth.resend({
-          type: 'signup',
-          email: cleanEmail,
-          options: {
-            emailRedirectTo: redirectTo,
-          },
-        });
-        if (!fallback.error) {
-          return fallback;
-        }
+      // Attempt auth.resend as fallback
+      const fallback = await supabaseALGOsalonClient.auth.resend({
+        type: 'signup',
+        email: cleanEmail,
+        options: {
+          emailRedirectTo: redirectTo,
+        },
+      });
+      if (!fallback.error) {
+        return fallback;
       }
     }
 

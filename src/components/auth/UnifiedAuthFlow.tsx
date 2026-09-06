@@ -144,6 +144,7 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
   // Input states
   const [emailInput, setEmailInput] = useState(() => savedSession?.emailInput || '');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmittingEmail, setIsSubmittingEmail] = useState(false);
   const [resolvedAccount, setResolvedAccount] = useState<RegisteredAccount | null>(() => {
     if (savedSession?.emailInput) {
       return findAccountByEmail(savedSession.emailInput) || null;
@@ -284,64 +285,66 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
     }
 
     setErrorMessage(null);
-    let existing = findAccountByEmail(sanitized);
+    setIsSubmittingEmail(true);
 
-    // If not in local storage, check Supabase database for existing account identity
-    if (!existing) {
-      try {
-        const remote = await checkSupabaseAccountIdentity(sanitized);
-        if (remote.exists && remote.account) {
-          existing = {
-            id: remote.account.id || `acc-${Date.now()}`,
-            email: sanitized,
-            role: remote.role || 'customer',
-            name: remote.account.name || sanitized.split('@')[0],
-            appCode: remote.account.appCode || '',
-            phone: remote.account.phone || '',
-            avatar: remote.account.avatar || undefined,
-            signUpGmail: sanitized,
-          };
-          registerNewAccount(existing);
-        }
-      } catch (err) {
-        console.warn('Supabase account identity check note:', err);
-      }
-    }
+    try {
+      let existing = findAccountByEmail(sanitized);
 
-    if (existing) {
-      // Core Rule: 1 Email = 1 Account Type. The role is permanently bound to the existing account.
-      // Auto-detect role and direct to previous 4-digit App Code without sending a magic link!
-      setResolvedAccount(existing);
-      setSelectedRole(existing.role);
-      setExistingPin('');
-      setExistingCodeError(null);
-      setStep('existing_enter_code');
-    } else {
-      // No account found -> New signup flow: Magic link dispatched ONLY to new users
-      setResolvedAccount(null);
-      setResendCooldown(60);
-      setVerificationNotice(null);
-      setResendNotice(null);
-      setStep('new_verify_link');
-
-      // Dispatch real Supabase OTP / Magic link to this email in background
-      try {
-        const { error } = await resendSupabaseVerification(sanitized, selectedRole);
-        if (error) {
-          console.warn('Supabase OTP dispatch note:', error);
-          const parsed = parseAuthError(error);
-          if (parsed.category === 'rate_limit') {
-            const waitTime = parsed.retryAfterSeconds || 60;
-            setResendCooldown(waitTime);
-            setResendNotice({
-              type: 'warning',
-              message: parsed.message,
-            });
+      // If not in local storage, check Supabase database for existing account identity
+      if (!existing) {
+        try {
+          const remote = await checkSupabaseAccountIdentity(sanitized);
+          if (remote.exists && remote.account) {
+            existing = {
+              id: remote.account.id || `acc-${Date.now()}`,
+              email: sanitized,
+              role: remote.role || 'customer',
+              name: remote.account.name || sanitized.split('@')[0],
+              appCode: remote.account.appCode || '',
+              phone: remote.account.phone || '',
+              avatar: remote.account.avatar || undefined,
+              signUpGmail: sanitized,
+            };
+            registerNewAccount(existing);
           }
+        } catch (err) {
+          console.warn('Supabase account identity check note:', err);
         }
-      } catch (err) {
-        console.warn('Supabase OTP dispatch note:', err);
       }
+
+      if (existing) {
+        // Core Rule: 1 Email = 1 Account Type. The role is permanently bound to the existing account.
+        // Auto-detect role and direct to previous 4-digit App Code without sending a magic link!
+        setResolvedAccount(existing);
+        setSelectedRole(existing.role);
+        setExistingPin('');
+        setExistingCodeError(null);
+        setStep('existing_enter_code');
+        setIsSubmittingEmail(false);
+      } else {
+        // Dispatch real Supabase OTP / Magic link to this email
+        const res = await sendSupabaseOtp(sanitized, selectedRole);
+        if (res.error) {
+          console.warn('Supabase OTP dispatch note:', res.error);
+          const parsed = parseAuthError(res.error);
+          setErrorMessage(parsed.message || 'Unable to send verification email. Please try again.');
+          setIsSubmittingEmail(false);
+          return;
+        }
+
+        // Successfully dispatched -> Move to Check your mail screen
+        setResolvedAccount(null);
+        setResendCooldown(60);
+        setVerificationNotice(null);
+        setResendNotice(null);
+        setStep('new_verify_link');
+        setIsSubmittingEmail(false);
+      }
+    } catch (err: unknown) {
+      console.warn('Account status check error:', err);
+      const parsed = parseAuthError(err);
+      setErrorMessage(parsed.message || 'Unable to process email. Please try again.');
+      setIsSubmittingEmail(false);
     }
   };
 
@@ -487,7 +490,7 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
         });
         error = resetRes.error;
       } else {
-        const resendRes = await resendSupabaseVerification(targetEmail);
+        const resendRes = await resendSupabaseVerification(targetEmail, selectedRole);
         error = resendRes.error;
       }
       if (error) {
@@ -979,15 +982,25 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
               <button
                 type="submit"
                 id="btn-auth-continue-submit"
-                className="w-full py-3.5 px-6 rounded-2xl font-extrabold text-sm tracking-tight transition-all duration-200 shadow-lg flex items-center justify-center gap-2 group active:scale-[0.99] cursor-pointer"
+                disabled={isSubmittingEmail}
+                className="w-full py-3.5 px-6 rounded-2xl font-extrabold text-sm tracking-tight transition-all duration-200 shadow-lg flex items-center justify-center gap-2 group active:scale-[0.99] cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
                 style={{
                   backgroundColor: primaryColor,
                   color: contrastColor,
                   boxShadow: `0 8px 20px -4px ${glowColor}`,
                 }}
               >
-                <span>Continue</span>
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                {isSubmittingEmail ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Sending verification link...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Continue</span>
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                  </>
+                )}
               </button>
             </form>
           </motion.div>
