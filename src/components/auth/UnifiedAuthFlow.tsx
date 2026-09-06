@@ -350,15 +350,18 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
 
   const handleEmailSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
+    setGoogleOauthErrorMsg(null);
     handleCheckAccountStatus(emailInput);
   };
 
   const handleGoogleContinue = async () => {
     setErrorMessage(null);
+    setGoogleOauthErrorMsg(null);
 
     // Check internet connectivity
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      setErrorMessage('Connection issue: Unable to reach Google. Please check your internet connection.');
+      setGoogleOauthErrorMsg('Connection issue: Unable to reach Google. Please check your internet connection.');
       return;
     }
 
@@ -373,7 +376,7 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
         const parsed = parseAuthError(error);
         console.warn('Supabase Google OAuth response:', parsed.message);
         if (parsed.category === 'oauth_cancelled' || parsed.category === 'network') {
-          setErrorMessage(parsed.message);
+          setGoogleOauthErrorMsg(parsed.message);
         } else {
           setGoogleOauthErrorMsg(parsed.message || 'Google OAuth provider is awaiting setup in Supabase.');
           setGoogleOauthGuideOpen(true);
@@ -384,7 +387,7 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
       console.warn('Google login error:', err);
       const parsed = parseAuthError(err);
       if (parsed.category === 'oauth_cancelled' || parsed.category === 'network') {
-        setErrorMessage(parsed.message);
+        setGoogleOauthErrorMsg(parsed.message);
       } else {
         setGoogleOauthErrorMsg(parsed.message || 'Could not initiate Google login.');
         setGoogleOauthGuideOpen(true);
@@ -917,6 +920,13 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
                 </>
               )}
             </button>
+
+            {googleOauthErrorMsg && (
+              <div className="flex items-center gap-1.5 text-xs text-amber-500 font-semibold text-left mt-1.5 px-1">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{googleOauthErrorMsg}</span>
+              </div>
+            )}
 
             {/* Divider — "or with Email" */}
             <div className="w-full flex items-center gap-3 my-3.5">
