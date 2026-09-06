@@ -12,6 +12,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { supabaseUrl, getSupabaseProjectRef } from '../../supabaseALGOsalonClient';
 
 interface GoogleOauthSetupModalProps {
   isOpen: boolean;
@@ -31,8 +32,9 @@ export const GoogleOauthSetupModal: React.FC<GoogleOauthSetupModalProps> = ({
   const primaryColor = currentThemeConfig?.primaryHex || '#0EA36F';
   const [copied, setCopied] = useState(false);
 
-  const supabaseUrl = 'https://mmmthrlbikllhdupslrz.supabase.co';
-  const callbackUrl = `${supabaseUrl}/auth/v1/callback`;
+  const activeSupabaseUrl = supabaseUrl || 'https://mmmthrlbikllhdupslrz.supabase.co';
+  const projectRef = getSupabaseProjectRef();
+  const callbackUrl = `${activeSupabaseUrl}/auth/v1/callback`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(callbackUrl);
@@ -97,7 +99,7 @@ export const GoogleOauthSetupModal: React.FC<GoogleOauthSetupModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
-                Live Supabase client is connected to: <code className="font-mono text-zinc-900 dark:text-zinc-200">mmmthrlbikllhdupslrz</code>
+                Live Supabase client is connected to: <code className="font-mono text-zinc-900 dark:text-zinc-200">{projectRef}</code>
               </p>
             </div>
           </div>

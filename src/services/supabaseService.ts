@@ -1207,7 +1207,11 @@ export async function signInWithSupabaseGoogle(): Promise<{
   }
 
   try {
-    const redirectTo = `${window.location.origin}/`;
+    const redirectTo =
+      typeof window !== 'undefined' && window.location?.origin
+        ? `${window.location.origin}/`
+        : 'https://salon-gold-six.vercel.app/';
+
     const response = await supabaseALGOsalonClient.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -1218,6 +1222,15 @@ export async function signInWithSupabaseGoogle(): Promise<{
         },
       },
     });
+
+    if (response.error) {
+      return response;
+    }
+
+    if (typeof window !== 'undefined' && (response.data as any)?.url) {
+      window.location.assign((response.data as any).url);
+    }
+
     return response;
   } catch (err: unknown) {
     return { data: null, error: err };

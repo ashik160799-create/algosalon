@@ -4,8 +4,12 @@
  */
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
+export const DEFAULT_SUPABASE_URL = 'https://mmmthrlbikllhdupslrz.supabase.co';
+export const DEFAULT_SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tbXRocmxiaWtsbGhkdXBzbHJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0Mzk1MDcsImV4cCI6MjEwNDAxNTUwN30.K00AzMuva-wTGWzYBCGLeNxxGFnkXw0FJWI27a1PIz0';
+
 function normalizeSupabaseUrl(rawUrl?: unknown): string {
-  if (!rawUrl || typeof rawUrl !== 'string') return '';
+  if (!rawUrl || typeof rawUrl !== 'string') return DEFAULT_SUPABASE_URL;
 
   let cleaned = rawUrl.trim().replace(/^['"]+|['"]+$/g, '');
   if (cleaned.startsWith('VITE_SUPABASE_URL=')) {
@@ -14,7 +18,7 @@ function normalizeSupabaseUrl(rawUrl?: unknown): string {
   cleaned = cleaned.replace(/^['"]+|['"]+$/g, '');
 
   if (!cleaned || cleaned.includes('YOUR_PROJECT_REF') || cleaned === 'undefined' || cleaned === 'null') {
-    return '';
+    return DEFAULT_SUPABASE_URL;
   }
 
   // Valid full HTTP/HTTPS URL
@@ -23,7 +27,7 @@ function normalizeSupabaseUrl(rawUrl?: unknown): string {
       new URL(cleaned);
       return cleaned.replace(/\/+$/, '');
     } catch {
-      return '';
+      return DEFAULT_SUPABASE_URL;
     }
   }
 
@@ -34,7 +38,7 @@ function normalizeSupabaseUrl(rawUrl?: unknown): string {
       new URL(formatted);
       return formatted;
     } catch {
-      return '';
+      return DEFAULT_SUPABASE_URL;
     }
   }
 
@@ -43,7 +47,7 @@ function normalizeSupabaseUrl(rawUrl?: unknown): string {
     return `https://${cleaned}.supabase.co`;
   }
 
-  return '';
+  return DEFAULT_SUPABASE_URL;
 }
 
 function normalizeSupabaseKey(rawAnonKey?: unknown, rawPublishableKey?: unknown): string {
@@ -70,16 +74,34 @@ function normalizeSupabaseKey(rawAnonKey?: unknown, rawPublishableKey?: unknown)
     return key2;
   }
 
-  return '';
+  return DEFAULT_SUPABASE_ANON_KEY;
 }
 
-const env = (import.meta as unknown as { env?: Record<string, string | undefined> }).env || {};
-const supabaseUrl: string = normalizeSupabaseUrl(env.VITE_SUPABASE_URL);
+// Direct access to Vite compile-time environment variables with safe fallback
+const envUrl =
+  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_URL) ||
+  (import.meta as any)?.env?.VITE_SUPABASE_URL;
 
-const supabaseAnonKey: string = normalizeSupabaseKey(
-  env.VITE_SUPABASE_ANON_KEY,
-  env.VITE_SUPABASE_PUBLISHABLE_KEY
+const envAnonKey =
+  (typeof import.meta !== 'undefined' && import.meta.env && (import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY)) ||
+  (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY ||
+  (import.meta as any)?.env?.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+export const supabaseUrl: string = normalizeSupabaseUrl(envUrl);
+
+export const supabaseAnonKey: string = normalizeSupabaseKey(
+  envAnonKey,
+  undefined
 );
+
+export const getSupabaseProjectRef = (): string => {
+  try {
+    const parsed = new URL(supabaseUrl);
+    return parsed.hostname.split('.')[0] || 'mmmthrlbikllhdupslrz';
+  } catch {
+    return 'mmmthrlbikllhdupslrz';
+  }
+};
 
 export const isSupabaseConfigured = (): boolean => {
   return Boolean(
@@ -101,8 +123,8 @@ function initSupabaseClient(): SupabaseClient {
     },
   };
 
-  const effectiveUrl = supabaseUrl || 'https://unconfigured.supabase.co';
-  const effectiveKey = supabaseAnonKey || 'unconfigured-placeholder-key-00000000000000000000000000';
+  const effectiveUrl = supabaseUrl || DEFAULT_SUPABASE_URL;
+  const effectiveKey = supabaseAnonKey || DEFAULT_SUPABASE_ANON_KEY;
 
   return createClient(effectiveUrl, effectiveKey, options);
 }

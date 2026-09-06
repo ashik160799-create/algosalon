@@ -983,6 +983,7 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
                     onChange={e => {
                       setEmailInput(e.target.value);
                       if (errorMessage) setErrorMessage(null);
+                      if (googleOauthErrorMsg) setGoogleOauthErrorMsg(null);
                     }}
                     placeholder="e.g. yourname@gmail.com"
                     className={`w-full border rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm font-medium placeholder-zinc-400 focus:outline-none transition-all ${

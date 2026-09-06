@@ -216,18 +216,52 @@ export function parseAuthError(error: unknown): ParsedAuthError {
     };
   }
 
-  // 6. OAuth Provider Not Configured
+  // 6. OAuth Provider Specific Issues
   if (
     rawMsg.includes('provider is not enabled') ||
     rawMsg.includes('oauth client') ||
-    rawMsg.includes('not configured') ||
-    rawMsg.includes('unsupported_provider')
+    rawMsg.includes('unsupported_provider') ||
+    rawMsg.includes('oauth provider is not configured') ||
+    rawMsg.includes('external provider is not configured')
   ) {
     return {
       category: 'oauth_config',
       message: 'Google Sign-In is being initialized. Continue with your Gmail / Email below for instant access.',
       originalMessage: rawMsg,
       actionType: 'enter_email',
+      isRecoverable: true,
+    };
+  }
+
+  // 6b. Service / Database Initialization Note
+  if (
+    rawMsg.includes('supabase client is not configured') ||
+    rawMsg.includes('client is not configured') ||
+    rawMsg.includes('unconfigured')
+  ) {
+    return {
+      category: 'network',
+      message: 'System connection is initializing. Please try again in a moment.',
+      originalMessage: rawMsg,
+      actionType: 'retry',
+      isRecoverable: true,
+    };
+  }
+
+  // 6c. Email Delivery / Mailer Issues
+  if (
+    rawMsg.includes('error sending magic link') ||
+    rawMsg.includes('error sending confirmation email') ||
+    rawMsg.includes('error sending recovery email') ||
+    rawMsg.includes('error sending otp') ||
+    rawMsg.includes('email provider') ||
+    rawMsg.includes('smtp')
+  ) {
+    return {
+      category: 'network',
+      message: 'Unable to deliver verification email to this address. Please double check your email or try again.',
+      originalMessage: rawMsg,
+      actionType: 'retry',
       isRecoverable: true,
     };
   }
