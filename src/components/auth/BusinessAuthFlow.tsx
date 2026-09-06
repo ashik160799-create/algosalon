@@ -145,7 +145,11 @@ export const BusinessAuthFlow: React.FC<BusinessAuthFlowProps> = ({
 
     setCodeError(null);
 
-    const normEmail = normalizeEmail(email) || 'partner@algosalon.com';
+    const normEmail = normalizeEmail(email);
+    if (!normEmail) {
+      setCodeError('Please provide a valid business email.');
+      return;
+    }
     const regResult = registerNewAccount({
       email: normEmail,
       role: 'business',

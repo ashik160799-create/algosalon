@@ -50,6 +50,7 @@ const MainAppContent: React.FC = () => {
     setAuthMode,
     setCurrentRole,
     setAuthModalOpen,
+    setAuthTargetRole,
   } = useApp();
 
   const [locationPrompted, setLocationPrompted] = useState<boolean>(() => {
@@ -145,7 +146,7 @@ const MainAppContent: React.FC = () => {
             onRedirectToAuth={(mode) => {
               closeRoleSwitchModal();
               setAuthMode(mode);
-              setCurrentRole(roleSwitchTarget);
+              if (roleSwitchTarget) setAuthTargetRole(roleSwitchTarget);
               setAuthModalOpen(true);
             }}
           />

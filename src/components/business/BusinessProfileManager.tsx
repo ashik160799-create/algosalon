@@ -420,9 +420,9 @@ export const BusinessProfileManager: React.FC = () => {
   // Account & App Code State
   const [ownerName, setOwnerName] = useState(businessUser.name || 'Salon Director');
   const [ownerRole, setOwnerRole] = useState(businessUser.ownerRole || 'Owner & Salon Director');
-  const [ownerEmail, setOwnerEmail] = useState(businessUser.email || 'partner@algosalon.com');
+  const [ownerEmail, setOwnerEmail] = useState(businessUser.email || '');
   const [signUpGmail, setSignUpGmail] = useState(
-    businessUser.signUpGmail || businessUser.email || 'partner@algosalon.com'
+    businessUser.signUpGmail || businessUser.email || ''
   );
   const [appCode, setAppCode] = useState(businessUser.appCode || '');
   const [showAppCode, setShowAppCode] = useState(false);
@@ -436,8 +436,8 @@ export const BusinessProfileManager: React.FC = () => {
     const active = fresh?.business || businessUser;
     setOwnerName(active.name || 'Salon Director');
     setOwnerRole(active.ownerRole || 'Owner & Salon Director');
-    setOwnerEmail(active.email || 'partner@algosalon.com');
-    setSignUpGmail(active.signUpGmail || active.email || 'partner@algosalon.com');
+    setOwnerEmail(active.email || '');
+    setSignUpGmail(active.signUpGmail || active.email || '');
     setAppCode(active.appCode || '');
   }, [businessUser]);
 

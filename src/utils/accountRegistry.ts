@@ -24,8 +24,8 @@ export interface RegisteredAccount {
 }
 
 export const STORAGE_ACCOUNTS_KEY = 'algosalon_registered_accounts';
-export const ACCOUNTS_PURGE_VERSION_KEY = 'algosalon_clean_slate_v6';
-const UNWANTED_EMAILS = ['marcus@algosalon.com', 'user@example.com', 'demo@algosalon.com'];
+export const ACCOUNTS_PURGE_VERSION_KEY = 'algosalon_clean_slate_v7';
+const UNWANTED_EMAILS = ['marcus@algosalon.com', 'partner@algosalon.com', 'user@example.com', 'demo@algosalon.com'];
 const UNWANTED_IDS = ['biz-201', 'cust-guest'];
 
 /**
@@ -228,6 +228,17 @@ export const cleanupDuplicateAccounts = (): void => {
         }
       } catch {
         // ignore
+      }
+    }
+
+    // Ensure active role in localStorage corresponds to a real account on this device
+    const activeRole = localStorage.getItem('algosalon_role');
+    if (activeRole === 'business') {
+      const hasRealBiz = Array.from(uniqueMap.values()).some(
+        a => a.role === 'business' && a.email && !UNWANTED_EMAILS.includes(normalizeEmail(a.email))
+      );
+      if (!hasRealBiz) {
+        localStorage.setItem('algosalon_role', 'customer');
       }
     }
   } catch (err) {

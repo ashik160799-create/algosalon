@@ -9,6 +9,7 @@ export const AuthModal: React.FC = () => {
     setAuthModalOpen,
     currentRole,
     setCurrentRole,
+    authTargetRole,
     colorThemeMode,
   } = useApp();
 
@@ -48,7 +49,7 @@ export const AuthModal: React.FC = () => {
         </button>
 
         <UnifiedAuthFlow
-          initialRole={currentRole}
+          initialRole={authTargetRole || currentRole}
           inlineMode={true}
           onAuthSuccess={(role) => {
             setCurrentRole(role);

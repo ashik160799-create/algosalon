@@ -15,8 +15,6 @@ import {
   Mail,
   Lock,
   User,
-  Calendar,
-  Globe,
   Palette,
   Sun,
   Moon,
@@ -40,35 +38,6 @@ import {
   Check,
 } from 'lucide-react';
 
-const COUNTRIES = [
-  'India',
-  'United Arab Emirates',
-  'Saudi Arabia',
-  'United States',
-  'United Kingdom',
-  'Canada',
-  'Qatar',
-  'Kuwait',
-  'Bahrain',
-  'Oman',
-  'Australia',
-  'Germany',
-  'France',
-  'Singapore',
-  'Malaysia',
-  'Egypt',
-  'Jordan',
-  'Pakistan',
-  'Bangladesh',
-  'Philippines',
-  'Italy',
-  'Spain',
-  'Netherlands',
-  'Switzerland',
-  'Japan',
-  'South Korea',
-];
-
 const AVATAR_PRESETS = [
   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
   'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
@@ -78,7 +47,7 @@ const AVATAR_PRESETS = [
   'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=400&q=80',
 ];
 
-type ActiveEditField = 'name' | 'phone' | 'email' | 'pin' | 'gender' | 'dob' | 'nationality' | 'avatar' | null;
+type ActiveEditField = 'name' | 'phone' | 'email' | 'pin' | 'gender' | 'avatar' | null;
 
 export const CustomerProfileView: React.FC = () => {
   const {
@@ -125,11 +94,8 @@ export const CustomerProfileView: React.FC = () => {
   const [genderVal, setGenderVal] = useState<'Male' | 'Female' | 'Other' | 'Prefer not to say'>(
     customerUser.gender || 'Male'
   );
-  const [dobVal, setDobVal] = useState(customerUser.dateOfBirth || '');
-  const [nationalityVal, setNationalityVal] = useState(customerUser.nationality || '');
   const [avatarVal, setAvatarVal] = useState(customerUser.avatar || AVATAR_PRESETS[0]);
   const [customAvatarUrl, setCustomAvatarUrl] = useState('');
-  const [countrySearch, setCountrySearch] = useState('');
   const [savedToast, setSavedToast] = useState<string | null>(null);
 
   // Sync state whenever customerUser or current session changes
@@ -143,8 +109,6 @@ export const CustomerProfileView: React.FC = () => {
     setPinVal(active.appCode || '');
     setConfirmPinVal(active.appCode || '');
     setGenderVal(active.gender || 'Male');
-    setDobVal(active.dateOfBirth || '');
-    setNationalityVal(active.nationality || '');
     setAvatarVal(active.avatar || AVATAR_PRESETS[0]);
   }, [customerUser]);
 
@@ -176,13 +140,6 @@ export const CustomerProfileView: React.FC = () => {
         break;
       case 'gender':
         setGenderVal(customerUser.gender || 'Male');
-        break;
-      case 'dob':
-        setDobVal(customerUser.dateOfBirth || '');
-        break;
-      case 'nationality':
-        setNationalityVal(customerUser.nationality || '');
-        setCountrySearch('');
         break;
       case 'avatar':
         setAvatarVal(customerUser.avatar || AVATAR_PRESETS[0]);
@@ -232,14 +189,6 @@ export const CustomerProfileView: React.FC = () => {
       case 'gender':
         updateCustomerProfile({ gender: genderVal });
         showToast('Gender preference updated');
-        break;
-      case 'dob':
-        updateCustomerProfile({ dateOfBirth: dobVal });
-        showToast('Date of birth updated');
-        break;
-      case 'nationality':
-        updateCustomerProfile({ nationality: nationalityVal });
-        showToast('Nationality updated');
         break;
       case 'avatar':
         updateCustomerProfile({ avatar: customAvatarUrl.trim() || avatarVal });
@@ -316,10 +265,6 @@ export const CustomerProfileView: React.FC = () => {
       setIsDeletingAccount(false);
     }
   };
-
-  const filteredCountries = COUNTRIES.filter(c =>
-    c.toLowerCase().includes(countrySearch.toLowerCase())
-  );
 
   const customerAppointments = appointments.filter(a => a.customerId === customerUser.id);
   const parsedPhone = parsePhoneNumber(customerUser.phone || '');
@@ -734,64 +679,6 @@ export const CustomerProfileView: React.FC = () => {
                 </h4>
                 <p className={`text-xs mt-0.5 truncate font-semibold ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
                   {customerUser.gender || 'Not specified'}
-                </p>
-              </div>
-            </div>
-            <ArrowRight className={`w-4 h-4 shrink-0 ${isLight ? 'text-slate-400' : 'text-slate-500'}`} />
-          </div>
-
-          <div
-            id="profile-item-dob"
-            onClick={() => openFieldEditor('dob')}
-            role="button"
-            tabIndex={0}
-            className={`p-3.5 sm:p-4 flex items-center justify-between cursor-pointer transition-colors ${
-              isLight ? 'hover:bg-slate-50 active:bg-slate-100' : 'hover:bg-slate-800/60 active:bg-slate-800'
-            }`}
-          >
-            <div className="flex items-center gap-3.5 min-w-0 pr-2">
-              <div
-                className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                  isLight ? 'bg-slate-100 text-slate-800' : 'bg-slate-800 text-slate-200'
-                }`}
-              >
-                <Calendar className="w-5 h-5 stroke-[2]" />
-              </div>
-              <div className="min-w-0">
-                <h4 className={`text-sm font-bold tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                  Date of Birth
-                </h4>
-                <p className={`text-xs mt-0.5 truncate font-semibold font-mono ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-                  {customerUser.dateOfBirth || 'Not specified'}
-                </p>
-              </div>
-            </div>
-            <ArrowRight className={`w-4 h-4 shrink-0 ${isLight ? 'text-slate-400' : 'text-slate-500'}`} />
-          </div>
-
-          <div
-            id="profile-item-nationality"
-            onClick={() => openFieldEditor('nationality')}
-            role="button"
-            tabIndex={0}
-            className={`p-3.5 sm:p-4 flex items-center justify-between cursor-pointer transition-colors ${
-              isLight ? 'hover:bg-slate-50 active:bg-slate-100' : 'hover:bg-slate-800/60 active:bg-slate-800'
-            }`}
-          >
-            <div className="flex items-center gap-3.5 min-w-0 pr-2">
-              <div
-                className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                  isLight ? 'bg-slate-100 text-slate-800' : 'bg-slate-800 text-slate-200'
-                }`}
-              >
-                <Globe className="w-5 h-5 stroke-[2]" />
-              </div>
-              <div className="min-w-0">
-                <h4 className={`text-sm font-bold tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                  Nationality / Region
-                </h4>
-                <p className={`text-xs mt-0.5 truncate font-semibold ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-                  {customerUser.nationality || 'Not specified'}
                 </p>
               </div>
             </div>
@@ -1247,8 +1134,6 @@ export const CustomerProfileView: React.FC = () => {
                 {activeEditModal === 'email' && 'Edit Email ID'}
                 {activeEditModal === 'pin' && 'Reset 4-Digit Security PIN'}
                 {activeEditModal === 'gender' && 'Select Gender Preference'}
-                {activeEditModal === 'dob' && 'Edit Date of Birth'}
-                {activeEditModal === 'nationality' && 'Select Nationality / Region'}
               </h3>
               <button
                 type="button"
@@ -1506,60 +1391,7 @@ export const CustomerProfileView: React.FC = () => {
               </div>
             )}
 
-            {/* DOB EDITOR */}
-            {activeEditModal === 'dob' && (
-              <div className="space-y-2">
-                <label className={`text-xs font-bold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
-                  Date of Birth
-                </label>
-                <input
-                  type="date"
-                  value={dobVal}
-                  onChange={e => setDobVal(e.target.value)}
-                  className={`w-full px-4 py-3 rounded-2xl border text-sm font-semibold outline-none transition-all ${
-                    isLight
-                      ? 'bg-slate-50 border-slate-200 text-slate-900 focus:border-slate-400'
-                      : 'bg-slate-950 border-slate-800 text-white focus:border-slate-600'
-                  }`}
-                />
-              </div>
-            )}
 
-            {/* NATIONALITY EDITOR */}
-            {activeEditModal === 'nationality' && (
-              <div className="space-y-2">
-                <label className={`text-xs font-bold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
-                  Search Nationality / Country
-                </label>
-                <input
-                  type="text"
-                  value={countrySearch}
-                  onChange={e => setCountrySearch(e.target.value)}
-                  placeholder="Search countries..."
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none ${
-                    isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-800 text-white'
-                  }`}
-                />
-                <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
-                  {filteredCountries.map(c => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setNationalityVal(c)}
-                      className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
-                        nationalityVal === c
-                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold'
-                          : isLight
-                          ? 'hover:bg-slate-100 text-slate-700'
-                          : 'hover:bg-slate-800 text-slate-300'
-                      }`}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Modal Actions */}
             <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">

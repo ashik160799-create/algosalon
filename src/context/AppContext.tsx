@@ -154,6 +154,8 @@ interface AppContextType {
   setAuthModalOpen: (open: boolean) => void;
   authMode: 'login' | 'signup';
   setAuthMode: (mode: 'login' | 'signup') => void;
+  authTargetRole: Role;
+  setAuthTargetRole: (role: Role) => void;
 
   roleSwitchModalOpen: boolean;
   roleSwitchTarget: Role | null;
@@ -618,11 +620,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [currentRole, setCurrentRole] = useState<Role>(() => {
-    return (localStorage.getItem('algosalon_role') as Role) || 'customer';
+    const saved = (localStorage.getItem('algosalon_role') as Role) || 'customer';
+    if (saved === 'business') {
+      const registered = getRegisteredAccounts();
+      const hasRealBiz = registered.some(
+        a => a.role === 'business' && a.email && !['marcus@algosalon.com', 'partner@algosalon.com'].includes(a.email.toLowerCase())
+      );
+      if (!hasRealBiz) {
+        localStorage.setItem('algosalon_role', 'customer');
+        return 'customer';
+      }
+    }
+    return saved;
   });
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [authTargetRole, setAuthTargetRole] = useState<Role>('customer');
 
   const [roleSwitchModalOpen, setRoleSwitchModalOpen] = useState(false);
   const [roleSwitchTarget, setRoleSwitchTarget] = useState<Role | null>(null);
@@ -644,7 +658,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem('algosalon_business_user');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed.email && ['marcus@algosalon.com', 'partner@algosalon.com'].includes(parsed.email.toLowerCase())) {
+          return INITIAL_BUSINESS_USER;
+        }
+        return parsed;
       } catch {
         return INITIAL_BUSINESS_USER;
       }
@@ -1658,7 +1676,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setRoleSwitchTarget(targetRole);
       setRoleSwitchModalOpen(true);
     } else {
-      setCurrentRole(targetRole);
+      setAuthTargetRole(targetRole);
       setAuthMode('signup');
       setAuthModalOpen(true);
     }
@@ -2687,6 +2705,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setAuthModalOpen,
         authMode,
         setAuthMode,
+        authTargetRole,
+        setAuthTargetRole,
 
         roleSwitchModalOpen,
         roleSwitchTarget,
