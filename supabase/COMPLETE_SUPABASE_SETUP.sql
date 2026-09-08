@@ -65,6 +65,9 @@ create table if not exists public.profiles (
   phone_e164 text check (phone_e164 is null or phone_e164 ~ '^\+[1-9][0-9]{6,14}$'),
   avatar_path text,
   gender text check (gender is null or gender in ('Male', 'Female', 'Other', 'Prefer not to say')),
+  religion text,
+  location text,
+  app_code text,
   preferred_locale text not null default 'en' check (preferred_locale ~ '^[a-z]{2}(-[A-Z]{2})?$'),
   preferred_currency text not null default 'AED' check (preferred_currency ~ '^[A-Z]{3}$'),
   marketing_opt_in boolean not null default false,
@@ -143,6 +146,8 @@ create table if not exists public.services (
   currency char(3) not null default 'AED' check (currency ~ '^[A-Z]{3}$'),
   duration_minutes integer not null check (duration_minutes between 5 and 720),
   original_price_minor integer check (original_price_minor is null or original_price_minor >= price_minor),
+  offer_tag text,
+  discount_percent integer check (discount_percent is null or (discount_percent between 0 and 100)),
   image_path text,
   gender_target text not null default 'Unisex' check (gender_target in ('Unisex', 'Male', 'Female')),
   is_active boolean not null default true,
@@ -385,21 +390,17 @@ create policy "Profiles are viewable by owner or staff"
   on public.profiles for select
   using (
     auth.uid() = id
+    or is_salon_member(id)
     or exists (
       select 1
       from public.appointments a
-      join public.salon_members sm on sm.salon_id = a.salon_id
-      where sm.user_id = auth.uid()
-        and sm.is_active = true
-        and a.customer_id = public.profiles.id
+      where a.customer_id = public.profiles.id
+        and (is_salon_member(a.salon_id) or exists (select 1 from public.salons s where s.id = a.salon_id and s.created_by = auth.uid()))
     )
     or exists (
       select 1
-      from public.salon_members sm1
-      join public.salon_members sm2 on sm1.salon_id = sm2.salon_id
-      where sm1.user_id = auth.uid()
-        and sm2.user_id = public.profiles.id
-        and sm1.is_active = true
+      from public.salon_members sm
+      where sm.user_id = public.profiles.id
     )
   );
 
@@ -416,20 +417,29 @@ create policy "Users can insert their own profile"
 
 -- Salons
 drop policy if exists "Published salons are viewable by everyone" on public.salons;
-create policy "Published salons are viewable by everyone"
+drop policy if exists "Salons are viewable by everyone" on public.salons;
+create policy "Salons are viewable by everyone"
   on public.salons for select
-  using (status = 'published' or is_salon_member(id));
+  using (true);
 
 drop policy if exists "Salon owners and managers can update their salon" on public.salons;
-create policy "Salon owners and managers can update their salon"
+drop policy if exists "Salon owners and managers can update salons" on public.salons;
+create policy "Salon owners and managers can update salons"
   on public.salons for update
-  using (is_salon_member(id, 'manager'))
-  with check (is_salon_member(id, 'manager'));
+  using (
+    created_by = auth.uid()
+    or is_salon_member(id, 'manager')
+  )
+  with check (
+    created_by = auth.uid()
+    or is_salon_member(id, 'manager')
+  );
 
 drop policy if exists "Authenticated users can create a salon" on public.salons;
-create policy "Authenticated users can create a salon"
+drop policy if exists "Authenticated users can insert salons" on public.salons;
+create policy "Authenticated users can insert salons"
   on public.salons for insert
-  with check (auth.uid() = created_by or auth.role() = 'service_role');
+  with check (auth.role() = 'authenticated');
 
 -- Salon Members
 drop policy if exists "Salon members can view team" on public.salon_members;
@@ -440,7 +450,7 @@ create policy "Salon members can view team"
 drop policy if exists "Salon owners can manage members" on public.salon_members;
 create policy "Salon owners can manage members"
   on public.salon_members for all
-  using (is_salon_member(salon_id, 'owner'));
+  using (is_salon_member(salon_id, 'owner') or exists (select 1 from public.salons s where s.id = salon_id and s.created_by = auth.uid()));
 
 -- Business Hours
 drop policy if exists "Business hours viewable by everyone" on public.business_hours;
@@ -449,31 +459,56 @@ create policy "Business hours viewable by everyone"
   using (true);
 
 drop policy if exists "Salon managers can edit business hours" on public.business_hours;
-create policy "Salon managers can edit business hours"
+drop policy if exists "Salon managers can manage business hours" on public.business_hours;
+create policy "Salon managers can manage business hours"
   on public.business_hours for all
-  using (is_salon_member(salon_id, 'manager'));
+  using (
+    is_salon_member(salon_id, 'manager')
+    or exists (select 1 from public.salons s where s.id = business_hours.salon_id and s.created_by = auth.uid())
+  )
+  with check (
+    is_salon_member(salon_id, 'manager')
+    or exists (select 1 from public.salons s where s.id = business_hours.salon_id and s.created_by = auth.uid())
+  );
 
 -- Services
 drop policy if exists "Active services viewable by everyone" on public.services;
-create policy "Active services viewable by everyone"
+drop policy if exists "Services viewable by everyone" on public.services;
+create policy "Services viewable by everyone"
   on public.services for select
-  using (is_active = true or is_salon_member(salon_id));
+  using (true);
 
 drop policy if exists "Salon managers can manage services" on public.services;
 create policy "Salon managers can manage services"
   on public.services for all
-  using (is_salon_member(salon_id, 'manager'));
+  using (
+    is_salon_member(salon_id, 'manager')
+    or exists (select 1 from public.salons s where s.id = services.salon_id and s.created_by = auth.uid())
+  )
+  with check (
+    is_salon_member(salon_id, 'manager')
+    or exists (select 1 from public.salons s where s.id = services.salon_id and s.created_by = auth.uid())
+  );
 
 -- Staff Profiles
 drop policy if exists "Bookable staff viewable by everyone" on public.staff_profiles;
-create policy "Bookable staff viewable by everyone"
+drop policy if exists "Staff profiles viewable by everyone" on public.staff_profiles;
+create policy "Staff profiles viewable by everyone"
   on public.staff_profiles for select
-  using (is_active = true or is_salon_member(salon_id));
+  using (true);
 
 drop policy if exists "Salon managers can manage staff" on public.staff_profiles;
-create policy "Salon managers can manage staff"
+drop policy if exists "Salon managers can manage staff profiles" on public.staff_profiles;
+create policy "Salon managers can manage staff profiles"
   on public.staff_profiles for all
-  using (is_salon_member(salon_id, 'manager'));
+  using (
+    is_salon_member(salon_id, 'manager')
+    or exists (select 1 from public.salons s where s.id = staff_profiles.salon_id and s.created_by = auth.uid())
+  )
+  with check (
+    is_salon_member(salon_id, 'manager')
+    or exists (select 1 from public.salons s where s.id = staff_profiles.salon_id and s.created_by = auth.uid())
+  );
 
 -- Staff Services
 drop policy if exists "Staff services viewable by everyone" on public.staff_services;
@@ -488,7 +523,7 @@ create policy "Salon managers can manage staff services"
     exists (
       select 1 from public.staff_profiles sp
       where sp.id = staff_services.staff_id
-        and is_salon_member(sp.salon_id, 'manager')
+        and (is_salon_member(sp.salon_id, 'manager') or exists (select 1 from public.salons s where s.id = sp.salon_id and s.created_by = auth.uid()))
     )
   );
 
@@ -505,7 +540,7 @@ create policy "Salon managers can manage staff working hours"
     exists (
       select 1 from public.staff_profiles sp
       where sp.id = staff_working_hours.staff_id
-        and is_salon_member(sp.salon_id, 'manager')
+        and (is_salon_member(sp.salon_id, 'manager') or exists (select 1 from public.salons s where s.id = sp.salon_id and s.created_by = auth.uid()))
     )
   );
 
@@ -518,7 +553,14 @@ create policy "Salon media viewable by everyone"
 drop policy if exists "Salon managers can manage media" on public.salon_media;
 create policy "Salon managers can manage media"
   on public.salon_media for all
-  using (is_salon_member(salon_id, 'manager'));
+  using (
+    is_salon_member(salon_id, 'manager')
+    or exists (select 1 from public.salons s where s.id = salon_media.salon_id and s.created_by = auth.uid())
+  )
+  with check (
+    is_salon_member(salon_id, 'manager')
+    or exists (select 1 from public.salons s where s.id = salon_media.salon_id and s.created_by = auth.uid())
+  );
 
 -- Appointments
 drop policy if exists "Users can view own appointments or salon appointments" on public.appointments;
@@ -527,6 +569,7 @@ create policy "Users can view own appointments or salon appointments"
   using (
     customer_id = auth.uid()
     or is_salon_member(salon_id)
+    or exists (select 1 from public.salons s where s.id = appointments.salon_id and s.created_by = auth.uid())
   );
 
 drop policy if exists "Users or managers can insert appointments" on public.appointments;
@@ -633,8 +676,14 @@ create policy "Special schedules viewable by everyone"
 drop policy if exists "Salon managers can manage special schedules" on public.special_schedules;
 create policy "Salon managers can manage special schedules"
   on public.special_schedules for all
-  using (is_salon_member(salon_id, 'manager'))
-  with check (is_salon_member(salon_id, 'manager'));
+  using (
+    is_salon_member(salon_id, 'manager')
+    or exists (select 1 from public.salons s where s.id = special_schedules.salon_id and s.created_by = auth.uid())
+  )
+  with check (
+    is_salon_member(salon_id, 'manager')
+    or exists (select 1 from public.salons s where s.id = special_schedules.salon_id and s.created_by = auth.uid())
+  );
 
 -- Payment Records (Strictly hidden from client browser)
 drop policy if exists "No browser access to raw payment records" on public.payment_records;
@@ -808,13 +857,17 @@ begin
     raise exception 'This specialist already has an active booking at the requested time.';
   end if;
 
-  -- 10. Insert appointment
+  -- 10. Load caller profile for avatar and fallback info
+  select * into v_owner from public.profiles where id = v_caller_id;
+
+  -- 11. Insert appointment
   insert into public.appointments (
     salon_id,
     customer_id,
     customer_display_name,
     customer_phone_e164,
     customer_email,
+    customer_avatar_path,
     service_id,
     service_name,
     staff_id,
@@ -829,9 +882,10 @@ begin
   ) values (
     p_salon_id,
     v_caller_id,
-    coalesce(trim(p_customer_name), 'Valued Client'),
-    p_customer_phone,
-    p_customer_email,
+    coalesce(trim(p_customer_name), v_owner.full_name, 'Valued Client'),
+    coalesce(p_customer_phone, v_owner.phone_e164),
+    coalesce(p_customer_email, v_owner.email),
+    v_owner.avatar_path,
     v_service.id,
     v_service.name,
     v_staff.id,
@@ -1290,7 +1344,9 @@ begin
     'role', v_role,
     'accountType', case when v_role = 'business' then 'Business' else 'Customer' end,
     'fullName', coalesce(v_profile.full_name, v_user.raw_user_meta_data->>'full_name', ''),
-    'phone', coalesce(v_profile.phone_e164, v_user.raw_user_meta_data->>'phone', '')
+    'phone', coalesce(v_profile.phone_e164, v_user.raw_user_meta_data->>'phone', ''),
+    'appCode', coalesce(v_user.raw_user_meta_data->>'app_code', v_user.raw_user_meta_data->>'appCode', ''),
+    'app_code', coalesce(v_user.raw_user_meta_data->>'app_code', v_user.raw_user_meta_data->>'appCode', '')
   );
 end;
 $$;
@@ -1302,7 +1358,9 @@ create or replace function public.sync_user_profile_and_auth(
   p_gender text default null,
   p_app_code text default null,
   p_avatar text default null,
-  p_role text default null
+  p_role text default null,
+  p_religion text default null,
+  p_location text default null
 )
 returns boolean
 language plpgsql
@@ -1313,9 +1371,16 @@ declare
   v_caller_id uuid := auth.uid();
   v_current_meta jsonb;
   v_new_meta jsonb;
+  v_effective_phone text;
 begin
   if v_caller_id is null then
     raise exception 'Authentication required to sync profile';
+  end if;
+
+  if p_phone is not null and trim(p_phone) <> '' then
+    v_effective_phone := trim(p_phone);
+  else
+    v_effective_phone := null;
   end if;
 
   -- 1. Upsert public.profiles
@@ -1323,22 +1388,34 @@ begin
     id,
     full_name,
     phone_e164,
-    avatar_url,
+    avatar_path,
+    gender,
+    religion,
+    location,
+    app_code,
     role,
     updated_at
   ) values (
     v_caller_id,
-    p_full_name,
-    p_phone,
-    p_avatar,
-    coalesce(p_role, 'customer')::public.user_role,
+    coalesce(trim(p_full_name), 'Valued Client'),
+    v_effective_phone,
+    trim(p_avatar),
+    p_gender,
+    p_religion,
+    p_location,
+    p_app_code,
+    coalesce(p_role, 'customer'),
     now()
   )
   on conflict (id) do update set
-    full_name = coalesce(p_full_name, public.profiles.full_name),
-    phone_e164 = coalesce(p_phone, public.profiles.phone_e164),
-    avatar_url = coalesce(p_avatar, public.profiles.avatar_url),
-    role = case when p_role is not null then p_role::public.user_role else public.profiles.role end,
+    full_name = coalesce(nullif(trim(p_full_name), ''), public.profiles.full_name),
+    phone_e164 = coalesce(v_effective_phone, public.profiles.phone_e164),
+    avatar_path = coalesce(nullif(trim(p_avatar), ''), public.profiles.avatar_path),
+    gender = coalesce(p_gender, public.profiles.gender),
+    religion = coalesce(p_religion, public.profiles.religion),
+    location = coalesce(p_location, public.profiles.location),
+    app_code = coalesce(p_app_code, public.profiles.app_code),
+    role = coalesce(p_role, public.profiles.role),
     updated_at = now();
 
   -- 2. Sync metadata in auth.users
@@ -1347,18 +1424,28 @@ begin
   where id = v_caller_id;
 
   v_new_meta := v_current_meta;
-  if p_full_name is not null then
-    v_new_meta := jsonb_set(v_new_meta, '{full_name}', to_jsonb(p_full_name));
-    v_new_meta := jsonb_set(v_new_meta, '{name}', to_jsonb(p_full_name));
+  if p_full_name is not null and trim(p_full_name) <> '' then
+    v_new_meta := jsonb_set(v_new_meta, '{full_name}', to_jsonb(trim(p_full_name)));
+    v_new_meta := jsonb_set(v_new_meta, '{name}', to_jsonb(trim(p_full_name)));
   end if;
-  if p_phone is not null then
-    v_new_meta := jsonb_set(v_new_meta, '{phone}', to_jsonb(p_phone));
+  if v_effective_phone is not null then
+    v_new_meta := jsonb_set(v_new_meta, '{phone}', to_jsonb(v_effective_phone));
   end if;
-  if p_gender is not null then
-    v_new_meta := jsonb_set(v_new_meta, '{gender}', to_jsonb(p_gender));
+  if p_gender is not null and trim(p_gender) <> '' then
+    v_meta := jsonb_set(v_new_meta, '{gender}', to_jsonb(trim(p_gender)));
   end if;
-  if p_avatar is not null then
-    v_new_meta := jsonb_set(v_new_meta, '{avatar_url}', to_jsonb(p_avatar));
+  if p_avatar is not null and trim(p_avatar) <> '' then
+    v_new_meta := jsonb_set(v_new_meta, '{avatar_url}', to_jsonb(trim(p_avatar)));
+  end if;
+  if p_religion is not null and trim(p_religion) <> '' then
+    v_new_meta := jsonb_set(v_new_meta, '{religion}', to_jsonb(trim(p_religion)));
+  end if;
+  if p_location is not null and trim(p_location) <> '' then
+    v_new_meta := jsonb_set(v_new_meta, '{location}', to_jsonb(trim(p_location)));
+  end if;
+  if p_app_code is not null and trim(p_app_code) <> '' then
+    v_new_meta := jsonb_set(v_new_meta, '{app_code}', to_jsonb(trim(p_app_code)));
+    v_new_meta := jsonb_set(v_new_meta, '{appCode}', to_jsonb(trim(p_app_code)));
   end if;
   if p_role is not null then
     v_new_meta := jsonb_set(v_new_meta, '{role}', to_jsonb(p_role));

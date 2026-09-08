@@ -34,6 +34,7 @@ export const BusinessReports: React.FC = () => {
   const {
     businessUser,
     salons,
+    activeBusinessSalon,
     services,
     staffMembers,
     appointments,
@@ -42,10 +43,7 @@ export const BusinessReports: React.FC = () => {
   } = useApp();
 
   const isLight = colorThemeMode === 'light';
-  const salon =
-    salons.find(s => s.id === businessUser.salonId) ||
-    salons[0] ||
-    INITIAL_SALONS[0];
+  const salon = activeBusinessSalon;
   const salonAppointments = appointments.filter(a => a.salonId === salon?.id);
   const salonServices = services.filter(s => s.salonId === salon?.id);
   const salonStaff = staffMembers.filter(s => s.salonId === salon?.id);

@@ -4,11 +4,8 @@ import { INITIAL_SALONS } from '../../data/mockData';
 import { Star, MessageSquare, CornerDownRight } from 'lucide-react';
 
 export const BusinessReviewsManager: React.FC = () => {
-  const { businessUser, salons, reviews, replyToReview, currentThemeConfig, colorThemeMode } = useApp();
-  const salon =
-    salons.find(s => s.id === businessUser.salonId) ||
-    salons[0] ||
-    INITIAL_SALONS[0];
+  const { businessUser, salons, activeBusinessSalon, reviews, replyToReview, currentThemeConfig, colorThemeMode } = useApp();
+  const salon = activeBusinessSalon;
   const salonReviews = reviews.filter(r => r.salonId === salon?.id);
   const isLight = colorThemeMode === 'light';
 
@@ -67,16 +64,31 @@ export const BusinessReviewsManager: React.FC = () => {
       </div>
 
       <div className="space-y-4">
-        {salonReviews.map(rev => {
-          const isReplying = replyingReviewId === rev.id;
+        {salonReviews.length === 0 ? (
+          <div
+            className={`p-10 text-center rounded-3xl border ${
+              isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-900 border-slate-800'
+            }`}
+          >
+            <Star className="w-10 h-10 text-slate-400 mx-auto mb-2.5 opacity-50" />
+            <h3 className={`text-base font-black ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
+              No Reviews Yet
+            </h3>
+            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+              Verified client ratings and feedback will appear here as soon as customers complete their appointments at your salon.
+            </p>
+          </div>
+        ) : (
+          salonReviews.map(rev => {
+            const isReplying = replyingReviewId === rev.id;
 
-          return (
-            <div
-              key={rev.id}
-              className={`p-4 sm:p-5 rounded-3xl border space-y-3.5 shadow-sm transition-all ${
-                isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'
-              }`}
-            >
+            return (
+              <div
+                key={rev.id}
+                className={`p-4 sm:p-5 rounded-3xl border space-y-3.5 shadow-sm transition-all ${
+                  isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'
+                }`}
+              >
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <img
@@ -221,18 +233,9 @@ export const BusinessReviewsManager: React.FC = () => {
               )}
             </div>
           );
-        })}
-
-        {salonReviews.length === 0 && (
-          <div
-            className={`p-12 rounded-3xl border text-center text-xs text-slate-400 ${
-              isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'
-            }`}
-          >
-            No customer reviews logged yet.
-          </div>
-        )}
-      </div>
+        })
+      )}
     </div>
-  );
+  </div>
+);
 };

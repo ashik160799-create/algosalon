@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Delete, Eye, EyeOff, ArrowLeft, KeyRound, HelpCircle } from 'lucide-react';
+import { Delete, Eye, EyeOff, ArrowLeft, KeyRound, HelpCircle, RotateCcw } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 
@@ -292,12 +292,12 @@ export const PinPad: React.FC<PinPadProps> = ({
           type="button"
           id="pinpad-forgot-pin-btn"
           onClick={onForgotPin}
-          className={`mt-2 text-xs font-bold underline underline-offset-4 transition-colors cursor-pointer flex items-center gap-1 mx-auto ${
+          className={`mt-2 text-xs font-bold underline underline-offset-4 transition-colors cursor-pointer flex items-center gap-1.5 mx-auto ${
             isLight ? 'text-zinc-700 hover:text-zinc-950' : 'text-zinc-300 hover:text-white'
           }`}
         >
-          <HelpCircle className="w-3.5 h-3.5" />
-          <span>Forgot App Code PIN?</span>
+          <RotateCcw className="w-3.5 h-3.5" />
+          <span>Forgot / Reset App Code PIN?</span>
         </button>
       )}
 

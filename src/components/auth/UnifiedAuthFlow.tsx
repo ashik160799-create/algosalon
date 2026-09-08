@@ -599,6 +599,7 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
       return;
     }
     
+    const dedicatedSalonId = selectedRole === 'business' ? `salon-${Date.now()}` : undefined;
     // Strict Database Check: One email = one account only
     const regResult = registerNewAccount({
       email,
@@ -610,7 +611,7 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
       businessName: selectedRole === 'business' ? businessName : undefined,
       category: selectedRole === 'business' ? businessCategory : undefined,
       location: selectedRole === 'business' ? businessLocation : undefined,
-      salonId: selectedRole === 'business' ? salons[0]?.id || '' : undefined,
+      salonId: dedicatedSalonId,
     });
 
     if (!regResult.success) {
@@ -640,6 +641,7 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
       });
       fetchFreshUserProfile();
     } else {
+      const userShopName = createdAccount.businessName?.trim() || (createdAccount.name && createdAccount.name !== 'Salon Director' ? `${createdAccount.name}'s Studio` : 'My Salon Studio');
       signupBusiness(
         {
           id: createdAccount.id,
@@ -647,13 +649,15 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
           email: createdAccount.email,
           signUpGmail: createdAccount.email,
           phone: createdAccount.phone,
-          businessName: createdAccount.businessName,
+          businessName: userShopName,
           category: createdAccount.category,
           appCode: newAppCode,
           ownerRole: 'Owner & Salon Director',
+          salonId: createdAccount.salonId,
         },
         {
-          name: createdAccount.businessName || 'My Salon Studio',
+          id: createdAccount.salonId,
+          name: userShopName,
           phone: createdAccount.phone,
           categories: createdAccount.category ? [createdAccount.category] : ['Hair & Styling'],
         }
@@ -795,6 +799,12 @@ export const UnifiedAuthFlow: React.FC<UnifiedAuthFlowProps> = ({
 
     if (targetEmail) {
       updateAccountAppCode(targetEmail, resetAppCode);
+      syncAccountIdentityToSupabase(targetEmail, targetRole, {
+        app_code: resetAppCode,
+        appCode: resetAppCode,
+      }).catch(err => {
+        console.warn('Sync new PIN to Supabase on reset error:', err);
+      });
     }
 
     if (targetRole === 'customer') {

@@ -31,6 +31,7 @@ export const BusinessNavbar: React.FC = () => {
     logout,
     setShowSplash,
     salons,
+    activeBusinessSalon,
     updateSalonProfile,
     notifications,
     markNotificationRead,
@@ -49,10 +50,7 @@ export const BusinessNavbar: React.FC = () => {
   const [themeModalOpen, setThemeModalOpen] = useState(false);
 
   const isLight = colorThemeMode === 'light';
-  const activeSalon =
-    salons.find(s => s.id === businessUser.salonId) ||
-    salons[0] ||
-    INITIAL_SALONS[0];
+  const activeSalon = activeBusinessSalon;
   const businessNotifs = notifications.filter(n => n.userType === 'business');
   const unreadCount = businessNotifs.filter(n => !n.read).length;
 

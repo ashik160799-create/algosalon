@@ -14,12 +14,14 @@ import {
   CheckCircle2,
   Phone,
   Sparkles,
+  Users,
 } from 'lucide-react';
 
 export const BusinessStaffManager: React.FC = () => {
   const {
     businessUser,
     salons,
+    activeBusinessSalon,
     staffMembers,
     addStaffMember,
     updateStaffMember,
@@ -30,10 +32,7 @@ export const BusinessStaffManager: React.FC = () => {
   } = useApp();
 
   const isLight = colorThemeMode === 'light';
-  const salon =
-    salons.find(s => s.id === businessUser.salonId) ||
-    salons[0] ||
-    INITIAL_SALONS[0];
+  const salon = activeBusinessSalon;
   const salonStaff = staffMembers.filter(s => s.salonId === salon?.id);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,9 +46,9 @@ export const BusinessStaffManager: React.FC = () => {
   const [name, setName] = useState('');
   const [gender, setGender] = useState<'Male' | 'Female'>('Male');
   const [roleTitle, setRoleTitle] = useState('Senior Barber & Stylist');
-  const [phone, setPhone] = useState('+971 54 429 8306');
+  const [phone, setPhone] = useState('');
   const [avatar, setAvatar] = useState('');
-  const [specialtiesText, setSpecialtiesText] = useState('Skin Fades, Beard Sculpting, Hot Towel Shave');
+  const [specialtiesText, setSpecialtiesText] = useState('');
   const [shiftHours, setShiftHours] = useState('09:00 AM - 07:00 PM');
   const [experienceYears, setExperienceYears] = useState(5);
   const [commissionRate, setCommissionRate] = useState(40);
@@ -258,7 +257,62 @@ export const BusinessStaffManager: React.FC = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {salonStaff.length === 0 ? (
+        <div
+          className={`p-12 text-center rounded-3xl border ${
+            isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-900 border-slate-800'
+          }`}
+        >
+          <Users className="w-12 h-12 text-slate-400 mx-auto mb-3 opacity-60" />
+          <h3 className={`text-base font-black ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
+            No Staff Members Added Yet
+          </h3>
+          <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+            You haven't added any stylists, barbers, or specialists for your salon yet. Click &quot;+ Add Staff Member&quot; above to register your team.
+          </p>
+          <button
+            type="button"
+            onClick={handleOpenCreate}
+            className="mt-5 px-5 py-2.5 rounded-xl text-xs font-black shadow-xs inline-flex items-center gap-2 cursor-pointer hover:opacity-95"
+            style={{
+              backgroundColor: currentThemeConfig.primaryHex,
+              color: currentThemeConfig.contrastText || '#ffffff',
+            }}
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Your First Team Member</span>
+          </button>
+        </div>
+      ) : filteredStaff.length === 0 ? (
+        <div
+          className={`p-12 text-center rounded-3xl border ${
+            isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-900 border-slate-800'
+          }`}
+        >
+          <Users className="w-10 h-10 text-slate-400 mx-auto mb-2 opacity-60" />
+          <h3 className={`text-base font-black ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
+            No Staff Found
+          </h3>
+          <p className="text-xs text-slate-400 mt-1">
+            No team members match your current search or working day filter.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setSearchQuery('');
+              setFilterDay('all');
+            }}
+            className="mt-4 px-4 py-2 rounded-xl text-xs font-black shadow-xs cursor-pointer hover:opacity-95"
+            style={{
+              backgroundColor: currentThemeConfig.primaryHex,
+              color: currentThemeConfig.contrastText || '#ffffff',
+            }}
+          >
+            Clear Filters
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filteredStaff.map(st => (
           <div
             key={st.id}
@@ -387,6 +441,7 @@ export const BusinessStaffManager: React.FC = () => {
           </div>
         ))}
       </div>
+      )}
 
       {/* Add / Edit Staff Modal */}
       {modalOpen && (

@@ -109,6 +109,7 @@ export const BusinessAppointments: React.FC = () => {
   const {
     businessUser,
     salons,
+    activeBusinessSalon,
     services,
     staffMembers,
     appointments,
@@ -123,10 +124,7 @@ export const BusinessAppointments: React.FC = () => {
   } = useApp();
 
   const isLight = colorThemeMode === 'light';
-  const salon =
-    salons.find(s => s.id === businessUser.salonId) ||
-    salons[0] ||
-    INITIAL_SALONS[0];
+  const salon = activeBusinessSalon;
   const salonAppointments = appointments.filter(a => a.salonId === salon?.id);
   const salonServices = services.filter(s => s.salonId === salon?.id);
   const salonStaff = staffMembers.filter(s => s.salonId === salon?.id);
@@ -163,7 +161,7 @@ export const BusinessAppointments: React.FC = () => {
   // Walk-in modal state
   const [walkinModalOpen, setWalkinModalOpen] = useState(false);
   const [walkinName, setWalkinName] = useState('');
-  const [walkinPhone, setWalkinPhone] = useState('+971544298306');
+  const [walkinPhone, setWalkinPhone] = useState('');
   const [walkinServiceId, setWalkinServiceId] = useState(salonServices[0]?.id || '');
   const [walkinStaffId, setWalkinStaffId] = useState(salonStaff[0]?.id || '');
   const [walkinTimeSlot, setWalkinTimeSlot] = useState('03:00 PM');

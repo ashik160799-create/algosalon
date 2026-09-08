@@ -32,11 +32,8 @@ const getDayTimeError = (dayItem: WorkingDayHour): string | null => {
 };
 
 export const BusinessHoursManager: React.FC = () => {
-  const { businessUser, salons, updateSalonProfile, currentThemeConfig, colorThemeMode } = useApp();
-  const salon =
-    salons.find(s => s.id === businessUser.salonId) ||
-    salons[0] ||
-    INITIAL_SALONS[0];
+  const { businessUser, salons, activeBusinessSalon, updateSalonProfile, currentThemeConfig, colorThemeMode } = useApp();
+  const salon = activeBusinessSalon;
   const isLight = colorThemeMode === 'light';
 
   const [hours, setHours] = useState<WorkingDayHour[]>(

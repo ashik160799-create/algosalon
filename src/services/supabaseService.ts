@@ -53,21 +53,21 @@ export async function fetchSalonsFromDb(): Promise<{
   if (!isSupabaseConfigured()) return null;
 
   try {
-    const [salonsRes, servicesRes, staffRes, hoursRes, specialRes] = await Promise.all([
+    const [salonsRes, servicesRes, staffRes, hoursRes, specialRes, reviewsRes] = await Promise.all([
       supabaseALGOsalonClient
         .from('salons')
         .select('*')
-        .eq('status', 'published')
-        .order('rating', { ascending: false }),
+        .neq('status', 'archived')
+        .order('created_at', { ascending: false }),
       supabaseALGOsalonClient
         .from('services')
         .select('*')
-        .eq('is_active', true)
+        .neq('is_active', false)
         .order('is_featured', { ascending: false }),
       supabaseALGOsalonClient
         .from('staff_profiles')
         .select('*')
-        .eq('is_active', true)
+        .neq('is_active', false)
         .order('rating', { ascending: false }),
       supabaseALGOsalonClient
         .from('business_hours')
@@ -76,6 +76,10 @@ export async function fetchSalonsFromDb(): Promise<{
       supabaseALGOsalonClient
         .from('special_schedules')
         .select('*'),
+      supabaseALGOsalonClient
+        .from('reviews')
+        .select('*')
+        .order('created_at', { ascending: false }),
     ]);
 
     if (salonsRes.error) {
@@ -92,13 +96,71 @@ export async function fetchSalonsFromDb(): Promise<{
     const dbStaff = staffRes.data || [];
     const dbHours = hoursRes.data || [];
     const dbSpecials: DbSpecialRow[] = (specialRes.data as DbSpecialRow[]) || [];
+    const dbReviews = reviewsRes.data || [];
 
     const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-    // Map salons
+    // Map services first so salons can compute starting price accurately
+    const mappedServices: ServiceItem[] = dbServices.map(srv => {
+      const price = srv.price_minor !== undefined && srv.price_minor !== null
+        ? Math.round(Number(srv.price_minor) / 100)
+        : (Number(srv.price) || 0);
+
+      const originalPrice = srv.original_price_minor !== undefined && srv.original_price_minor !== null
+        ? Math.round(Number(srv.original_price_minor) / 100)
+        : (srv.original_price ? Number(srv.original_price) : undefined);
+
+      return {
+        id: srv.id,
+        salonId: srv.salon_id,
+        name: srv.name,
+        category: srv.category as any,
+        price,
+        originalPrice,
+        discountPercent: srv.discount_percent !== null && srv.discount_percent !== undefined ? Number(srv.discount_percent) : undefined,
+        offerTag: srv.offer_tag || undefined,
+        durationMinutes: Number(srv.duration_minutes || srv.duration) || 45,
+        description: srv.description || '',
+        image: srv.image_path || srv.image || undefined,
+        genderTarget: srv.gender_target || 'Unisex',
+        isPopular: Boolean(srv.is_featured),
+      };
+    });
+
+    // Map staff with real-time review star ratings and counts
+    const mappedStaff: StaffMember[] = dbStaff.map(st => {
+      const stylistReviews = dbReviews.filter((r: any) =>
+        (r.staff_id && String(r.staff_id).trim().toLowerCase() === String(st.id).trim().toLowerCase()) ||
+        (r.staff_name && String(r.staff_name).trim().toLowerCase() === String(st.display_name).trim().toLowerCase())
+      );
+
+      const computedRating = stylistReviews.length > 0
+        ? Number((stylistReviews.reduce((sum: number, r: any) => sum + (Number(r.rating) || 5), 0) / stylistReviews.length).toFixed(1))
+        : (Number(st.rating) || 5.0);
+
+      const computedReviewsCount = stylistReviews.length > 0
+        ? stylistReviews.length
+        : (Number(st.reviews_count) || 0);
+
+      return {
+        id: st.id,
+        salonId: st.salon_id,
+        name: st.display_name,
+        roleTitle: st.role_title,
+        avatar: st.avatar_path || '',
+        rating: computedRating,
+        reviewsCount: computedReviewsCount,
+        specialties: st.specialties || [],
+        isAvailable: st.is_bookable !== false && st.is_active !== false,
+        workingDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+        phone: st.phone_e164 || undefined,
+      };
+    });
+
+    // Map salons with computed live reviews, starting prices, and geo coordinates
     const mappedSalons: Salon[] = dbSalons.map(s => {
       const salonHours: WorkingDayHour[] = dbHours
-        .filter(h => h.salon_id === s.id)
+        .filter(h => String(h.salon_id).trim().toLowerCase() === String(s.id).trim().toLowerCase())
         .map(h => ({
           day: DAY_NAMES[h.day_of_week] || 'Monday',
           isOpen: h.is_open,
@@ -107,7 +169,7 @@ export async function fetchSalonsFromDb(): Promise<{
         }));
 
       const salonSpecials: SpecialDateSchedule[] = dbSpecials
-        .filter((ss: DbSpecialRow) => ss.salon_id === s.id)
+        .filter((ss: DbSpecialRow) => String(ss.salon_id).trim().toLowerCase() === String(s.id).trim().toLowerCase())
         .map((ss: DbSpecialRow) => ({
           id: ss.id || ss.date,
           date: ss.date,
@@ -125,6 +187,38 @@ export async function fetchSalonsFromDb(): Promise<{
         4: '$$$$',
       };
 
+      const salonReviews = dbReviews.filter((r: any) =>
+        String(r.salon_id).trim().toLowerCase() === String(s.id).trim().toLowerCase()
+      );
+
+      const computedRating = salonReviews.length > 0
+        ? Number((salonReviews.reduce((sum: number, r: any) => sum + (Number(r.rating) || 5), 0) / salonReviews.length).toFixed(1))
+        : (Number(s.rating) || 5.0);
+
+      const computedReviewCount = salonReviews.length > 0
+        ? salonReviews.length
+        : (Number(s.review_count) || 0);
+
+      const salonSpecificServices = mappedServices.filter(
+        srv => String(srv.salonId || '').trim().toLowerCase() === String(s.id).trim().toLowerCase()
+      );
+
+      const startingPrice = salonSpecificServices.length > 0
+        ? Math.min(...salonSpecificServices.map(srv => srv.price))
+        : (s.starting_price || 30);
+
+      const latitude = s.latitude !== null && s.latitude !== undefined && !isNaN(Number(s.latitude))
+        ? Number(s.latitude)
+        : undefined;
+
+      const longitude = s.longitude !== null && s.longitude !== undefined && !isNaN(Number(s.longitude))
+        ? Number(s.longitude)
+        : undefined;
+
+      const mapUrl = s.map_url || (latitude && longitude
+        ? `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${s.name}, ${s.address_line1}, ${s.city || ''}`)}`);
+
       return {
         id: s.id,
         name: s.name,
@@ -132,13 +226,13 @@ export async function fetchSalonsFromDb(): Promise<{
         description: s.description || '',
         address: s.address_line1 + (s.address_line2 ? `, ${s.address_line2}` : ''),
         city: s.city,
-        mapUrl: s.map_url || undefined,
+        mapUrl,
         distanceKm: 1.2,
-        lat: s.latitude !== null && s.latitude !== undefined && !isNaN(Number(s.latitude)) ? Number(s.latitude) : undefined,
-        lng: s.longitude !== null && s.longitude !== undefined && !isNaN(Number(s.longitude)) ? Number(s.longitude) : undefined,
-        phone: s.phone_e164,
-        rating: Number(s.rating) || 4.9,
-        reviewCount: s.review_count || 0,
+        lat: latitude,
+        lng: longitude,
+        phone: s.phone_e164 || s.phone || '',
+        rating: computedRating,
+        reviewCount: computedReviewCount,
         priceRange: priceSigns[s.price_range] || '$$',
         image: s.cover_image || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1200&auto=format&fit=crop&q=80',
         coverImage: s.cover_image || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1200&auto=format&fit=crop&q=80',
@@ -158,40 +252,10 @@ export async function fetchSalonsFromDb(): Promise<{
         specialSchedules: salonSpecials,
         categories: s.categories || ['Haircut', 'Styling', 'Coloring'],
         featured: true,
-        isVerified: s.is_verified,
-        startingPrice: 50,
+        isVerified: s.is_verified ?? true,
+        startingPrice,
       };
     });
-
-    // Map services
-    const mappedServices: ServiceItem[] = dbServices.map(srv => ({
-      id: srv.id,
-      salonId: srv.salon_id,
-      name: srv.name,
-      category: srv.category as any,
-      price: Math.round((srv.price_minor || 0) / 100),
-      originalPrice: srv.original_price_minor ? Math.round(srv.original_price_minor / 100) : undefined,
-      durationMinutes: srv.duration_minutes,
-      description: srv.description || '',
-      image: srv.image_path || undefined,
-      genderTarget: srv.gender_target || 'Unisex',
-      isPopular: srv.is_featured,
-    }));
-
-    // Map staff
-    const mappedStaff: StaffMember[] = dbStaff.map(st => ({
-      id: st.id,
-      salonId: st.salon_id,
-      name: st.display_name,
-      roleTitle: st.role_title,
-      avatar: st.avatar_path || '',
-      rating: Number(st.rating) || 5.0,
-      reviewsCount: st.reviews_count || 0,
-      specialties: st.specialties || [],
-      isAvailable: st.is_bookable && st.is_active,
-      workingDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-      phone: st.phone_e164 || undefined,
-    }));
 
     return {
       salons: mappedSalons,
@@ -424,6 +488,9 @@ export async function fetchCustomerProfileFromDb(customerId: string): Promise<Cu
       phone: data.phone_e164 || '',
       avatar: data.avatar_path || '',
       gender: data.gender || 'Prefer not to say',
+      location: data.location || '',
+      religion: data.religion || '',
+      appCode: data.app_code || '',
       savedSalonIds,
       loyaltyPoints: data.loyalty_points || 0,
       preferredLocale: data.preferred_locale || 'en',
@@ -455,17 +522,29 @@ export async function fetchBusinessProfileFromDb(userId: string): Promise<Busine
   try {
     const { data: memberData } = await supabaseALGOsalonClient
       .from('salon_members')
-      .select('salon_id, role, salons(name, phone_e164, city, address_line1)')
+      .select('salon_id, role, salons(id, name, phone_e164, city, address_line1)')
       .eq('user_id', userId)
       .maybeSingle();
 
     const { data: profileData } = await supabaseALGOsalonClient
       .from('profiles')
-      .select('full_name, phone_e164, email')
+      .select('full_name, phone_e164, email, app_code, location')
       .eq('id', userId)
       .maybeSingle();
 
-    if (!memberData && !profileData) return null;
+    let createdSalonData: any = null;
+    if (!memberData) {
+      const { data: createdSalon } = await supabaseALGOsalonClient
+        .from('salons')
+        .select('id, name, phone_e164, city, address_line1')
+        .eq('created_by', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      createdSalonData = createdSalon;
+    }
+
+    if (!memberData && !profileData && !createdSalonData) return null;
 
     let businessEmail = profileData?.email || '';
     if (!businessEmail) {
@@ -473,16 +552,19 @@ export async function fetchBusinessProfileFromDb(userId: string): Promise<Busine
       businessEmail = authData?.user?.email || '';
     }
 
-    const salon: any = memberData?.salons;
+    const salon: any = memberData?.salons || createdSalonData;
+    const resolvedSalonId = memberData?.salon_id || createdSalonData?.id || '';
+
     return {
       id: userId,
       name: profileData?.full_name || 'Business Director',
       email: businessEmail,
       phone: profileData?.phone_e164 || salon?.phone_e164 || '',
-      salonId: memberData?.salon_id || '',
+      salonId: resolvedSalonId,
       ownerRole: memberData?.role ? `${memberData.role.toUpperCase()} & Salon Director` : 'Salon Owner',
       businessName: salon?.name || 'My Salon',
-      location: salon?.city || salon?.address_line1 || 'Downtown',
+      location: profileData?.location || salon?.city || salon?.address_line1 || 'Downtown',
+      appCode: profileData?.app_code || '',
     };
   } catch (err) {
     console.error('Error fetching business profile:', err);
@@ -1492,12 +1574,23 @@ export async function checkSupabaseAccountIdentity(
       const metaType = session.user.user_metadata?.account_type;
       const role: 'customer' | 'business' =
         metaRole === 'business' || metaType === 'Business' ? 'business' : 'customer';
+      const resolvedAppCode =
+        session.user.user_metadata?.app_code ||
+        session.user.user_metadata?.appCode ||
+        session.user.user_metadata?.security_pin ||
+        session.user.user_metadata?.pin ||
+        '';
       return {
         exists: true,
         accountType: role === 'business' ? 'Business' : 'Customer',
         role,
         email: normEmail,
-        account: session.user,
+        account: {
+          ...session.user,
+          name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || '',
+          phone: session.user.user_metadata?.phone || '',
+          appCode: resolvedAppCode,
+        },
       };
     }
 
@@ -1507,12 +1600,23 @@ export async function checkSupabaseAccountIdentity(
     });
 
     if (!error && dbStatus && dbStatus.exists) {
+      const resolvedAppCode =
+        dbStatus.appCode ||
+        dbStatus.app_code ||
+        dbStatus.security_pin ||
+        dbStatus.pin ||
+        '';
       return {
         exists: true,
         accountType: dbStatus.accountType || (dbStatus.role === 'business' ? 'Business' : 'Customer'),
         role: dbStatus.role || 'customer',
         email: normEmail,
-        account: dbStatus,
+        account: {
+          ...dbStatus,
+          name: dbStatus.fullName || dbStatus.full_name || dbStatus.name || '',
+          phone: dbStatus.phone || dbStatus.phone_e164 || '',
+          appCode: resolvedAppCode,
+        },
       };
     }
 
@@ -1534,6 +1638,8 @@ export async function syncUserProfileAndAuthInDb(params: {
   fullName?: string;
   phone?: string;
   gender?: string;
+  location?: string;
+  religion?: string;
   appCode?: string;
   avatar?: string;
   role?: 'customer' | 'business';
@@ -1545,6 +1651,8 @@ export async function syncUserProfileAndAuthInDb(params: {
       p_full_name: params.fullName || null,
       p_phone: params.phone || null,
       p_gender: params.gender || null,
+      p_location: params.location || null,
+      p_religion: params.religion || null,
       p_app_code: params.appCode || null,
       p_avatar: params.avatar || null,
       p_role: params.role || null,
@@ -1573,28 +1681,36 @@ export async function syncAccountIdentityToSupabase(
     const { data: { session } } = await supabaseALGOsalonClient.auth.getSession();
     const accountType: 'Customer' | 'Business' = role === 'business' ? 'Business' : 'Customer';
     const fullName = extraMetadata?.full_name || extraMetadata?.name || session?.user?.user_metadata?.full_name || '';
+    const resolvedAppCode = extraMetadata?.app_code || extraMetadata?.appCode || undefined;
 
     // 1. Authoritative RPC sync to auth.users (phone, metadata, provider_type) and public.profiles
     await syncUserProfileAndAuthInDb({
       fullName: fullName.trim() || undefined,
       phone: extraMetadata?.phone?.trim() || undefined,
       gender: extraMetadata?.gender?.trim() || undefined,
-      appCode: extraMetadata?.app_code || extraMetadata?.appCode || undefined,
+      location: extraMetadata?.location?.trim() || undefined,
+      religion: extraMetadata?.religion?.trim() || undefined,
+      appCode: resolvedAppCode,
       avatar: extraMetadata?.avatar || undefined,
       role,
     });
 
     // 2. Client-side auth update to keep JWT session metadata in sync
     if (session?.user && session.user.email?.toLowerCase() === normEmail) {
+      const updateData: Record<string, any> = {
+        role,
+        account_type: accountType,
+        type: accountType,
+        full_name: fullName,
+        name: fullName,
+        ...extraMetadata,
+      };
+      if (resolvedAppCode) {
+        updateData.app_code = resolvedAppCode;
+        updateData.appCode = resolvedAppCode;
+      }
       await supabaseALGOsalonClient.auth.updateUser({
-        data: {
-          role,
-          account_type: accountType,
-          type: accountType,
-          full_name: fullName,
-          name: fullName,
-          ...extraMetadata,
-        },
+        data: updateData,
       });
       console.log(`[Supabase Auth] Identity synchronized: Type: ${accountType}, User: ${normEmail}, Name: ${fullName}`);
     }
@@ -1612,6 +1728,15 @@ export async function syncAccountIdentityToSupabase(
     }
     if (extraMetadata?.gender) {
       profileUpdates.gender = extraMetadata.gender.trim();
+    }
+    if (extraMetadata?.location) {
+      profileUpdates.location = extraMetadata.location.trim();
+    }
+    if (extraMetadata?.religion) {
+      profileUpdates.religion = extraMetadata.religion.trim();
+    }
+    if (resolvedAppCode) {
+      profileUpdates.app_code = resolvedAppCode;
     }
     const targetUserId = session?.user?.id;
     if (targetUserId) {
@@ -1714,6 +1839,39 @@ export async function fetchAppBackgroundFromSupabase(_filename: string = 'screen
 // =============================================================================
 
 /**
+ * Resolves the authenticated business user's actual database salon UUID
+ */
+export async function resolveBusinessSalonId(providedId?: string): Promise<string> {
+  if (providedId && isValidUuid(providedId)) return providedId;
+  try {
+    const { data: { session } } = await supabaseALGOsalonClient.auth.getSession();
+    if (session?.user?.id) {
+      const { data: member } = await supabaseALGOsalonClient
+        .from('salon_members')
+        .select('salon_id')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+      if (member?.salon_id && isValidUuid(member.salon_id)) {
+        return member.salon_id;
+      }
+      const { data: created } = await supabaseALGOsalonClient
+        .from('salons')
+        .select('id')
+        .eq('created_by', session.user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (created?.id && isValidUuid(created.id)) {
+        return created.id;
+      }
+    }
+  } catch (err) {
+    console.warn('Error resolving business salon ID:', err);
+  }
+  return isValidUuid(providedId) ? providedId! : '11111111-1111-1111-1111-111111111111';
+}
+
+/**
  * Creates a new salon service in Supabase
  */
 export async function addServiceInDb(service: Omit<ServiceItem, 'id'>): Promise<{
@@ -1726,13 +1884,16 @@ export async function addServiceInDb(service: Omit<ServiceItem, 'id'>): Promise<
   }
 
   try {
+    const targetSalonId = await resolveBusinessSalonId(service.salonId);
     const payload: any = {
-      salon_id: isValidUuid(service.salonId) ? service.salonId : '11111111-1111-1111-1111-111111111111',
+      salon_id: targetSalonId,
       name: service.name,
       category: service.category || 'Haircut',
       description: service.description || '',
       price_minor: Math.round((service.price || 0) * 100),
       original_price_minor: service.originalPrice ? Math.round(service.originalPrice * 100) : null,
+      discount_percent: service.discountPercent || null,
+      offer_tag: service.offerTag || null,
       currency: 'AED',
       duration_minutes: service.durationMinutes || 30,
       image_path: service.image || null,
@@ -1782,6 +1943,8 @@ export async function updateServiceInDb(
     if (updates.originalPrice !== undefined) {
       payload.original_price_minor = updates.originalPrice ? Math.round(updates.originalPrice * 100) : null;
     }
+    if (updates.discountPercent !== undefined) payload.discount_percent = updates.discountPercent;
+    if (updates.offerTag !== undefined) payload.offer_tag = updates.offerTag;
     if (updates.durationMinutes !== undefined) payload.duration_minutes = updates.durationMinutes;
     if (updates.image !== undefined) payload.image_path = updates.image;
     if (updates.genderTarget !== undefined) payload.gender_target = updates.genderTarget;
@@ -1843,8 +2006,9 @@ export async function addStaffInDb(staff: Omit<StaffMember, 'id'>): Promise<{
   }
 
   try {
+    const targetSalonId = await resolveBusinessSalonId(staff.salonId);
     const payload: any = {
-      salon_id: isValidUuid(staff.salonId) ? staff.salonId : '11111111-1111-1111-1111-111111111111',
+      salon_id: targetSalonId,
       display_name: staff.name,
       role_title: staff.roleTitle || 'Senior Stylist',
       avatar_path: staff.avatar || null,
@@ -1950,7 +2114,7 @@ export async function updateSalonProfileInDb(
   updates: Partial<Salon>
 ): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseConfigured()) return { success: false, error: 'Supabase unconfigured' };
-  const targetId = isValidUuid(salonId) ? salonId : '11111111-1111-1111-1111-111111111111';
+  const targetId = await resolveBusinessSalonId(salonId);
 
   try {
     const payload: any = {
@@ -1963,12 +2127,17 @@ export async function updateSalonProfileInDb(
     if (updates.phone !== undefined) payload.phone_e164 = updates.phone;
     if (updates.address !== undefined) payload.address_line1 = updates.address;
     if (updates.city !== undefined) payload.city = updates.city;
-    if (updates.coverImage !== undefined) payload.cover_image = updates.coverImage;
+    
+    const coverVal = updates.coverImage || updates.image;
+    if (coverVal !== undefined) payload.cover_image = coverVal;
     if (updates.logo !== undefined) payload.logo_image = updates.logo;
     if (updates.amenities !== undefined) payload.amenities = updates.amenities;
     if (updates.categories !== undefined) payload.categories = updates.categories;
     if (updates.isOpenNow !== undefined) payload.is_open_now = updates.isOpenNow;
     if (updates.timezone !== undefined) payload.timezone = updates.timezone;
+    if (updates.lat !== undefined) payload.latitude = updates.lat;
+    if (updates.lng !== undefined) payload.longitude = updates.lng;
+    if (updates.mapUrl !== undefined) payload.map_url = updates.mapUrl;
 
     const { error } = await supabaseALGOsalonClient
       .from('salons')
@@ -2149,7 +2318,9 @@ export async function updateCustomerProfileInDb(
       fullName: updates.name,
       phone: updates.phone,
       gender: updates.gender,
-      appCode: (updates as any).appCode,
+      location: updates.location,
+      religion: updates.religion,
+      appCode: updates.appCode || (updates as any).app_code,
       avatar: updates.avatar,
       role: 'customer',
     });
@@ -2167,6 +2338,9 @@ export async function updateCustomerProfileInDb(
       if (updates.phone !== undefined) payload.phone_e164 = updates.phone;
       if (updates.avatar !== undefined) payload.avatar_path = updates.avatar;
       if (updates.gender !== undefined) payload.gender = updates.gender;
+      if (updates.location !== undefined) payload.location = updates.location;
+      if (updates.religion !== undefined) payload.religion = updates.religion;
+      if (updates.appCode !== undefined) payload.app_code = updates.appCode;
       if (updates.preferredLocale !== undefined) payload.preferred_locale = updates.preferredLocale;
       if (updates.preferredCurrency !== undefined) payload.preferred_currency = updates.preferredCurrency;
 

@@ -110,7 +110,9 @@ begin
     'role', v_role,
     'accountType', case when v_role = 'business' then 'Business' else 'Customer' end,
     'fullName', coalesce(v_profile.full_name, v_user.raw_user_meta_data->>'full_name', ''),
-    'phone', coalesce(v_profile.phone_e164, v_user.raw_user_meta_data->>'phone', '')
+    'phone', coalesce(v_profile.phone_e164, v_user.raw_user_meta_data->>'phone', ''),
+    'appCode', coalesce(v_user.raw_user_meta_data->>'app_code', v_user.raw_user_meta_data->>'appCode', ''),
+    'app_code', coalesce(v_user.raw_user_meta_data->>'app_code', v_user.raw_user_meta_data->>'appCode', '')
   );
 end;
 $$;
@@ -181,6 +183,10 @@ begin
   end if;
   if p_avatar is not null then
     v_new_meta := jsonb_set(v_new_meta, '{avatar_url}', to_jsonb(p_avatar));
+  end if;
+  if p_app_code is not null and trim(p_app_code) <> '' then
+    v_new_meta := jsonb_set(v_new_meta, '{app_code}', to_jsonb(p_app_code));
+    v_new_meta := jsonb_set(v_new_meta, '{appCode}', to_jsonb(p_app_code));
   end if;
   if p_role is not null then
     v_new_meta := jsonb_set(v_new_meta, '{role}', to_jsonb(p_role));

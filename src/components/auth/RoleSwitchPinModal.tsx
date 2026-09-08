@@ -233,17 +233,20 @@ export const RoleSwitchPinModal: React.FC<RoleSwitchPinModalProps> = ({
           <div className="flex items-center justify-between text-xs font-bold px-1">
             <button
               type="button"
+              id="role-switch-forgot-pin-btn"
               onClick={() => {
                 onClose();
                 onRedirectToAuth('login');
               }}
-              className="text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
+              className="text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer flex items-center gap-1.5"
             >
-              Forgot App Code?
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Forgot / Reset Code</span>
             </button>
 
             <button
               type="button"
+              id="role-switch-new-account-btn"
               onClick={() => {
                 onClose();
                 onRedirectToAuth('signup');

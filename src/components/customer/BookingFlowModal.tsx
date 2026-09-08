@@ -66,8 +66,23 @@ export const BookingFlowModal: React.FC = () => {
 
   const salon = preselectedSalon || salons[0] || INITIAL_SALONS[0];
   const salonTimezone = useMemo(() => (salon ? getSalonTimezone(salon).timeZone : 'UTC'), [salon]);
-  const salonServices = services.filter(s => s.salonId === salon?.id);
-  const salonStaff = staffMembers.filter(st => st.salonId === salon?.id);
+  const salonServices = useMemo(() => {
+    if (!salon) return [];
+    const salonIdStr = String(salon.id || '').trim().toLowerCase();
+    const directMatches = services.filter(s => String(s.salonId || '').trim().toLowerCase() === salonIdStr);
+    if (directMatches.length > 0) return directMatches;
+    if (salons.length <= 1 && services.length > 0) return services;
+    return [];
+  }, [services, salon, salons.length]);
+
+  const salonStaff = useMemo(() => {
+    if (!salon) return [];
+    const salonIdStr = String(salon.id || '').trim().toLowerCase();
+    const directMatches = staffMembers.filter(st => String(st.salonId || '').trim().toLowerCase() === salonIdStr);
+    if (directMatches.length > 0) return directMatches;
+    if (salons.length <= 1 && staffMembers.length > 0) return staffMembers;
+    return [];
+  }, [staffMembers, salon, salons.length]);
 
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [entryMode, setEntryMode] = useState<'shop' | 'service' | 'stylist'>('shop');

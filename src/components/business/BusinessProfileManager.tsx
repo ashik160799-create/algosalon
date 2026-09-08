@@ -291,6 +291,7 @@ export const BusinessProfileManager: React.FC = () => {
     logout,
     deleteAccount,
     salons,
+    activeBusinessSalon,
     updateSalonProfile,
     currentThemeConfig,
     colorThemeMode,
@@ -319,10 +320,7 @@ export const BusinessProfileManager: React.FC = () => {
   };
 
   const isLight = colorThemeMode === 'light';
-  const salon =
-    salons.find(s => s.id === businessUser.salonId) ||
-    salons[0] ||
-    INITIAL_SALONS[0];
+  const salon = activeBusinessSalon;
 
   // Settings Section Navigation: 5 clean, focused sections
   const [activeSettingsSection, setActiveSettingsSection] = useState<
@@ -335,7 +333,7 @@ export const BusinessProfileManager: React.FC = () => {
 
   // Shop Details & Media Fields
   const [logo, setLogo] = useState(salon?.logo || '');
-  const [name, setName] = useState(salon?.name || businessUser.businessName || 'My Salon Studio');
+  const [name, setName] = useState(salon?.name || businessUser.businessName || '');
   const [category, setCategory] = useState(businessUser.category || salon?.categories?.[0] || 'Hair & Styling');
   const [tagline, setTagline] = useState(salon?.tagline || '');
   const [description, setDescription] = useState(salon?.description || '');
@@ -343,7 +341,7 @@ export const BusinessProfileManager: React.FC = () => {
   const [city, setCity] = useState(salon?.city || businessUser.location || '');
   const [mapUrl, setMapUrl] = useState(salon?.mapUrl || '');
   const [phone, setPhone] = useState(salon?.phone || businessUser.phone || '');
-  const [image, setImage] = useState(salon?.image || 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=600&auto=format&fit=crop&q=80');
+  const [image, setImage] = useState(salon?.image || '');
 
   // Operating Hours & Schedule State
   const [workingHours, setWorkingHours] = useState<WorkingDayHour[]>(

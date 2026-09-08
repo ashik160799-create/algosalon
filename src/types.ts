@@ -15,6 +15,8 @@ export interface Customer {
   phone: string;
   avatar: string;
   gender?: 'Male' | 'Female' | 'Other' | 'Prefer not to say';
+  location?: string;
+  religion?: string;
   dateOfBirth?: string;
   nationality?: string;
   appCode?: string;

@@ -59,6 +59,7 @@ export const BusinessCustomersManager: React.FC<BusinessCustomersManagerProps> =
   const {
     businessUser,
     salons,
+    activeBusinessSalon,
     staffMembers,
     appointments,
     acceptAppointment,
@@ -72,10 +73,7 @@ export const BusinessCustomersManager: React.FC<BusinessCustomersManagerProps> =
   } = useApp();
 
   const isLight = colorThemeMode === 'light';
-  const salon =
-    salons.find(s => s.id === businessUser.salonId) ||
-    salons[0] ||
-    INITIAL_SALONS[0];
+  const salon = activeBusinessSalon;
   const salonAppointments = appointments.filter(a => a.salonId === salon?.id);
   const salonStaff = staffMembers.filter(s => s.salonId === salon?.id);
 

@@ -54,6 +54,9 @@ export const CustomerHome: React.FC = () => {
     locationPermissionGranted,
     requestLocationPermission,
     formatPrice,
+    isDataLoading,
+    dataLoadError,
+    refreshAllData,
   } = useApp();
 
   const [searchModalOpen, setSearchModalOpen] = useState(false);
@@ -107,37 +110,8 @@ export const CustomerHome: React.FC = () => {
     const anyUserAppt = userAppointments[0];
     if (anyUserAppt) return anyUserAppt;
 
-    const fallbackSalon = salons[1] || salons[0];
-    const fallbackStaff = staffMembers.find(s => s.salonId === fallbackSalon?.id) || staffMembers[0];
-    const fallbackService = services.find(s => s.salonId === fallbackSalon?.id) || services[0];
-
-    if (!fallbackSalon || !fallbackStaff || !fallbackService) return null;
-
-    return {
-      id: 'demo-last-visit',
-      salonId: fallbackSalon.id,
-      salonName: fallbackSalon.name,
-      salonAddress: fallbackSalon.address,
-      salonPhone: fallbackSalon.phone,
-      salonImage: fallbackSalon.image,
-      customerId: customerUser.id,
-      customerName: customerUser.name,
-      customerPhone: customerUser.phone,
-      customerEmail: customerUser.email,
-      serviceId: fallbackService.id,
-      serviceName: fallbackService.name,
-      servicePrice: fallbackService.price,
-      durationMinutes: fallbackService.durationMinutes,
-      staffId: fallbackStaff.id,
-      staffName: fallbackStaff.name,
-      staffAvatar: fallbackStaff.avatar,
-      date: '2026-08-15',
-      timeSlot: '03:00 PM',
-      status: 'completed',
-      paymentMethod: 'card',
-      createdAt: '2026-08-14T08:00:00.000Z',
-    };
-  }, [appointments, customerUser, salons, staffMembers, services]);
+    return null;
+  }, [appointments, customerUser]);
 
   const [nearbyRadiusKm, setNearbyRadiusKm] = useState<number>(10);
   const [exploreSortBy, setExploreSortBy] = useState<'nearest' | 'rating' | 'price_asc' | 'reviews'>('nearest');
@@ -255,6 +229,99 @@ export const CustomerHome: React.FC = () => {
     setPreselectedService(null);
     setBookingModalOpen(true);
   };
+
+  if (isDataLoading && salons.length === 0) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6 pb-12 pt-4">
+        <header className="pt-1">
+          <div className="h-8 w-48 bg-slate-200 dark:bg-slate-800 rounded-lg animate-pulse mb-2" />
+          <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+        </header>
+
+        <div className="w-full h-12 bg-slate-200 dark:bg-slate-800 rounded-full animate-pulse" />
+
+        <div className="w-full min-h-[45vh] flex flex-col items-center justify-center text-center p-8 space-y-3">
+          <div
+            className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin"
+            style={{
+              borderColor: `${currentThemeConfig.primaryHex}40`,
+              borderTopColor: currentThemeConfig.primaryHex,
+            }}
+          />
+          <p className="text-xs sm:text-sm font-semibold text-slate-400">
+            Fetching salons & services...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isDataLoading && salons.length === 0) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6 pb-12 pt-4">
+        <header className="pt-1">
+          <h1
+            className={`text-2xl sm:text-3xl font-extrabold tracking-tight font-['Outfit',sans-serif] ${
+              isLight ? 'text-slate-900' : 'text-white'
+            }`}
+          >
+            {greeting}, {firstName}
+          </h1>
+          <p className={`text-xs font-semibold mt-1 flex items-center gap-1 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+            <MapPin className="w-3.5 h-3.5 text-slate-400" />
+            <span>{userLocation || 'Location unavailable'}</span>
+          </p>
+        </header>
+
+        <div className="w-full min-h-[55vh] flex flex-col items-center justify-center text-center px-4 py-8">
+          <div
+            className={`max-w-md w-full p-8 rounded-3xl border flex flex-col items-center justify-center space-y-5 shadow-sm transition-all ${
+              isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'
+            }`}
+          >
+            <div
+              className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-inner"
+              style={{
+                backgroundColor: `${currentThemeConfig.primaryHex}15`,
+                color: currentThemeConfig.primaryHex,
+              }}
+            >
+              <MapPin className="w-8 h-8" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className={`text-base sm:text-lg font-bold leading-snug ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                Unable to load data. Please check your location settings and retry
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-400 max-w-xs mx-auto">
+                We could not connect to live salons nearby. Check your location access or click retry to reload.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              id="customer-retry-load-btn"
+              onClick={() => {
+                requestLocationPermission();
+                refreshAllData();
+              }}
+              className="px-6 py-2.5 rounded-full font-bold text-xs sm:text-sm flex items-center gap-2 transition-transform hover:scale-105 active:scale-95 cursor-pointer shadow-md"
+              style={{
+                backgroundColor: currentThemeConfig.primaryHex,
+                color: currentThemeConfig.contrastText || '#000000',
+              }}
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>Retry</span>
+            </button>
+          </div>
+        </div>
+
+        <SearchDiscoveryModal isOpen={searchModalOpen} onClose={() => setSearchModalOpen(false)} />
+        <ThemeSwitcherModal isOpen={themeModalOpen} onClose={() => setThemeModalOpen(false)} />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-7 pb-10">
@@ -761,7 +828,7 @@ export const CustomerHome: React.FC = () => {
                     </div>
 
                     <p className={`text-[11px] truncate mt-1 ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
-                      {salon?.name || 'Studio'} • {stylist.reviewsCount || 48} reviews
+                      {salon?.name || 'Studio'} • {stylist.reviewsCount ?? 0} reviews
                     </p>
                   </div>
                 </div>
@@ -770,10 +837,10 @@ export const CustomerHome: React.FC = () => {
                   <div className="text-right">
                     <div className="flex items-center justify-end gap-1 text-xs font-bold text-amber-500">
                       <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                      <span>{stylist.rating}</span>
+                      <span>{stylist.rating ? Number(stylist.rating).toFixed(1) : '5.0'}</span>
                     </div>
                     <span className={`text-[10px] ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
-                      {stylist.experienceYears || 5}+ yrs
+                      {stylist.experienceYears ? `${stylist.experienceYears}+ yrs` : 'Specialist'}
                     </span>
                   </div>
 

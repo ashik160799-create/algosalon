@@ -1049,14 +1049,27 @@ export const SplashScreen: React.FC = () => {
                 {/* 3. Position Alignment: 'Get Started' CTA Button directly above '100% Verified Salons' */}
                 <motion.div
                   initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2, duration: 0.4 }}
+                  animate={{
+                    opacity: 1,
+                    y: 0,
+                    scale: [1, 1.025, 1],
+                  }}
+                  transition={{
+                    opacity: { delay: 0.2, duration: 0.4 },
+                    y: { delay: 0.2, duration: 0.4 },
+                    scale: {
+                      duration: 2.2,
+                      repeat: Infinity,
+                      repeatType: 'reverse',
+                      ease: 'easeInOut',
+                    },
+                  }}
                   className="w-full max-w-sm relative"
                 >
                   {/* Glowing halo behind Get Started button */}
                   <motion.div
                     animate={{
-                      scale: [1, 1.06, 1],
+                      scale: [1, 1.08, 1],
                       opacity: [0.45, 0.85, 0.45],
                     }}
                     transition={{
@@ -1082,51 +1095,45 @@ export const SplashScreen: React.FC = () => {
                     }}
                   >
                     <span>Get Started</span>
-                    <motion.div
-                      animate={{
-                        y: [0, -3, 0],
-                        scale: [1, 1.15, 1],
-                      }}
-                      transition={{
-                        duration: 1.6,
-                        repeat: Infinity,
-                        repeatType: 'mirror',
-                        ease: 'easeInOut',
-                      }}
-                      className="flex items-center justify-center bg-zinc-950/15 p-1 rounded-full"
-                    >
-                      <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1 group-hover:-translate-y-0.5" />
-                    </motion.div>
+                    <div className="flex items-center justify-center bg-zinc-950/15 p-1 rounded-full">
+                      <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1.5" />
+                    </div>
                   </button>
                 </motion.div>
 
-                {/* Business Partner Link: 'Are you a Shop business Partner ? join us' */}
+                {/* Business Partner Link: 'Are you a business partner? Join Us' */}
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.25, duration: 0.4 }}
-                  className="w-full flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold relative px-2 mt-2.5 sm:mt-3.5"
+                  className="w-full flex flex-wrap items-center justify-center gap-2 text-xs sm:text-sm font-bold relative px-2 mt-2 sm:mt-3"
                 >
                   <span
-                    className="text-zinc-900 font-extrabold tracking-tight"
+                    className="text-zinc-950 font-extrabold tracking-tight text-xs sm:text-sm"
                     style={{
                       textShadow: '0 0 8px #FFFFFF, 0 0 16px rgba(255, 255, 255, 0.95)',
                     }}
                   >
-                    Are you a Shop business Partner ?
+                    Are you a business partner?
                   </span>
                   <button
                     id="welcome-join-partner-btn"
                     type="button"
                     onClick={handleJoinUs}
-                    className="inline-flex items-center gap-1 font-black underline underline-offset-4 hover:opacity-85 transition-all cursor-pointer group active:scale-95"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 sm:px-4 sm:py-1.5 rounded-full text-zinc-950 font-black text-xs sm:text-sm border border-black/10 shadow-[0_2px_12px_rgba(0,0,0,0.15)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.22)] hover:scale-105 hover:brightness-105 transition-all cursor-pointer group active:scale-95"
                     style={{
-                      color: primaryColor,
-                      textShadow: '0 0 8px #FFFFFF, 0 0 16px rgba(255, 255, 255, 0.95)',
+                      backgroundColor: primaryColor,
                     }}
+                    aria-label="Join as a business partner"
                   >
-                    <Store className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 transition-transform group-hover:scale-110" />
-                    <span>join us</span>
+                    <Store
+                      className="w-4.5 h-4.5 sm:w-5 sm:h-5 shrink-0 text-zinc-950 transition-transform group-hover:scale-110"
+                    />
+                    <span
+                      className="font-black tracking-tight text-zinc-950 underline underline-offset-2"
+                    >
+                      Join Us
+                    </span>
                   </button>
                 </motion.div>
 

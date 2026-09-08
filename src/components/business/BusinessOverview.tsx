@@ -32,6 +32,7 @@ export const BusinessOverview: React.FC = () => {
   const {
     businessUser,
     salons,
+    activeBusinessSalon,
     services,
     staffMembers,
     appointments,
@@ -44,10 +45,7 @@ export const BusinessOverview: React.FC = () => {
 
   const isLight = colorThemeMode === 'light';
 
-  const salon =
-    salons.find(s => s.id === businessUser.salonId) ||
-    salons[0] ||
-    INITIAL_SALONS[0];
+  const salon = activeBusinessSalon;
   const salonAppointments = appointments.filter(a => a.salonId === salon?.id);
   const salonServices = services.filter(s => s.salonId === salon?.id);
   const salonStaff = staffMembers.filter(s => s.salonId === salon?.id);
@@ -359,11 +357,9 @@ export const BusinessOverview: React.FC = () => {
             <h3 className={`text-base font-extrabold leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
               Live Requests
             </h3>
-            {uniqueCustomersList.length > 0 && (
-              <p className={`text-xs mt-1 font-medium ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                {uniqueCustomersList.length} {uniqueCustomersList.length === 1 ? 'Customer' : 'Customers'}
-              </p>
-            )}
+            <p className={`text-xs mt-1 font-medium ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+              {uniqueCustomersList.length} {uniqueCustomersList.length === 1 ? 'Customer' : 'Customers'}
+            </p>
           </div>
         </button>
 
@@ -417,11 +413,9 @@ export const BusinessOverview: React.FC = () => {
             <h3 className={`text-base font-extrabold leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
               Appointments
             </h3>
-            {salonAppointments.length > 0 && (
-              <p className={`text-xs mt-1 font-medium ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                All bookings {salonAppointments.length}
-              </p>
-            )}
+            <p className={`text-xs mt-1 font-medium ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+              {salonAppointments.length} {salonAppointments.length === 1 ? 'Booking' : 'Bookings'}
+            </p>
           </div>
         </button>
 
@@ -451,11 +445,9 @@ export const BusinessOverview: React.FC = () => {
             <h3 className={`text-base font-extrabold leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
               Services
             </h3>
-            {salonServices.length > 0 && (
-              <p className={`text-xs mt-1 font-medium ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                {salonServices.length} {salonServices.length === 1 ? 'Service' : 'Services'}
-              </p>
-            )}
+            <p className={`text-xs mt-1 font-medium ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+              {salonServices.length} {salonServices.length === 1 ? 'Service' : 'Services'}
+            </p>
           </div>
         </button>
 
@@ -485,11 +477,9 @@ export const BusinessOverview: React.FC = () => {
             <h3 className={`text-base font-extrabold leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
               Staff
             </h3>
-            {salonStaff.length > 0 && (
-              <p className={`text-xs mt-1 font-medium ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                {salonStaff.length} {salonStaff.length === 1 ? 'Stylist' : 'Stylists'}
-              </p>
-            )}
+            <p className={`text-xs mt-1 font-medium ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+              {salonStaff.length} {salonStaff.length === 1 ? 'Stylist' : 'Stylists'}
+            </p>
           </div>
         </button>
 

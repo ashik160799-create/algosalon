@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   Role,
   CustomerUser,
@@ -180,6 +180,7 @@ interface AppContextType {
   deleteAccount: () => Promise<boolean>;
 
   salons: Salon[];
+  activeBusinessSalon: Salon;
   selectedSalon: Salon | null;
   setSelectedSalon: (salon: Salon | null) => void;
   updateSalonProfile: (salonId: string, updates: Partial<Salon>) => void;
@@ -250,6 +251,10 @@ interface AppContextType {
   locationPermissionGranted: boolean | null;
   setLocationPermissionGranted: (granted: boolean | null) => void;
   requestLocationPermission: () => Promise<boolean>;
+
+  isDataLoading: boolean;
+  dataLoadError: string | null;
+  refreshAllData: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -669,31 +674,113 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return EMPTY_BUSINESS;
   });
 
-  const [salons, setSalons] = useState<Salon[]>(INITIAL_SALONS);
-  const [selectedSalon, setSelectedSalon] = useState<Salon | null>(INITIAL_SALONS[0] || null);
-  const [services, setServices] = useState<ServiceItem[]>(INITIAL_SERVICES);
-  const [staffMembers, setStaffMembers] = useState<StaffMember[]>(INITIAL_STAFF);
+  const [salons, setSalons] = useState<Salon[]>([]);
+  const [selectedSalon, setSelectedSalon] = useState<Salon | null>(null);
+  const [services, setServices] = useState<ServiceItem[]>([]);
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
+  const [dataLoadError, setDataLoadError] = useState<string | null>(null);
+
+  // Compute the authoritative active business salon dedicated strictly to the logged-in business user
+  const activeBusinessSalon = useMemo<Salon>(() => {
+    if (businessUser && businessUser.email) {
+      const targetSalonId =
+        businessUser.salonId && businessUser.salonId !== 'salon-1'
+          ? businessUser.salonId
+          : `salon-${businessUser.id || businessUser.email.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+      const found = salons.find(s => s.id === targetSalonId);
+      if (found) return found;
+
+      const cleanBizName =
+        businessUser.businessName && businessUser.businessName !== 'Spot-Pro Signature Studio'
+          ? businessUser.businessName
+          : businessUser.name && businessUser.name !== 'Salon Director'
+          ? `${businessUser.name}'s Studio`
+          : 'My Salon Studio';
+
+      return {
+        id: targetSalonId,
+        name: cleanBizName,
+        tagline: 'Professional Salon & Grooming Services',
+        description: 'Welcome to our salon studio.',
+        address: businessUser.location || '',
+        city: 'Dubai',
+        mapUrl: 'https://maps.google.com',
+        distanceKm: 0.5,
+        lat: 25.2048,
+        lng: 55.2708,
+        phone: businessUser.phone || '',
+        rating: 0,
+        reviewCount: 0,
+        priceRange: '$$',
+        logo: '',
+        image: '',
+        coverImage: '',
+        amenities: ['Air Conditioned', 'Card & Apple Pay'],
+        isOpenNow: true,
+        isVerified: false,
+        trnNumber: '',
+        licenseNumber: '',
+        categories: businessUser.category ? [businessUser.category] : ['Hair & Styling'],
+        documents: [],
+        workingHours: CONTEXT_DEFAULT_WORKING_HOURS,
+      };
+    }
+
+    return (
+      salons[0] || {
+        id: 'salon-empty',
+        name: 'Salon',
+        tagline: '',
+        description: '',
+        address: '',
+        city: 'Dubai',
+        mapUrl: 'https://maps.google.com',
+        distanceKm: 0.5,
+        lat: 25.2048,
+        lng: 55.2708,
+        phone: '',
+        rating: 5,
+        reviewCount: 0,
+        priceRange: '$$',
+        logo: '',
+        image: '',
+        coverImage: '',
+        amenities: [],
+        isOpenNow: true,
+        isVerified: false,
+        trnNumber: '',
+        licenseNumber: '',
+        categories: ['Haircut'],
+        documents: [],
+        workingHours: CONTEXT_DEFAULT_WORKING_HOURS,
+      }
+    );
+  }, [businessUser, salons]);
+
+  // Keep activeBusinessSalon registered in salons list and businessUser state
+  useEffect(() => {
+    if (businessUser && businessUser.email && activeBusinessSalon && activeBusinessSalon.id !== 'salon-empty') {
+      setSalons(prev => {
+        if (prev.some(s => s.id === activeBusinessSalon.id)) return prev;
+        return [activeBusinessSalon, ...prev];
+      });
+      if (businessUser.salonId !== activeBusinessSalon.id) {
+        const updated = { ...businessUser, salonId: activeBusinessSalon.id };
+        setBusinessUser(updated);
+        try {
+          localStorage.setItem('algosalon_business_user', JSON.stringify(updated));
+        } catch {}
+      }
+    }
+  }, [businessUser, activeBusinessSalon]);
 
   // Purge legacy mock data cache from local storage
   useEffect(() => {
-    const legacyKeys = [
-      'algosalon_salons',
-      'algosalon_services',
-      'algosalon_staff',
-      'algosalon_appointments',
-      'algosalon_reviews',
-      'algosalon_notifications',
-      'algosalon_registered_accounts',
-    ];
-    legacyKeys.forEach(k => {
-      try {
-        localStorage.removeItem(k);
-      } catch {}
-    });
-
     const custRaw = localStorage.getItem('algosalon_customer');
     if (custRaw) {
       try {
@@ -719,6 +806,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ) {
           localStorage.removeItem('algosalon_business_user');
           setBusinessUser(EMPTY_BUSINESS);
+        } else if (b.email) {
+          let updated = false;
+          let cleanSalonId = b.salonId;
+          let cleanBizName = b.businessName;
+          if (!cleanSalonId || cleanSalonId === 'salon-1') {
+            cleanSalonId = `salon-${b.id || b.email.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            updated = true;
+          }
+          if (cleanBizName === 'Spot-Pro Signature Studio') {
+            cleanBizName = b.name && b.name !== 'Salon Director' ? `${b.name}'s Studio` : 'My Salon Studio';
+            updated = true;
+          }
+          if (updated) {
+            const fixed = { ...b, salonId: cleanSalonId, businessName: cleanBizName };
+            setBusinessUser(fixed);
+            localStorage.setItem('algosalon_business_user', JSON.stringify(fixed));
+          }
         }
       } catch {
         localStorage.removeItem('algosalon_business_user');
@@ -727,32 +831,57 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
+  /**
+   * Refreshes all business & catalog data directly from Supabase Cloud API
+   */
+  const refreshAllData = useCallback(async () => {
+    setIsDataLoading(true);
+    setDataLoadError(null);
+    if (!isSupabaseConfigured()) {
+      setIsDataLoading(false);
+      return;
+    }
+    try {
+      const [result, liveApts, liveReviews] = await Promise.all([
+        fetchSalonsFromDb(),
+        fetchAppointmentsFromDb(),
+        fetchReviewsFromDb(),
+      ]);
+
+      if (result) {
+        setSalons(result.salons || []);
+        setServices(result.services || []);
+        setStaffMembers(result.staff || []);
+        if (result.salons && result.salons.length > 0) {
+          setSelectedSalon(prev => (prev && result.salons.some(s => s.id === prev.id) ? prev : result.salons[0]));
+        }
+      }
+      if (liveApts) {
+        setAppointments(liveApts);
+      }
+      if (liveReviews) {
+        setReviews(liveReviews);
+      }
+    } catch (err: unknown) {
+      console.warn('[AppContext] Failed to load data from Supabase:', err);
+      const errMsg = err instanceof Error ? err.message : 'Unable to load data. Please check your location settings and retry';
+      setDataLoadError(errMsg);
+    } finally {
+      setIsDataLoading(false);
+    }
+  }, []);
+
   // ---------------------------------------------------------------------------
   // Live Supabase Cloud Sync & Real-time Subscriptions
-  // (Hydrates live database rows directly from Supabase backend)
   // ---------------------------------------------------------------------------
   useEffect(() => {
-    if (!isSupabaseConfigured()) return;
+    if (!isSupabaseConfigured()) {
+      setIsDataLoading(false);
+      return;
+    }
 
     let isMounted = true;
-
-    // 1. Hydrate published salons, services, and staff
-    fetchSalonsFromDb().then(result => {
-      if (!isMounted || !result) return;
-      if (Array.isArray(result.salons) && result.salons.length > 0) {
-        setSalons(result.salons);
-        setSelectedSalon(prev => prev || result.salons[0]);
-        setBusinessUser(prev =>
-          (prev.salonId === 'salon-1' || !prev.salonId) && prev.salonId !== result.salons[0].id
-            ? { ...prev, salonId: result.salons[0].id }
-            : prev
-        );
-      }
-      if (Array.isArray(result.services) && result.services.length > 0) setServices(result.services);
-      if (Array.isArray(result.staff) && result.staff.length > 0) setStaffMembers(result.staff);
-    }).catch(err => {
-      console.warn('[AppContext] Failed to hydrate salons from db:', err);
-    });
+    refreshAllData();
 
     // 2. Hydrate appointments (from live database appointments)
     fetchAppointmentsFromDb().then(liveApts => {
@@ -1317,6 +1446,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         dateOfBirth: freshCustomer.dateOfBirth,
         nationality: freshCustomer.nationality,
       });
+      if (freshCustomer.appCode) {
+        updateAccountAppCode(freshCustomer.email, freshCustomer.appCode);
+      }
+    }
+
+    if (freshCustomer.email) {
+      syncAccountIdentityToSupabase(freshCustomer.email, 'customer', {
+        full_name: freshCustomer.name,
+        name: freshCustomer.name,
+        phone: freshCustomer.phone,
+        gender: freshCustomer.gender,
+        app_code: freshCustomer.appCode,
+        appCode: freshCustomer.appCode,
+      }).catch(err => console.warn('Sync customer identity error:', err));
     }
 
     setCustomerUser(freshCustomer);
@@ -1379,30 +1522,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       effectiveToken = `algosalon_tk_biz_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     }
 
-    const newSalonId = salonData?.id || `salon-${Date.now()}`;
+    const newSalonId =
+      salonData?.id && salonData.id !== 'salon-1'
+        ? salonData.id
+        : `salon-${userData.id || (userData.email ? userData.email.replace(/[^a-zA-Z0-9]/g, '_') : Date.now())}`;
+
+    const shopDisplayName =
+      salonData?.name?.trim() ||
+      userData.businessName?.trim() ||
+      (userData.name && userData.name !== 'Salon Director' ? `${userData.name}'s Studio` : 'My Salon Studio');
+
     const freshSalon: Salon = {
       id: newSalonId,
-      name: salonData?.name || userData.businessName || 'My Salon Studio',
-      tagline: salonData?.tagline || 'Modern Barbering & Salon Studio',
-      description: salonData?.description || 'Premier grooming and styling destination.',
-      address: salonData?.address || 'Downtown Boulevard',
-      city: salonData?.city || 'Dubai',
+      name: shopDisplayName,
+      tagline: salonData?.tagline?.trim() || 'Professional Salon & Grooming Services',
+      description: salonData?.description?.trim() || 'Welcome to our salon studio.',
+      address: salonData?.address?.trim() || userData.location?.trim() || '',
+      city: salonData?.city?.trim() || 'Dubai',
       mapUrl: salonData?.mapUrl || 'https://maps.google.com',
       distanceKm: 0.5,
       lat: 25.2048,
       lng: 55.2708,
-      phone: salonData?.phone || userData.phone || '+971 50 123 4567',
-      rating: 5.0,
+      phone: salonData?.phone?.trim() || userData.phone?.trim() || '',
+      rating: 0,
       reviewCount: 0,
-      priceRange: '$$$',
+      priceRange: '$$',
       logo: salonData?.logo || '',
-      image: salonData?.image || 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=600&auto=format&fit=crop&q=80',
-      coverImage: salonData?.coverImage || 'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=1200&auto=format&fit=crop&q=80',
-      amenities: ['Free High-Speed Wi-Fi', 'Air Conditioned', 'Card & Apple Pay'],
+      image: salonData?.image || '',
+      coverImage: salonData?.coverImage || '',
+      amenities: ['Air Conditioned', 'Card & Apple Pay'],
       isOpenNow: true,
-      isVerified: true,
-      trnNumber: '100492817200003',
-      licenseNumber: 'CN-2894109',
+      isVerified: false,
+      trnNumber: '',
+      licenseNumber: '',
       categories: userData.category ? [userData.category] : ['Hair & Styling'],
       documents: [],
       workingHours: CONTEXT_DEFAULT_WORKING_HOURS,
@@ -1448,6 +1600,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         salonId: freshBusiness.salonId,
         ownerRole: freshBusiness.ownerRole,
       });
+      if (freshBusiness.appCode) {
+        updateAccountAppCode(freshBusiness.email, freshBusiness.appCode);
+      }
+    }
+
+    if (freshBusiness.email) {
+      syncAccountIdentityToSupabase(freshBusiness.email, 'business', {
+        full_name: freshBusiness.name,
+        name: freshBusiness.name,
+        phone: freshBusiness.phone,
+        business_name: freshBusiness.businessName,
+        app_code: freshBusiness.appCode,
+        appCode: freshBusiness.appCode,
+      }).catch(err => console.warn('Sync business identity error:', err));
     }
 
     if (effectiveToken) {
@@ -1460,8 +1626,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setSalons(prev => {
       const exists = prev.some(s => s.id === newSalonId);
-      const updated = exists ? prev.map(s => (s.id === newSalonId ? freshSalon : s)) : [freshSalon, ...prev];
-      return updated;
+      return exists ? prev.map(s => (s.id === newSalonId ? freshSalon : s)) : [freshSalon, ...prev];
     });
 
     if (isSupabaseConfigured()) {
@@ -1556,6 +1721,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (updates.appCode) {
         updateAccountAppCode(activeEmail, updates.appCode);
       }
+      syncAccountIdentityToSupabase(activeEmail, 'customer', {
+        full_name: updates.name || customerUser.name,
+        name: updates.name || customerUser.name,
+        phone: updates.phone || customerUser.phone,
+        gender: updates.gender || customerUser.gender,
+        app_code: updates.appCode || customerUser.appCode,
+        appCode: updates.appCode || customerUser.appCode,
+      }).catch(err => {
+        console.warn('Background sync customer identity error:', err);
+      });
     }
 
     updateCustomerProfileInDb(customerUser.id || '', updates).catch(err => {
@@ -1807,10 +1982,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateSalonProfile = (salonId: string, updates: Partial<Salon>) => {
-    setSalons(prev => {
-      const updated = prev.map(s => (s.id === salonId ? { ...s, ...updates } : s));
-      return updated;
-    });
+    setSalons(prev => prev.map(s => (s.id === salonId ? { ...s, ...updates } : s)));
+
+    if (
+      businessUser &&
+      businessUser.email &&
+      (businessUser.salonId === salonId || activeBusinessSalon.id === salonId)
+    ) {
+      const updatedBizUser: BusinessUser = {
+        ...businessUser,
+        salonId: salonId,
+        businessName: updates.name ? updates.name.trim() : businessUser.businessName,
+        location: updates.address
+          ? updates.address.trim()
+          : updates.city
+          ? updates.city.trim()
+          : businessUser.location,
+        phone: updates.phone ? updates.phone.trim() : businessUser.phone,
+      };
+      setBusinessUser(updatedBizUser);
+      try {
+        localStorage.setItem('algosalon_business_user', JSON.stringify(updatedBizUser));
+      } catch {}
+      updateRegisteredAccount(businessUser.email, {
+        businessName: updatedBizUser.businessName,
+        location: updatedBizUser.location,
+        phone: updatedBizUser.phone,
+        salonId: salonId,
+      });
+    }
 
     if (isSupabaseConfigured()) {
       updateSalonProfileInDb(salonId, updates).catch(err => {
@@ -1850,17 +2050,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...service,
       id: tempId,
     };
-    setServices(prev => {
-      const updated = [newService, ...prev];
-      return updated;
-    });
+    setServices(prev => [newService, ...prev]);
 
     if (isSupabaseConfigured()) {
       addServiceInDb(service).then(res => {
         if (res.success && res.serviceId) {
-          setServices(prev =>
-            prev.map(s => (s.id === tempId ? { ...s, id: res.serviceId! } : s))
-          );
+          setServices(prev => prev.map(s => (s.id === tempId ? { ...s, id: res.serviceId! } : s)));
         }
       }).catch(err => {
         console.warn('Background Supabase addService error:', err);
@@ -1869,10 +2064,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateService = (serviceId: string, updates: Partial<ServiceItem>) => {
-    setServices(prev => {
-      const updated = prev.map(s => (s.id === serviceId ? { ...s, ...updates } : s));
-      return updated;
-    });
+    setServices(prev => prev.map(s => (s.id === serviceId ? { ...s, ...updates } : s)));
 
     if (isSupabaseConfigured()) {
       updateServiceInDb(serviceId, updates).catch(err => {
@@ -1882,10 +2074,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteService = (serviceId: string) => {
-    setServices(prev => {
-      const updated = prev.filter(s => s.id !== serviceId);
-      return updated;
-    });
+    setServices(prev => prev.filter(s => s.id !== serviceId));
 
     if (isSupabaseConfigured()) {
       deleteServiceInDb(serviceId).catch(err => {
@@ -1900,17 +2089,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...staff,
       id: tempId,
     };
-    setStaffMembers(prev => {
-      const updated = [newStaff, ...prev];
-      return updated;
-    });
+    setStaffMembers(prev => [newStaff, ...prev]);
 
     if (isSupabaseConfigured()) {
       addStaffInDb(staff).then(res => {
         if (res.success && res.staffId) {
-          setStaffMembers(prev =>
-            prev.map(st => (st.id === tempId ? { ...st, id: res.staffId! } : st))
-          );
+          setStaffMembers(prev => prev.map(st => (st.id === tempId ? { ...st, id: res.staffId! } : st)));
         }
       }).catch(err => {
         console.warn('Background Supabase addStaff error:', err);
@@ -1919,10 +2103,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateStaffMember = (staffId: string, updates: Partial<StaffMember>) => {
-    setStaffMembers(prev => {
-      const updated = prev.map(s => (s.id === staffId ? { ...s, ...updates } : s));
-      return updated;
-    });
+    setStaffMembers(prev => prev.map(s => (s.id === staffId ? { ...s, ...updates } : s)));
 
     if (isSupabaseConfigured()) {
       updateStaffInDb(staffId, updates).catch(err => {
@@ -1932,10 +2113,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteStaffMember = (staffId: string) => {
-    setStaffMembers(prev => {
-      const updated = prev.filter(s => s.id !== staffId);
-      return updated;
-    });
+    setStaffMembers(prev => prev.filter(s => s.id !== staffId));
 
     if (isSupabaseConfigured()) {
       deleteStaffInDb(staffId).catch(err => {
@@ -2750,6 +2928,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteAccount,
 
         salons,
+        activeBusinessSalon,
         selectedSalon,
         setSelectedSalon,
         updateSalonProfile,
@@ -2811,6 +2990,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         locationPermissionGranted,
         setLocationPermissionGranted,
         requestLocationPermission,
+
+        isDataLoading,
+        dataLoadError,
+        refreshAllData,
       }}
     >
       {children}

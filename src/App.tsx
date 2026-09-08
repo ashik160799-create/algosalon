@@ -53,19 +53,7 @@ const MainAppContent: React.FC = () => {
     setAuthTargetRole,
   } = useApp();
 
-  const [locationPrompted, setLocationPrompted] = useState<boolean>(() => {
-    return (
-      localStorage.getItem('algosalon_location_prompted') === 'true' ||
-      localStorage.getItem('algosalon_location_permission') !== null
-    );
-  });
-
-  useEffect(() => {
-    const isPrompted =
-      localStorage.getItem('algosalon_location_prompted') === 'true' ||
-      localStorage.getItem('algosalon_location_permission') !== null;
-    setLocationPrompted(prev => (prev === isPrompted ? prev : isPrompted));
-  }, [currentRole, showSplash]);
+  const [locationPrompted, setLocationPrompted] = useState<boolean>(true);
 
   if (showSplash) {
     return <SplashScreen />;
@@ -92,11 +80,9 @@ const MainAppContent: React.FC = () => {
                 <div className="w-full min-h-[72vh] flex flex-col items-center justify-center py-6">
                   <LocationPermissionScreen
                     onAllow={() => {
-                      localStorage.setItem('algosalon_location_prompted', 'true');
                       setLocationPrompted(true);
                     }}
                     onSkip={() => {
-                      localStorage.setItem('algosalon_location_prompted', 'true');
                       setLocationPrompted(true);
                     }}
                     targetRole="customer"

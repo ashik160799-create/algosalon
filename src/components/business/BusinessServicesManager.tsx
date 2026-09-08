@@ -26,6 +26,7 @@ export const BusinessServicesManager: React.FC = () => {
   const {
     businessUser,
     salons,
+    activeBusinessSalon,
     services,
     addService,
     updateService,
@@ -37,10 +38,7 @@ export const BusinessServicesManager: React.FC = () => {
   } = useApp();
 
   const isLight = colorThemeMode === 'light';
-  const salon =
-    salons.find(s => s.id === businessUser.salonId) ||
-    salons[0] ||
-    INITIAL_SALONS[0];
+  const salon = activeBusinessSalon;
   const salonServices = services.filter(s => s.salonId === salon?.id);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -520,7 +518,33 @@ export const BusinessServicesManager: React.FC = () => {
       </div>
 
       {/* Services Grid */}
-      {filteredServices.length === 0 ? (
+      {salonServices.length === 0 ? (
+        <div
+          className={`p-12 text-center rounded-3xl border ${
+            isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-900 border-slate-800'
+          }`}
+        >
+          <Scissors className="w-12 h-12 text-slate-400 mx-auto mb-3 opacity-60" />
+          <h3 className={`text-base font-black ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
+            No Services Added Yet
+          </h3>
+          <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+            You haven't added any services for your salon yet. Click &quot;Add Service&quot; above to define your real offerings, durations, and prices.
+          </p>
+          <button
+            type="button"
+            onClick={handleOpenCreate}
+            className="mt-5 px-5 py-2.5 rounded-xl text-xs font-black shadow-xs inline-flex items-center gap-2 cursor-pointer hover:opacity-95"
+            style={{
+              backgroundColor: currentThemeConfig.primaryHex,
+              color: currentThemeConfig.contrastText || '#ffffff',
+            }}
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Your First Service</span>
+          </button>
+        </div>
+      ) : filteredServices.length === 0 ? (
         <div
           className={`p-12 text-center rounded-3xl border ${
             isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-900 border-slate-800'
@@ -540,7 +564,7 @@ export const BusinessServicesManager: React.FC = () => {
               setSelectedCategory('All');
               setSelectedGender('All');
             }}
-            className="mt-4 px-4 py-2 rounded-xl text-xs font-black shadow-xs"
+            className="mt-4 px-4 py-2 rounded-xl text-xs font-black shadow-xs cursor-pointer hover:opacity-95"
             style={{
               backgroundColor: currentThemeConfig.primaryHex,
               color: currentThemeConfig.contrastText || '#ffffff',

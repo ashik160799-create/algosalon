@@ -170,16 +170,18 @@ export const BusinessAuthFlow: React.FC<BusinessAuthFlowProps> = ({
       setCodeError('Please provide a valid business email.');
       return;
     }
+    const dedicatedSalonId = `salon-${Date.now()}`;
+    const cleanShopName = businessName.trim() || (ownerName.trim() ? `${ownerName.trim()}'s Studio` : 'My Salon Studio');
     const regResult = registerNewAccount({
       email: normEmail,
       role: 'business',
       name: ownerName.trim(),
       appCode: createAppCode,
       phone: phone.trim(),
-      businessName: businessName.trim(),
+      businessName: cleanShopName,
       category,
       location,
-      salonId: salons[0]?.id || '',
+      salonId: dedicatedSalonId,
     });
 
     if (!regResult.success) {
@@ -195,14 +197,16 @@ export const BusinessAuthFlow: React.FC<BusinessAuthFlowProps> = ({
         name: ownerName.trim(),
         email: normEmail,
         phone: phone.trim() || '',
-        businessName: businessName.trim(),
+        businessName: cleanShopName,
         category: category,
         location: location,
         appCode: createAppCode,
         ownerRole: 'Owner & Salon Director',
+        salonId: dedicatedSalonId,
       },
       {
-        name: businessName.trim(),
+        id: dedicatedSalonId,
+        name: cleanShopName,
         phone: phone.trim(),
         city: location,
         categories: category ? [category] : ['Hair & Styling'],
@@ -210,6 +214,19 @@ export const BusinessAuthFlow: React.FC<BusinessAuthFlowProps> = ({
     );
 
     fetchFreshUserProfile();
+
+    syncAccountIdentityToSupabase(normEmail, 'business', {
+      full_name: ownerName.trim(),
+      name: ownerName.trim(),
+      business_name: cleanShopName,
+      phone: phone.trim(),
+      category,
+      location,
+      app_code: createAppCode,
+      appCode: createAppCode,
+    }).catch(err => {
+      console.warn('Sync business PIN to Supabase error:', err);
+    });
 
     setStep('new_success');
   };
@@ -227,8 +244,14 @@ export const BusinessAuthFlow: React.FC<BusinessAuthFlowProps> = ({
       setExistingCodeError(null);
       syncAccountIdentityToSupabase(normEmail, 'business', {
         full_name: existing.name,
+        name: existing.name,
         business_name: existing.businessName,
         phone: existing.phone,
+        category: existing.category,
+        app_code: existing.appCode,
+        appCode: existing.appCode,
+      }).catch(err => {
+        console.warn('Sync business login identity error:', err);
       });
       loginAsBusiness(
         {

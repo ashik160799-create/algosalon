@@ -23,15 +23,13 @@ export const BusinessBottomNav: React.FC<BusinessBottomNavProps> = () => {
     appointments,
     businessUser,
     salons,
+    activeBusinessSalon,
   } = useApp();
 
   const isKeyboardVisible = useKeyboardVisibility();
 
   const isLight = colorThemeMode === 'light';
-  const salon =
-    salons.find(s => s.id === businessUser.salonId) ||
-    salons[0] ||
-    INITIAL_SALONS[0];
+  const salon = activeBusinessSalon;
   const salonAppointments = appointments.filter(a => a.salonId === salon?.id);
 
   const pendingLiveCount = salonAppointments.filter(a => a.status === 'pending').length;

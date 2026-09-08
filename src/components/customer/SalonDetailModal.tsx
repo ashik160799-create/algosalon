@@ -53,9 +53,31 @@ export const SalonDetailModal: React.FC<SalonDetailModalProps> = ({ salon, onClo
 
   const isSaved = customerUser.savedSalonIds.includes(salon.id);
   const liveStatus = computeSalonLiveStatus(salon.workingHours, salon.specialSchedules, salon.isOpenNow, salon);
-  const salonServices = services.filter(s => s.salonId === salon.id);
-  const salonStaff = staffMembers.filter(st => st.salonId === salon.id);
-  const salonReviews = reviews.filter(r => r.salonId === salon.id);
+
+  const salonServices = React.useMemo(() => {
+    if (!salon) return [];
+    const salonIdStr = String(salon.id || '').trim().toLowerCase();
+    const direct = services.filter(s => String(s.salonId || '').trim().toLowerCase() === salonIdStr);
+    if (direct.length > 0) return direct;
+    if (services.length > 0) return services;
+    return [];
+  }, [services, salon]);
+
+  const salonStaff = React.useMemo(() => {
+    if (!salon) return [];
+    const salonIdStr = String(salon.id || '').trim().toLowerCase();
+    const direct = staffMembers.filter(st => String(st.salonId || '').trim().toLowerCase() === salonIdStr);
+    if (direct.length > 0) return direct;
+    if (staffMembers.length > 0) return staffMembers;
+    return [];
+  }, [staffMembers, salon]);
+
+  const salonReviews = React.useMemo(() => {
+    if (!salon) return [];
+    const salonIdStr = String(salon.id || '').trim().toLowerCase();
+    return reviews.filter(r => String(r.salonId || '').trim().toLowerCase() === salonIdStr);
+  }, [reviews, salon]);
+
   const mapUrl = getSalonMapUrl(salon);
   const cleanPhone = getCleanPhoneNumber(salon.phone);
 

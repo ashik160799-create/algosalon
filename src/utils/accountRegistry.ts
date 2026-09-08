@@ -157,10 +157,26 @@ export const cleanupDuplicateAccounts = (): void => {
         continue;
       }
 
+      // Detach real business accounts from demo mock salon-1 or mock shop name
+      let cleanSalonId = acc.salonId;
+      let cleanBizName = acc.businessName;
+      if (acc.role === 'business') {
+        if (!cleanSalonId || cleanSalonId === 'salon-1') {
+          cleanSalonId = `salon-${acc.id || norm.replace(/[^a-zA-Z0-9]/g, '_')}`;
+          hasDuplicates = true;
+        }
+        if (cleanBizName === 'Spot-Pro Signature Studio') {
+          cleanBizName = acc.name && acc.name !== 'Salon Director' ? `${acc.name}'s Studio` : 'My Salon Studio';
+          hasDuplicates = true;
+        }
+      }
+
       if (!uniqueMap.has(norm)) {
         uniqueMap.set(norm, {
           ...acc,
           email: norm,
+          salonId: cleanSalonId,
+          businessName: cleanBizName,
         });
       } else {
         hasDuplicates = true;
@@ -169,7 +185,12 @@ export const cleanupDuplicateAccounts = (): void => {
         const currentRole = localStorage.getItem('algosalon_role');
         const existing = uniqueMap.get(norm)!;
         if (currentRole && acc.role === currentRole && existing.role !== currentRole) {
-          uniqueMap.set(norm, { ...acc, email: norm });
+          uniqueMap.set(norm, {
+            ...acc,
+            email: norm,
+            salonId: cleanSalonId,
+            businessName: cleanBizName,
+          });
         }
       }
     }
@@ -205,6 +226,19 @@ export const cleanupDuplicateAccounts = (): void => {
           (parsed.id && UNWANTED_IDS.includes(parsed.id))
         ) {
           localStorage.removeItem('algosalon_business_user');
+        } else if (parsed && parsed.email) {
+          let modified = false;
+          if (!parsed.salonId || parsed.salonId === 'salon-1') {
+            parsed.salonId = `salon-${parsed.id || normalizeEmail(parsed.email).replace(/[^a-zA-Z0-9]/g, '_')}`;
+            modified = true;
+          }
+          if (parsed.businessName === 'Spot-Pro Signature Studio') {
+            parsed.businessName = parsed.name && parsed.name !== 'Salon Director' ? `${parsed.name}'s Studio` : 'My Salon Studio';
+            modified = true;
+          }
+          if (modified) {
+            localStorage.setItem('algosalon_business_user', JSON.stringify(parsed));
+          }
         }
       } catch (err) {
         console.warn('[AccountRegistry] Failed to parse business profile during cleanup:', err);

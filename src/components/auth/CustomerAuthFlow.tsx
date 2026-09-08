@@ -223,6 +223,17 @@ export const CustomerAuthFlow: React.FC<CustomerAuthFlowProps> = ({
       loyaltyPoints: 0,
     });
 
+    syncAccountIdentityToSupabase(normEmail, 'customer', {
+      full_name: fullName.trim(),
+      name: fullName.trim(),
+      phone: phone.trim(),
+      gender,
+      app_code: createAppCode,
+      appCode: createAppCode,
+    }).catch(err => {
+      console.warn('Sync customer PIN to Supabase error:', err);
+    });
+
     fetchFreshUserProfile();
 
     setStep('new_success');
@@ -241,7 +252,13 @@ export const CustomerAuthFlow: React.FC<CustomerAuthFlowProps> = ({
       setExistingCodeError(null);
       syncAccountIdentityToSupabase(normEmail, 'customer', {
         full_name: existing.name,
+        name: existing.name,
         phone: existing.phone,
+        gender: existing.gender,
+        app_code: existing.appCode,
+        appCode: existing.appCode,
+      }).catch(err => {
+        console.warn('Sync customer login identity error:', err);
       });
       loginAsCustomer({
         id: existing.id,

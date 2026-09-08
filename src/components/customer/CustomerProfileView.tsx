@@ -38,9 +38,11 @@ import {
   AlertTriangle,
   X,
   Check,
+  MapPin,
+  BookOpen,
 } from 'lucide-react';
 
-type ActiveEditField = 'name' | 'phone' | 'email' | 'pin' | 'gender' | 'avatar' | null;
+type ActiveEditField = 'name' | 'phone' | 'email' | 'pin' | 'gender' | 'avatar' | 'location' | 'religion' | null;
 
 export const CustomerProfileView: React.FC = () => {
   const {
@@ -80,6 +82,8 @@ export const CustomerProfileView: React.FC = () => {
   const [nameVal, setNameVal] = useState(customerUser.name || '');
   const [phoneVal, setPhoneVal] = useState(customerUser.phone || '');
   const [emailVal, setEmailVal] = useState(customerUser.email || '');
+  const [locationVal, setLocationVal] = useState(customerUser.location || '');
+  const [religionVal, setReligionVal] = useState(customerUser.religion || '');
   const [pinVal, setPinVal] = useState(customerUser.appCode || '');
   const [confirmPinVal, setConfirmPinVal] = useState('');
   const [showPin, setShowPin] = useState(false);
@@ -109,6 +113,8 @@ export const CustomerProfileView: React.FC = () => {
             phone: liveProfile.phone || u.phone || u.user_metadata?.phone || customerUser.phone,
             gender: liveProfile.gender || u.user_metadata?.gender || customerUser.gender,
             avatar: liveProfile.avatar || photo || customerUser.avatar,
+            location: liveProfile.location || customerUser.location,
+            religion: liveProfile.religion || customerUser.religion,
           });
         }
       }
@@ -120,6 +126,8 @@ export const CustomerProfileView: React.FC = () => {
     setNameVal(customerUser.name || '');
     setPhoneVal(customerUser.phone || '');
     setEmailVal(customerUser.email || '');
+    setLocationVal(customerUser.location || '');
+    setReligionVal(customerUser.religion || '');
     setPinVal(customerUser.appCode || '');
     setConfirmPinVal(customerUser.appCode || '');
     setGenderVal(customerUser.gender || 'Male');
@@ -128,6 +136,8 @@ export const CustomerProfileView: React.FC = () => {
     customerUser.name,
     customerUser.phone,
     customerUser.email,
+    customerUser.location,
+    customerUser.religion,
     customerUser.appCode,
     customerUser.gender,
     customerUser.avatar,
@@ -166,6 +176,12 @@ export const CustomerProfileView: React.FC = () => {
         setAvatarVal(customerUser.avatar || '');
         setCustomAvatarUrl('');
         break;
+      case 'location':
+        setLocationVal(customerUser.location || '');
+        break;
+      case 'religion':
+        setReligionVal(customerUser.religion || '');
+        break;
     }
     setActiveEditModal(field);
   };
@@ -200,6 +216,20 @@ export const CustomerProfileView: React.FC = () => {
         updateCustomerProfile({ email: cleanEmail });
         setEmailVal(cleanEmail);
         showToast('Sign-up Gmail / Email ID updated successfully');
+        break;
+      }
+      case 'location': {
+        const cleanLoc = locationVal.trim();
+        updateCustomerProfile({ location: cleanLoc });
+        setLocationVal(cleanLoc);
+        showToast('Location updated successfully');
+        break;
+      }
+      case 'religion': {
+        const cleanRel = religionVal.trim();
+        updateCustomerProfile({ religion: cleanRel });
+        setReligionVal(cleanRel);
+        showToast('Religion / Community updated successfully');
         break;
       }
       case 'pin': {
@@ -719,6 +749,64 @@ export const CustomerProfileView: React.FC = () => {
             </div>
             <ArrowRight className={`w-4 h-4 shrink-0 ${isLight ? 'text-slate-400' : 'text-slate-500'}`} />
           </div>
+
+          <div
+            id="profile-item-location"
+            onClick={() => openFieldEditor('location')}
+            role="button"
+            tabIndex={0}
+            className={`p-3.5 sm:p-4 flex items-center justify-between cursor-pointer transition-colors ${
+              isLight ? 'hover:bg-slate-50 active:bg-slate-100' : 'hover:bg-slate-800/60 active:bg-slate-800'
+            }`}
+          >
+            <div className="flex items-center gap-3.5 min-w-0 pr-2">
+              <div
+                className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                  isLight ? 'bg-blue-50 text-blue-600' : 'bg-blue-950/40 text-blue-400'
+                }`}
+              >
+                <MapPin className="w-5 h-5 stroke-[2]" />
+              </div>
+              <div className="min-w-0">
+                <h4 className={`text-sm font-bold tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                  Location / City
+                </h4>
+                <p className={`text-xs mt-0.5 truncate font-semibold ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
+                  {customerUser.location || 'Not specified (e.g. Dubai, UAE)'}
+                </p>
+              </div>
+            </div>
+            <ArrowRight className={`w-4 h-4 shrink-0 ${isLight ? 'text-slate-400' : 'text-slate-500'}`} />
+          </div>
+
+          <div
+            id="profile-item-religion"
+            onClick={() => openFieldEditor('religion')}
+            role="button"
+            tabIndex={0}
+            className={`p-3.5 sm:p-4 flex items-center justify-between cursor-pointer transition-colors ${
+              isLight ? 'hover:bg-slate-50 active:bg-slate-100' : 'hover:bg-slate-800/60 active:bg-slate-800'
+            }`}
+          >
+            <div className="flex items-center gap-3.5 min-w-0 pr-2">
+              <div
+                className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                  isLight ? 'bg-purple-50 text-purple-600' : 'bg-purple-950/40 text-purple-400'
+                }`}
+              >
+                <BookOpen className="w-5 h-5 stroke-[2]" />
+              </div>
+              <div className="min-w-0">
+                <h4 className={`text-sm font-bold tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                  Religion / Community
+                </h4>
+                <p className={`text-xs mt-0.5 truncate font-semibold ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
+                  {customerUser.religion || 'Not specified'}
+                </p>
+              </div>
+            </div>
+            <ArrowRight className={`w-4 h-4 shrink-0 ${isLight ? 'text-slate-400' : 'text-slate-500'}`} />
+          </div>
         </div>
 
         <SecurityBadge variant="banner" />
@@ -1167,6 +1255,8 @@ export const CustomerProfileView: React.FC = () => {
                 {activeEditModal === 'name' && 'Edit Full Name'}
                 {activeEditModal === 'phone' && 'Edit Mobile Number'}
                 {activeEditModal === 'email' && 'Edit Email ID'}
+                {activeEditModal === 'location' && 'Edit Location / City'}
+                {activeEditModal === 'religion' && 'Edit Religion / Community'}
                 {activeEditModal === 'pin' && 'Reset 4-Digit Security PIN'}
                 {activeEditModal === 'gender' && 'Select Gender Preference'}
               </h3>
@@ -1318,6 +1408,48 @@ export const CustomerProfileView: React.FC = () => {
                   onChange={e => setEmailVal(e.target.value)}
                   placeholder="name@gmail.com"
                   className={`w-full px-4 py-3 rounded-2xl border text-sm font-medium outline-none transition-all ${
+                    isLight
+                      ? 'bg-slate-50 border-slate-200 text-slate-900 focus:border-slate-400'
+                      : 'bg-slate-950 border-slate-800 text-white focus:border-slate-600'
+                  }`}
+                />
+              </div>
+            )}
+
+            {/* LOCATION EDITOR */}
+            {activeEditModal === 'location' && (
+              <div className="space-y-2">
+                <label className={`text-xs font-bold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                  Location / City (e.g. Dubai, Abu Dhabi, London, New York)
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={locationVal}
+                  onChange={e => setLocationVal(e.target.value)}
+                  placeholder="e.g. Downtown Dubai, UAE"
+                  className={`w-full px-4 py-3 rounded-2xl border text-sm font-semibold outline-none transition-all ${
+                    isLight
+                      ? 'bg-slate-50 border-slate-200 text-slate-900 focus:border-slate-400'
+                      : 'bg-slate-950 border-slate-800 text-white focus:border-slate-600'
+                  }`}
+                />
+              </div>
+            )}
+
+            {/* RELIGION EDITOR */}
+            {activeEditModal === 'religion' && (
+              <div className="space-y-2">
+                <label className={`text-xs font-bold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                  Religion / Community (Optional preference for customized styling services)
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={religionVal}
+                  onChange={e => setReligionVal(e.target.value)}
+                  placeholder="e.g. Islam, Christianity, Hinduism, Other"
+                  className={`w-full px-4 py-3 rounded-2xl border text-sm font-semibold outline-none transition-all ${
                     isLight
                       ? 'bg-slate-50 border-slate-200 text-slate-900 focus:border-slate-400'
                       : 'bg-slate-950 border-slate-800 text-white focus:border-slate-600'
